@@ -39,3 +39,15 @@
 
 # debug information files
 *.dwo
+
+# Baltik executables
+trust*
+
+# Baltik environment
+*env_trust*.sh
+
+# Construction files
+README.BALTIK
+Makefile
+build/
+.check_sources.ok
