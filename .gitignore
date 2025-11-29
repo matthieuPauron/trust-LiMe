@@ -51,3 +51,6 @@ README.BALTIK
 Makefile
 build/
 .check_sources.ok
+
+# Modified files
+*~
