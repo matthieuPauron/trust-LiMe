@@ -10,7 +10,7 @@ TRUST-LiMe is a C++ module of the TRUST kernel [](https://doi.org/10.1051/epjn/2
 - massive parallelization of computations ;
 - (to complete)
 - GPU porting of the source code (ongoing as of dec. 2025) ;
-- and compatibility with the daughter-applications such as [TrioCFD]() for turbulence models, [TRUST-NK]( https://doi.org/10.1051/epjconf/202430203007 ) for deterministic core neutronics , and others... 
+- and compatibility with the daughter-applications such as TrioCFD for turbulence models, [TRUST-NK]( https://doi.org/10.1051/epjconf/202430203007 ) for deterministic core neutronics , and others... 
 
 TRUST allows to build a single executable from the kernel code, and the source of any number of modules based on the TRUST kernel. This allows to build an executable that is natively able to perform multi-physics computations. For example, a TRUST+TRUST-NK+TrioCFD executable allows to perform coupled neutronics and turbulent thermalhydraulics computations. It is the modular aspect of the TRUST kernel that motivated the creation of TRUST-LiMe.
 
