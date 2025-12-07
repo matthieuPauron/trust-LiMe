@@ -18,6 +18,8 @@ project:
       title: Homepage
     - file: intro.md
       title: Introduction
+    - file: classes.md
+      
   exports:
     - format : pdf
       template: lapreprint-typst
