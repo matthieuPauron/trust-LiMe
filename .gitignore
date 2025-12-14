@@ -54,3 +54,10 @@ build/
 
 # Modified files
 *~
+
+# Eclipse configuration files
+.clang*
+.*project
+.settings/
+
+README_BALTIK_ECLIPSE
