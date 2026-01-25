@@ -1,28 +1,39 @@
 # Problems, equations, boundary conditions
 
-## Problems
-
 ## Equations
 
-### Equation without curl term
+### Convection diffusion formulation for the induction equation
 
 $$
-\partial_t b - \frac{1}{R_m} \Delta b = 0
+\partial_t b  - \nabla \times (u \times b) -  \Delta b = 0
 $$
 
-where $R_m$ is the \emph{magnetic Reynolds number} defined as 
+Assuming that the fluid is incompressible, we use the Gauss law to rewrite the above equation under the convection diffusion formulation
 
 $$
-R_m = \frac{U L}{\eta} \sim \frac{\text{induction}}{\text{diffusion}}
-$$ where
-- $U$ is the characteristic velocity of the fluid ;
-- $L$ is the characteristic length scale of the fluid ;
-- $\eta$ is the magnetic diffusivity of the medium.
-
-### Equation with curl term
-
-$$
-\partial_t b - \nabla \times ( u \times b ) - \frac{1}{R_m} \Delta b = 0
+\partial_t b - (u \cdot \nabla) b - \Delta b = (b \cdot \nabla) u
 $$
 
-## Boundary conditions
+It is implemented as a daughter class of the 
+
+## Source terms
+
+### Induction equation source term 
+
+$(b \cdot \nabla ) u$ : not implemented yet
+
+### Momentum equation source term : the Lorentz force
+
+$(\nabla \times b) \times b)$ : not implemented yet
+
+## Problems
+
+The system of equations consists of four equations :
+- the momentum equation ;
+- the incompressibility constraint ;
+- the induction equation ;
+- the Gauss Law ;
+
+We follow the 
+
+
