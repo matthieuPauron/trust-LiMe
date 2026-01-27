@@ -24,7 +24,7 @@ $(b \cdot \nabla ) u$ : not implemented yet
 
 ### Momentum equation source term : the Lorentz force
 
-$(\nabla \times b) \times b)$ : not implemented yet
+$(\nabla \times b) \times b$ : not implemented yet
 
 ## Problems
 
