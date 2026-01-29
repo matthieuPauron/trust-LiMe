@@ -19,6 +19,12 @@ project:
     - file: intro.md
       title: Introduction
     - file: classes.md
+      title: Classes
+    - file: test_cases.md
+      title: Test Cases
+      children:
+        - file: ../share/Validation/Rapports_automatiques/HartmannFlow/HartmannFlow.ipynb
+          title: The Hartmann Flow
       
   exports:
     - format : pdf
