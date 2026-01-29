@@ -61,3 +61,5 @@ build/
 .settings/
 
 README_BALTIK_ECLIPSE
+
+.ipynb_checkpoints/
