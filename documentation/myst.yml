@@ -25,6 +25,8 @@ project:
       children:
         - file: ../share/Validation/Rapports_automatiques/HartmannFlow/HartmannFlow.ipynb
           title: The Hartmann Flow
+        - file: ../share/Validation/Rapports_automatiques/Shercliff_3D_duct/Shercliff_3D_duct.ipynb
+          title: The Schercliff duct experiment
       
   exports:
     - format : pdf
