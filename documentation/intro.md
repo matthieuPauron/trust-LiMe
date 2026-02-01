@@ -18,3 +18,6 @@ TRUST allows to build a single executable from the kernel code, and the source o
 
 The goal of TRUST-LiMe is to build a software that could natively perform coupled turbulent MHD coupled with neutronics. The application is the study of breeder layers in sellarator reactors.
 
+## Physical limitations
+
+**Indicate what kind of plasma can be simulated using the code (how diluted, how strongly ionized)**
