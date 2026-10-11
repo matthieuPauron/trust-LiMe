@@ -25,7 +25,7 @@
 #  MACHINERY (component independence, per-component rates, no component swap),
 #  not the Gauss law. It is admissible *only* because the solver transports each
 #  component independently and never enforces div b = 0 (a documented
-#  limitation -- see documentation/classes.md).
+#  limitation -- see docs/content/model.md).
 #
 #  This is not an oversight: in 2D it is impossible to do better here. A
 #  divergence-free field that vanishes on the WHOLE boundary must be identically

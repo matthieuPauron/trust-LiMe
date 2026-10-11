@@ -1,9 +1,16 @@
 ---
-description: Build the Jupyter Book documentation
+description: Build the trust-LiMe documentation (Doxygen / baltik pipeline)
 ---
-Build the trust-LiMe MyST / Jupyter Book documentation:
+Build the trust-LiMe Doxygen documentation. Load the `trust-lime-docs` skill
+for the full recipe.
 
-    source ~/Development/venv_trust/bin/activate
-    cd documentation && jupyter book build --html
+    source env_trust_LiMe.sh
+    cd docs && make          # or: make docs  (from the repository root)
 
-Report warnings and the resulting output directory. If `$ARGUMENTS` names a notebook, re-execute it first (see `/validate`). Do not commit generated build output.
+Report:
+- any warnings originating from `docs/content/` (the many warnings from the
+  TRUST kernel sources and the trustify-generated keyword pages are pre-existing
+  noise);
+- the output path, `docs/build/html/index.html`.
+
+Do not commit `docs/build/`.

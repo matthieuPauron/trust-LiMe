@@ -1,4 +1,4 @@
-# Test cases
+@page TrustLiMe_testcases Test cases
 
 The module has **two** kinds of tests:
 
@@ -7,7 +7,7 @@ The module has **two** kinds of tests:
    convention, the problem/equation contracts. Run them first.
 2. **Validation cases** (notebooks under
    `share/Validation/Rapports_automatiques/`) — end-to-end runs with analytic
-   or invariant references.
+   or invariant references. See @ref TrustLiMe_validation "Validation cases".
 
 ---
 
@@ -20,16 +20,17 @@ The module has **two** kinds of tests:
 
 | File | Covers |
 |---|---|
-| `unit_magnetic_field.cpp` | equation keyword, `domaine_application()=="Thermique"` (the BC-compatibility contract), `Pb_MHD` equation count, out-of-range index |
+| `unit_magnetic_field.cpp` | equation keyword, `domaine_application() == "Thermique"` (the BC-compatibility contract), `Pb_MHD` equation count, out-of-range index |
 | `unit_induction_source.cpp` | `induction_stretching` keyword; `readOn()` consumes its own braces (regression); unknown keyword is rejected |
-| `unit_induction_kernel.cpp` | the arithmetic of $S=(b\cdot\nabla)u$: index layout, single-component case, accumulation, element-wise application |
+| `unit_induction_kernel.cpp` | the arithmetic of \f$S = (b\cdot\nabla)u\f$: index layout, single-component case, accumulation, element-wise application |
 
 `unit_induction_kernel.cpp` deserves a special mention: the kernel velocity
-gradient stores component $i\cdot\mathrm{dim}+j$ for $\partial u_i/\partial x_j$,
-and transposing it still gives plausible numbers for a diagonal gradient. The
-test `UsesTheRowMajorKernelGradientLayout` catches exactly that. The logic is
-factored into `src/Induction_stretching_kernel.h` specifically so it can be
-tested without a TRUST run.
+gradient stores component \f$i\cdot\mathrm{dim}+j\f$ for
+\f$\partial u_i/\partial x_j\f$, and transposing it still gives plausible
+numbers for a diagonal gradient. The test `UsesTheRowMajorKernelGradientLayout`
+catches exactly that. The logic is factored into
+`src/Induction_stretching_kernel.h` specifically so it can be tested without a
+TRUST run.
 
 See `tests/UnitTests/README.txt` for how the test binary is built and linked.
 
@@ -79,44 +80,45 @@ The `/validate` command automates this. From the repository root:
 Notebook: `MagneticStandalone.ipynb` · datasets in `src/`
 
 These cases target the magnetic induction equation solved in standalone form
-(see `documentation/classes.md`). Every dataset is **self-contained**: the mesh
-is generated inline with `Mailler`/`Pave`, so no `.med` file is required and the
-cases can be run from a clean checkout.
+(see @ref TrustLiMe_model "Problems, equations and boundary conditions"). Every
+dataset is **self-contained**: the mesh is generated inline with `Mailler`/`Pave`,
+so no `.med` file is required and the cases can be run from a clean checkout.
 
 | Dataset | Physics | Reference solution | What it catches |
 |---|---|---|---|
-| `invariance.data` | uniform $b$, $u=0$ | exact invariant: $b(t)\equiv b_0$ | spurious sources, wrong time factor, bad CL assembly, wrong default velocity |
-| `diffusion.data` | transverse Fourier mode, $\eta=0.05$ | $b(t)=b_0\,e^{-\eta\pi^2t}$ | wrong magnetic diffusivity scaling, diffusion operator, Dirichlet CL |
+| `invariance.data` | uniform \f$b\f$, \f$u = 0\f$ | exact invariant: \f$b(t)\equiv b_0\f$ | spurious sources, wrong time factor, bad CL assembly, wrong default velocity |
+| `diffusion.data` | transverse Fourier mode, \f$\eta = 0.05\f$ | \f$b(t) = b_0\,e^{-\eta\pi^2 t}\f$ | wrong magnetic diffusivity scaling, diffusion operator, Dirichlet CL |
 | `diffusion_refined.data` | same, finer mesh | same | mesh convergence (the error must drop) |
-| `advection.data` | Gaussian bump advected by $u=(0.2,0)$ | peak conservation + transport direction | convection operator, `vitesse_magnetique` wiring |
-| `vector_components.data` | **vector** unknown (default `nb_composantes`) | two distinct eigenmodes, rates $2\eta\pi^2$ and $5\eta\pi^2$ | component independence; catches a component swap or mixed assembly |
-| `steady_state.data` | equilibrium $b=y$ with **non-uniform** $\eta(x)=1+x$ | exact steady state | spurious source, mis-assembled diffusion, functional-$\eta$ reading path |
-| `varying_velocity.data` | **spatially varying** velocity $u=(-y,x)$, uniform $b$ | exact invariant | `Champ_Don → Champ_Inc` transfer onto faces, wrong velocity components |
-| `source_stretching.data` | M1 source $S=(b\cdot\nabla)u$, $u=(x,0)$ | $b_0(t)=B_0e^{t}$, $b_1\equiv0$ | source magnitude, sign, gradient-index order, per-component structure |
+| `advection.data` | Gaussian bump advected by \f$u = (0.2, 0)\f$ | peak conservation + transport direction | convection operator, `vitesse_magnetique` wiring |
+| `vector_components.data` | **vector** unknown (default `nb_composantes`) | two distinct eigenmodes, rates \f$2\eta\pi^2\f$ and \f$5\eta\pi^2\f$ | component independence; catches a component swap or mixed assembly |
+| `steady_state.data` | equilibrium \f$b = y\f$ with **non-uniform** \f$\eta(x) = 1+x\f$ | exact steady state | spurious source, mis-assembled diffusion, functional-\f$\eta\f$ reading path |
+| `varying_velocity.data` | **spatially varying** velocity \f$u = (-y, x)\f$, uniform \f$b\f$ | exact invariant | `Champ_Don → Champ_Inc` transfer onto faces, wrong velocity components |
+| `source_stretching.data` | M1 source \f$S = (b\cdot\nabla)u\f$, \f$u = (x, 0)\f$ | \f$b_0(t) = B_0 e^{t}\f$, \f$b_1\equiv 0\f$ | source magnitude, sign, gradient-index order, per-component structure |
 | `error_missing_eta.data` | no `diffusivite_magnetique` | must fail cleanly | required-keyword diagnostics |
 | `error_bad_nbcomposantes.data` | `nb_composantes 7` in 2D | must fail cleanly | range validation |
 | `error_bad_bc.data` | unknown CL keyword | must fail cleanly | keyword error reporting |
 
 Design choices worth knowing:
 
-- **`nb_composantes 1`** in most cases — the natural reduction of $\nabla\cdot b=0$
-  for a purely transverse field keeps the datasets simple.
-  `vector_components.data` deliberately omits the keyword to exercise the
-  **default** (one component per space direction).
+- **`nb_composantes 1`** in most cases — the natural reduction of
+  \f$\nabla\cdot b = 0\f$ for a purely transverse field keeps the datasets
+  simple. `vector_components.data` deliberately omits the keyword to exercise
+  the **default** (one component per space direction).
 - **Different eigen-rates per component.** In `vector_components.data` the two
   components are given modes with *different* decay rates
-  ($\sin(\pi x)\sin(\pi y)$ and $\sin(2\pi x)\sin(\pi y)$), so a component swap or
-  a mixed assembly is caught rather than hidden behind identical rates.
+  (\f$\sin(\pi x)\sin(\pi y)\f$ and \f$\sin(2\pi x)\sin(\pi y)\f$), so a
+  component swap or a mixed assembly is caught rather than hidden behind
+  identical rates.
 - **Probes use `grav`** — they are snapped to the nearest cell centre. The
-  diffusion check therefore compares the *amplitude ratio* $b(t)/b(0)$, which is
-  independent of where the probe sits on the mesh.
+  diffusion check therefore compares the *amplitude ratio* \f$b(t)/b(0)\f$,
+  which is independent of where the probe sits on the mesh.
 - **The invariance cases are the strictest checks** — they must hold to machine
   precision, so any regression in the operator wiring shows up immediately,
   regardless of mesh.
-- **Non-uniform $\eta$ and velocity** are given as `Champ_Fonc_xyz` functional
-  fields, which is the realistic MHD situation (a Hartmann layer has a
-  position-dependent $\eta_{\rm eff}$) and exercises a different reading path
-  than a uniform `Champ_Uniforme`.
+- **Non-uniform \f$\eta\f$ and velocity** are given as `Champ_Fonc_xyz`
+  functional fields, which is the realistic MHD situation (a Hartmann layer has
+  a position-dependent \f$\eta_{\rm eff}\f$) and exercises a different reading
+  path than a uniform `Champ_Uniforme`.
 - **Negative cases are run directly** with the `trust` command rather than
   through `runCases()` (which would abort the notebook); the notebook asserts a
   non-zero exit code and a non-empty diagnostic.

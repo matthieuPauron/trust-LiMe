@@ -35,7 +35,7 @@ bookkeeping, turbulent MHD, div-free enforcement / vector-potential (M3).
 | `src/Pb_MHD.{h,cpp}` | Problem shell; `nombre_d_equations()` returns 1 (wrong), `equation(int)` broken |
 | `share/Validation/…/HartmannFlow/src/jdd.data` | Uses `Pb_MHD` but magnetic block still reads **thermal keywords** (`Temperature`, `frontiere_ouverte_temperature_imposee`) |
 | `share/Validation/…/Shercliff_3D_duct/src/jdd.data` | **Empty (0 bytes)** |
-| `documentation/classes.md` | Physics: induction eq + both source terms marked "not implemented yet" |
+| `docs/content/model.md` | Physics: induction eq + both source terms marked "not implemented yet" |
 
 ### Concrete compile defects to fix (Phase 0)
 
@@ -158,10 +158,10 @@ tolerance; toggling `source_etirement` off reproduces Phase 2 results
 
 ### Phase 4 — Consolidation & documentation
 
-- [ ] 4.1 Update `documentation/classes.md`: mark `(b·∇)u` implemented once M1
+- [ ] 4.1 Update `docs/content/model.md`: mark `(b·∇)u` implemented once M1
       passes; keep Lorentz force "not implemented".
-- [ ] 4.2 Fill `documentation/test_cases.md` (M0/M1 cases + how to run) and
-      `documentation/master.md` roadmap (this plan, condensed).
+- [ ] 4.2 Fill `docs/content/test_cases.md` (M0/M1 cases + how to run) and
+      `docs/content/main_page.md` roadmap (this plan, condensed).
 - [ ] 4.3 Sanitizer pass: project.cfg ASan/UBSan, `./configure && make module_custom`,
       run the M0/M1 cases, revert `project.cfg`.
 - [ ] 4.4 Review via `.opencode/commands/review.md` checklist (sign conventions,

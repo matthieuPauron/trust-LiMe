@@ -355,10 +355,10 @@ dimensions. Scope is 2D. For each decision: is it pinned by a test, and where?
 | 7b | **M1 source $S=(b\cdot\nabla)u$** has the right magnitude, sign, gradient-index order and per-component structure. | ✅ | `source_stretching` ($b_0=B_0e^t$, $b_1\equiv0$) |
 | 7c | The source is **explicit (lagged)** and adds nothing to the Jacobian. | ✅ by construction | `dimensionner_blocs()` is empty; verified by the growth rate matching $e^t$ to <1% |
 | 8 | **BC semantics**: Dirichlet prescribes $b$, Neumann means zero *flux* $\partial b/\partial n=0$. | ✅ | implied by `diffusion` (a wrong Dirichlet would change the eigenvalue set, so the analytic rate would not match) |
-| 9 | **Only insulated (Neumann) and prescribed (Dirichlet) walls are supported** — the conducting-wall condition (interface current / Ohm's law) is out of scope. | 📋 declared | `documentation/classes.md` §6 |
+| 9 | **Only insulated (Neumann) and prescribed (Dirichlet) walls are supported** — the conducting-wall condition (interface current / Ohm's law) is out of scope. | 📋 declared | `docs/content/model.md` §6 |
 | 10 | **$\nabla\cdot b=0$ is assumed, not enforced** (Gauss law is the user's responsibility). | ❌ **not testable** | see the caveat below |
 | 11 | Malformed input fails cleanly with a readable message. | ✅ | `error_missing_eta`, `error_bad_nbcomposantes`, `error_bad_bc` |
-| 12 | Equation form is advection–diffusion, **not** the $-\nabla\times(u\times b)$ form. | 📋 by review | `documentation/classes.md` §1 |
+| 12 | Equation form is advection–diffusion, **not** the $-\nabla\times(u\times b)$ form. | 📋 by review | `docs/content/model.md` §1 |
 
 ### Why decision 10 cannot be tested in 2D (and what to do about it)
 
@@ -384,7 +384,7 @@ Consequences for how the cases must be read:
 
 If Gauss-law correctness ever becomes a requirement, it needs an M3-style
 projection or a vector-potential formulation, plus **per-component boundary
-conditions**. Both are deferred (see `documentation/classes.md` §6).
+conditions**. Both are deferred (see `docs/content/model.md` §6).
 
 Useful technique: give two components or two runs **different** analytic
 behaviour (different eigen-rates, coarse vs refined mesh) so a plumbing bug

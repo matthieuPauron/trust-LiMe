@@ -1,38 +1,39 @@
-# Problems, equations and boundary conditions
+@page TrustLiMe_model Problems, equations and boundary conditions
 
-This page describes what the **TRUST-LiMe** module actually implements today, how it
-maps onto the TRUST kernel, and what is deliberately *not* implemented yet.
+This page describes what the **TRUST-LiMe** module actually implements today, how
+it maps onto the TRUST kernel, and what is deliberately *not* implemented yet.
 
 ---
 
 ## 1. The model solved in this first phase
 
-TRUST-LiMe solves the **magnetic induction equation** in standalone form
-(the fluid velocity is supplied as data, it is not solved here):
+TRUST-LiMe solves the **magnetic induction equation** in standalone form (the
+fluid velocity is supplied as data, it is not solved here):
 
-$$
+\f[
 \partial_t b + (u\cdot\nabla)b - \nabla\cdot(\eta\,\nabla b) = 0
-$$
+\f]
 
 with
 
 | Symbol | Meaning | Data keyword |
 |---|---|---|
-| $b$ | magnetic field (cell centred, `nb_composantes` components) | unknown |
-| $u$ | transporting velocity (given, face centred) | `vitesse_magnetique` |
-| $\eta$ | magnetic diffusivity $=1/(\mu_0\sigma)$ | `diffusivite_magnetique` |
+| \f$b\f$ | magnetic field (cell centred, `nb_composantes` components) | unknown |
+| \f$u\f$ | transporting velocity (given, face centred) | `vitesse_magnetique` |
+| \f$\eta\f$ | magnetic diffusivity \f$= 1/(\mu_0\sigma)\f$ | `diffusivite_magnetique` |
 
-This is the standard convection–diffusion form of the induction equation.
-For an incompressible flow, the Gauss law $\nabla\cdot b=0$ is assumed by the
-validation cases; **it is not enforced by the solver** (see §6).
+This is the standard convection–diffusion form of the induction equation. For an
+incompressible flow, the Gauss law \f$\nabla\cdot b = 0\f$ is assumed by the
+validation cases; **it is not enforced by the solver** (see the *Known
+limitations* section below).
 
 ### Physical model variants
 
 | Model | Additional source term | Status |
 |---|---|---|
 | **M0** | none (pure advection–diffusion) | **implemented** |
-| **M1** | $S=(b\cdot\nabla)u$ (frozen-velocity stretching) | **implemented** — kernel source term `induction_stretching` |
-| M2+ | Lorentz force $(\nabla\times b)\times b$ on momentum | deferred — needs hydodynamics |
+| **M1** | \f$S = (b\cdot\nabla)u\f$ (frozen-velocity stretching) | **implemented** — kernel source term `induction_stretching` |
+| M2+ | Lorentz force \f$(\nabla\times b)\times b\f$ on momentum | deferred — needs hydrodynamics |
 | M3 | vector-potential / divergence-free formulation | deferred |
 
 ---
@@ -56,16 +57,16 @@ source machinery, post-processing plumbing) is inherited from the kernel:
 |---|---|
 | `discretiser()` | build the unknown (`magnetic_field`) and the transport velocity |
 | `inconnue()` (×2) | return our own `Champ_Inc_base` |
-| `diffusivite_pour_transport()` | return $\eta$ instead of the fluid conductivity $\lambda$ |
-| `diffusivite_pour_pas_de_temps()` | return $\eta$ (time-step stability estimate) |
+| `diffusivite_pour_transport()` | return \f$\eta\f$ instead of the fluid conductivity \f$\lambda\f$ |
+| `diffusivite_pour_pas_de_temps()` | return \f$\eta\f$ (time-step stability estimate) |
 | `vitesse_pour_transport()` | return the data velocity instead of `probleme().get_champ("vitesse")` |
 | `set_param()` | register `diffusivite_magnetique`, `vitesse_magnetique`, `nb_composantes` |
 | `readOn()` | fill the velocity field, rename the mass coefficient |
-| `domaine_application()` | report `"Thermique"` so kernel scalar CLs are accepted (§4) |
+| `domaine_application()` | report `"Thermique"` so kernel scalar CLs are accepted (see below) |
 
-`get_time_factor()` is **not** overridden: the energy equation's $\rho C_p$
+`get_time_factor()` is **not** overridden: the energy equation's \f$\rho C_p\f$
 factor does not apply to a magnetic field, and the `Equation_base` default
-(`1.`) is correct.
+(\f$1\f$) is correct.
 
 Because the assembler is never overridden, `Equation_base::assembler_blocs`
 handles the `Polymac_p0` case directly (for a poly family, the concrete energy
@@ -82,14 +83,14 @@ Inside the `Convection_Diffusion_Magnetic_field` block:
 
 | Keyword | Type | Required | Default | Notes |
 |---|---|:--:|---|---|
-| `diffusivite_magnetique` | `Champ_Don_base` | **yes** | — | $\eta$. Must appear **before** `diffusion`. |
-| `vitesse_magnetique` | `Champ_Don_base` | no | zero | Transport velocity $u$ (e.g. `Champ_Uniforme 2 0.2 0.`). |
+| `diffusivite_magnetique` | `Champ_Don_base` | **yes** | — | \f$\eta\f$. Must appear **before** `diffusion`. |
+| `vitesse_magnetique` | `Champ_Don_base` | no | zero | Transport velocity \f$u\f$ (e.g. `Champ_Uniforme 2 0.2 0.`). |
 | `nb_composantes` | int | no | space dimension | 1…dimension. Use `1` for a single magnetic component. |
 | `diffusion` | block | inherited | — | Diffusion operator keyword. |
 | `convection` | block | inherited | — | Convection operator keyword. |
-| `sources` | block | inherited | — | Kernel source framework; enables the M1 `induction_stretching` term (§3bis). |
+| `sources` | block | inherited | — | Kernel source framework; enables the M1 `induction_stretching` term. |
 | `initial_conditions` | block | **yes** | — | `magnetic_field <Champ_...> ...` |
-| `boundary_conditions` | block | **yes** | — | Kernel scalar CLs (§4). |
+| `boundary_conditions` | block | **yes** | — | Kernel scalar CLs (see *Boundary conditions*). |
 
 **Ordering matters:** keywords are processed in the order they appear in the
 data file, so `diffusivite_magnetique` must be given before `diffusion` (the
@@ -111,10 +112,10 @@ be attached; in addition the module provides the M1 inductive stretching term.
 Written in the induction equation's convection–diffusion form, an incompressible
 flow produces the stretching source on the right-hand side:
 
-$$
+\f[
 \partial_t b + (u\cdot\nabla)b - \nabla\cdot(\eta\nabla b)
-= S,\qquad S = (b\cdot\nabla)u,\quad S_i=\sum_j b_j\,\partial_j u_i .
-$$
+= S,\qquad S = (b\cdot\nabla)u,\quad S_i = \sum_j b_j\,\partial_j u_i .
+\f]
 
 ```c
 Convection_Diffusion_Magnetic_field
@@ -132,26 +133,27 @@ Implementation notes:
 
 - `src/Terme_Source_Induction_stretching.{h,cpp}`, a `Source_base` subclass
   registered under the keyword `induction_stretching`.
-- $u$ is the **frozen** transporting velocity already held by the equation, so
-  $\nabla u$ is constant in time. It is built once in `initialiser()` with the
-  kernel field **`gradient_vitesse`** (`Discret_Thyd::grad_u`) — the *same*
-  $\nabla u$ the momentum equation would use, so the coupling stays consistent.
-- Because $\nabla u$ is constant and the term depends on $b$, the source is
-  treated **explicit (lagged)**: `dimensionner_blocs()` contributes nothing to
-  the Jacobian and `ajouter_blocs()` only fills the right-hand side. The
+- \f$u\f$ is the **frozen** transporting velocity already held by the equation,
+  so \f$\nabla u\f$ is constant in time. It is built once in `initialiser()`
+  with the kernel field **`gradient_vitesse`** (`Discret_Thyd::grad_u`) — the
+  *same* \f$\nabla u\f$ the momentum equation would use, so the coupling stays
+  consistent.
+- Because \f$\nabla u\f$ is constant and the term depends on \f$b\f$, the source
+  is treated **explicit (lagged)**: `dimensionner_blocs()` contributes nothing
+  to the Jacobian and `ajouter_blocs()` only fills the right-hand side. The
   generic `Equation_base::derivee_en_temps_inco` already calls
   `les_sources.ajouter(secmem)`, so no equation-side override is required.
 - The source lives on the cells (`elem` localisation), matching the cell-centred
   magnetic unknown.
 - The gradient field layout is the kernel convention (2D: `dUdX,dUdY,dVdX,dVdY`),
-  i.e. component $(i\cdot\mathrm{dim}+j)$ is $\partial u_i/\partial x_j$.
-- The contraction $S_i=\sum_j b_j\,\partial_j u_i$ is factored into the
+  i.e. component \f$(i\cdot\mathrm{dim}+j)\f$ is \f$\partial u_i/\partial x_j\f$.
+- The contraction \f$S_i = \sum_j b_j\,\partial_j u_i\f$ is factored into the
   header-only `src/Induction_stretching_kernel.h`, so this — the most
   error-prone index convention in the module — is covered by unit tests
   (`tests/UnitTests/unit_induction_kernel.cpp`) without a mesh or a solve.
 
 Only the M1 term is implemented; the Lorentz force on momentum (M2) and the
-divergence-free projection (M3) remain out of scope (§6).
+divergence-free projection (M3) remain out of scope.
 
 ---
 
@@ -179,9 +181,10 @@ subclasses of the kernel CLs registered under magnetic keyword names.
 ## 5. Discretisation
 
 - `Polymac_p0` — cell-centred (P0) elements, the single discretisation used.
-- The unknown is created with `Discret_Thyd::concentration(..., nb_composantes,
-  "magnetic_field")`, which sets the field nature to `multi_scalaire` and names
-  the components. This is exactly the pattern used by the kernel's
+- The unknown is created with
+  `Discret_Thyd::concentration(..., nb_composantes, "magnetic_field")`, which
+  sets the field nature to `multi_scalaire` and names the components. This is
+  exactly the pattern used by the kernel's
   `Convection_Diffusion_Concentration`; **no new discretisation is introduced**.
 - The transporting velocity is created with `Discret_Thyd::vitesse(...)`
   (face-centred), because `Convection_Diffusion_std::associer_vitesse()`
@@ -191,17 +194,19 @@ subclasses of the kernel CLs registered under magnetic keyword names.
 
 ## 6. Known limitations / deferred work
 
-1. **Gauss law is not enforced.** $\nabla\cdot b=0$ is assumed, not projected.
+1. **Gauss law is not enforced.** \f$\nabla\cdot b = 0\f$ is assumed, not
+   projected.
 2. **No Lorentz force.** The momentum equation is untouched (there is no
-   momentum equation in this phase), so $(\nabla\times b)\times b$ (M2) is absent.
-3. **$u$ is frozen.** Even with the M1 `induction_stretching` source, the
-   velocity is a given field: $b$ feeds back into $u$ only through that
+   momentum equation in this phase), so \f$(\nabla\times b)\times b\f$ (M2) is
+   absent.
+3. **\f$u\f$ is frozen.** Even with the M1 `induction_stretching` source, the
+   velocity is a given field: \f$b\f$ feeds back into \f$u\f$ only through that
    explicit, lagged term — never through the momentum equation.
-4. **Boundary conditions reuse thermal CL keywords.** Functional but
-   confusing; magnetic-named aliases are deferred.
+4. **Boundary conditions reuse thermal CL keywords.** Functional but confusing;
+   magnetic-named aliases are deferred.
 5. **`Pb_MHD` has a single equation.** There is no coupled three-equation
    (momentum + energy + induction) problem yet.
-6. **Velocity is given as data.** There is no feedback from $b$ to $u$.
+6. **Velocity is given as data.** There is no feedback from \f$b\f$ to \f$u\f$.
 
 ---
 

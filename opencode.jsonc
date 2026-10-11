@@ -20,7 +20,6 @@
   "watcher": {
     "ignore": [
       "build/**",
-      "documentation/_build/**",
       "trust-lime*",
       ".check_sources.ok",
       "*.ipynb_checkpoints/**"
