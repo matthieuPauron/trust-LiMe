@@ -12,7 +12,7 @@
 #   exist inside the baltik configure environment. This script therefore reuses
 #   the two things baltik already knows how to produce:
 #     - the compile flags  -> from compile_commands.json (via syntax-check.sh)
-#     - the link line      -> from build/src/exec_opt/CMakeFiles/exe.dir/link.txt
+#     - the link line      -> from build/src/exec<mode>/CMakeFiles/exe.dir/link.txt
 #   so the test binary is linked exactly like the real trust-lime executable.
 #
 # The two suites have different requirements:
@@ -43,10 +43,30 @@ done
   exit 2
 }
 
-kernel_link="$trust_root/lib/TRUST_mpi_opt.a"
+# Build flavour: TRUST builds either optim (_opt) or semi_optim (_semi_opt)
+# archives and its baltik link.txt lives under build/src/exec<flavour>. Pick the
+# flavour whose kernel archive exists (override with UNIT_TEST_SUFFIX, e.g.
+# "UNIT_TEST_SUFFIX=_semi_opt" after a `make semi_optim`).
+kernel_suffix="${UNIT_TEST_SUFFIX:-}"
+if [[ -z "$kernel_suffix" ]]; then
+  for cand in _opt _semi_opt; do
+    if [[ -f "$trust_root/lib/TRUST_mpi${cand}.a" ]]; then
+      kernel_suffix="$cand"
+      break
+    fi
+  done
+fi
+if [[ -z "$kernel_suffix" ]]; then
+  echo "error: no TRUST kernel archive found (neither _opt nor _semi_opt)" >&2
+  echo "       build the kernel first:  cd $trust_root && make optim" >&2
+  echo "       (or make semi_optim for a _semi_opt kernel)" >&2
+  exit 2
+fi
+
+kernel_link="$trust_root/lib/TRUST_mpi${kernel_suffix}.a"
 if [[ "$mode" == "arith" ]]; then
   # Minimal chain: the numeric kernel already contains DoubleTab and friends.
-  kernel_link="$trust_root/lib/TRUST_mpi_numeric_kernel_opt.a $trust_root/lib/TRUST_mpi_micro_kernel_opt.a"
+  kernel_link="$trust_root/lib/TRUST_mpi_numeric_kernel${kernel_suffix}.a $trust_root/lib/TRUST_mpi_micro_kernel${kernel_suffix}.a"
 fi
 [[ -f "${kernel_link%% *}" ]] || {
   echo "error: TRUST kernel library not built: ${kernel_link%% *}" >&2
@@ -91,7 +111,7 @@ done
 exe="$build_dir/unit_lime_gtest"
 echo "  LD  $(basename "$exe")"
 
-link_txt="$repo_root/build/src/exec_opt/CMakeFiles/exe.dir/link.txt"
+link_txt="$repo_root/build/src/exec${kernel_suffix}/CMakeFiles/exe.dir/link.txt"
 link_line=""
 if [[ -f "$link_txt" ]]; then
   # Reuse baltik's recorded link line: same compiler wrapper, same libraries.
@@ -102,11 +122,21 @@ if [[ -f "$link_txt" ]]; then
   #   2. the standard-kernel archive is swapped for the pair that exists when
   #      only micro + numeric have been built.
   link_line="$(cat "$link_txt")"
-  link_line="${link_line//CMakeFiles\/list_obj.dir\/Convection_Diffusion_Magnetic_field.cpp.o CMakeFiles\/list_obj.dir\/Pb_MHD.cpp.o CMakeFiles\/list_obj.dir\/info_atelier.cpp.o/${objects[*]}}"
-  link_line="${link_line//CMakeFiles\/list_obj.dir\/info_atelier.cpp.o/${objects[*]}}"
-  link_line="${link_line//CMakeFiles\/list_obj.dir\/Convection_Diffusion_Magnetic_field.cpp.o/}"
-  link_line="${link_line//CMakeFiles\/list_obj.dir\/Pb_MHD.cpp.o/}"
-  link_line="${link_line//$trust_root\/lib\/TRUST_mpi_opt.a/$kernel_link}"
+  # Splice the test objects in place of the baltik module objects recorded in
+  # the link line (objects must precede the libraries). This replaces the whole
+  # CMakeFiles/list_obj.dir/*.o set -- whatever its size, e.g. the 4th module
+  # source Terme_Source_Induction_stretching.cpp.o added later -- with ours.
+  link_line="$(awk -v objs="${objects[*]}" '
+    BEGIN { inserted = 0 }
+    { for (i = 1; i <= NF; i++) {
+        if ($i ~ /^CMakeFiles\/list_obj\.dir\/.*\.o$/) {
+          if (!inserted) { printf "%s ", objs; inserted = 1 }
+          continue
+        }
+        printf "%s ", $i
+      }
+    }' <<< "$link_line")"
+  link_line="${link_line//$trust_root\/lib\/TRUST_mpi${kernel_suffix}.a/$kernel_link}"
   # Redirect the output binary. The recorded path is extracted first: a glob such
   # as " -o [^ ]*" is unsafe here, since bash bracket expressions inside
   # ${var//pat/rep} can swallow the whole library list that follows.
@@ -147,7 +177,7 @@ export TRUST_ROOT="$trust_root" TRUST_GTEST_ROOT="$gtest_root"
 [[ -n "${UNIT_TEST_DEBUG:-}" ]] && printf 'link: %s\n' "$link_line"
 
 if [[ -n "$link_line" ]]; then
-  (cd "$repo_root/build/src/exec_opt" && \
+  (cd "$repo_root/build/src/exec${kernel_suffix}" && \
    eval "$link_line" -L"$gtest_root/lib" -lgtest)
 else
   # Fallback for a tree that has not been configured yet: minimal library set.

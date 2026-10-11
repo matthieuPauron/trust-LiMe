@@ -10,9 +10,12 @@
 # Result: seconds instead of a full link, and errors on the exact file you edit.
 #
 # Notes:
-#  - compile_commands.json currently only contains trust-code platform entries;
-#    for a trust-LiMe source we fall back to a representative platform TU and add
-#    the module include dirs. The TRUST flag set is uniform, so this is faithful.
+#  - The per-build compile database (build/src/exec*/compile_commands.json) is
+#    preferred: it holds the exact flags the module was built with. The
+#    repo-root compile_commands.json only contains trust-code platform entries,
+#    so for a trust-LiMe source we fall back to a representative platform TU and
+#    add the module include dirs. The TRUST flag set is uniform, so this is
+#    faithful.
 #  - Stale "/home/matthieu/" paths are repaired on the fly, so this works even
 #    before you fix the database.
 set -euo pipefail
@@ -24,6 +27,10 @@ file="${1:?usage: syntax-check.sh <file.cpp|.h>}"
 file="$(cd "$(dirname "$file")" && pwd)/$(basename "$file")"
 
 db="$repo_root/compile_commands.json"
+# Prefer the per-build compile database -- the exact flags the module was
+# compiled with -- over the (stale) platform snapshot in the repo root.
+build_db="$(ls -t "$repo_root"/build/src/exec*/compile_commands.json 2>/dev/null | head -1)"
+[[ -n "$build_db" ]] && db="$build_db"
 [[ -f "$db" ]] || { echo "error: compile_commands.json not found at $db" >&2; exit 2; }
 
 CXX="${CXX:-/usr/bin/g++}"
@@ -87,8 +94,10 @@ for i, tok in enumerate(base):
         continue
     out.append(tok)
 
-# Repair stale home paths so the include dirs resolve.
-out = [t.replace("/home/matthieu/", "/home/matthieu-pauron/") for t in out]
+# Repair stale home paths so the include dirs resolve (the recorded build
+# machine used a different home directory, in either direction).
+home = os.environ.get("HOME", "/home/matthieu")
+out = [t.replace("/home/matthieu-pauron/", home + "/").replace("/home/matthieu/", home + "/") for t in out]
 
 # Module include dirs (trust-LiMe itself is not in the platform database),
 # plus the TRUST aggregator include/ directory of headers.

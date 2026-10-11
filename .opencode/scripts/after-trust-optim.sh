@@ -14,7 +14,8 @@
 #                            kernel archive name from the mode, so a
 #                            module_semi_optim cannot link against an _opt kernel
 #   3. unit-tests.sh        - the suites that need the standard kernel
-#   4. MagneticStandalone.ipynb - the validation cases
+#   4. validation notebooks    - MagneticStandalone_Verification.ipynb
+#                               - MagneticStandalone_Validation.ipynb
 #
 # Usage: bash .opencode/scripts/after-trust-optim.sh [--once] [--mode=optim|semi_optim]
 #        --once  check immediately instead of polling every minute
@@ -130,21 +131,29 @@ tail -25 /tmp/opencode/unit_tests_full.log
 say "unit tests rc=$rc  (full log: /tmp/opencode/unit_tests_full.log)"
 
 # ------------------------------------------------------------------- step 4 --
-say "STEP 4/4: validation notebook MagneticStandalone.ipynb"
+say "STEP 4/4: validation notebooks (MagneticStandalone_Verification / _Validation)"
 source "$trust/env_TRUST.sh"      > /dev/null 2>&1
 source "$trust/env_for_python.sh" > /dev/null 2>&1
 # shellcheck disable=SC1091
 source /home/matthieu-pauron/Development/venv_trust/bin/activate
-nb=share/Validation/Rapports_automatiques/MagneticStandalone/MagneticStandalone.ipynb
-jupyter nbconvert --to notebook --execute \
-  --output-dir /tmp/opencode/nb_log \
-  "$nb" > /tmp/opencode/notebook.log 2>&1
-rc=$?
-say "notebook rc=$rc  (log: /tmp/opencode/notebook.log)"
+nbdir=share/Validation/Rapports_automatiques/MagneticStandalone
+rc=0
+for nb in "$nbdir/MagneticStandalone_Verification.ipynb" "$nbdir/MagneticStandalone_Validation.ipynb"; do
+  say "running $nb"
+  jupyter nbconvert --to notebook --execute \
+    --output-dir /tmp/opencode/nb_log \
+    "$nb" > /tmp/opencode/notebook.log 2>&1
+  r=$?
+  if [[ $r -ne 0 ]]; then
+    grep -nE 'Error|error|Traceback|assert' /tmp/opencode/notebook.log | head -30
+    rc=$r
+  fi
+done
+say "notebooks rc=$rc  (log: /tmp/opencode/notebook.log)"
 if [[ $rc -ne 0 ]]; then
-  grep -nE 'Error|error|Traceback|assert' /tmp/opencode/notebook.log | head -30
+  say "at least one notebook failed (see above)"
 else
-  say "notebook executed successfully -> /tmp/opencode/nb_log"
+  say "notebooks executed successfully -> /tmp/opencode/nb_log"
 fi
 
 say "ALL STEPS DONE (configure=$?, module=ok, unit_tests=$rc, notebook=$rc)"
