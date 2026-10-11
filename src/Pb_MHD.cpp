@@ -1,57 +1,45 @@
-/*
- * Pb_MHD.cpp
- *
- *  Created on: Feb 3, 2026
- *      Author: matthieu
- */
+/****************************************************************************
+ * trust-LiMe — Pb_MHD: standalone magnetic problem.
+ ****************************************************************************/
 
-#include <Pb_MHD.cpp>
-#include <Fluide_Incompressible.h>
-#include <Champ_Uniforme.h>
+#include <Pb_MHD.h>
+#include <Process.h>
 
-Implemente_instanciable(Pb_MHD, "Pb_MHD", Pb_Thermohydraulique);
+Implemente_instanciable(Pb_MHD, "Pb_MHD", Probleme_base);
+// XD Pb_MHD Pb_base Pb_MHD INHERITS_BRACE Standalone magnetic problem (magnetic induction equation only).
+// XD attr Convection_Diffusion_Magnetic_field Convection_Diffusion_Magnetic_field Convection_Diffusion_Magnetic_field OPT Magnetic induction equation.
 
-Sortie& Pb_MHD::printOn(Sortie& os) const { return Pb_Thermohydraulique::printOn(os); }
-Entree& Pb_MHD::readOn(Entree& is) { return Pb_Thermohydraulique::readOn(is); }
-
-
-const Equation_base& Pb_MHD::equation(int i) const
+Sortie& Pb_MHD::printOn(Sortie& os) const
 {
-  if (i == 0) return eq_hydraulique;
-  else if (i == 1) return eq_thermique;
-  else if (i == 2) return eq_magnetic_field;
-  else
-    {
-      Cerr << "Pb_Thermohydraulique::equation() : Wrong equation number" << i << "!" << finl;
-      Process::exit();
-    }
-  return eq_hydraulique;
+  return Probleme_base::printOn(os);
 }
 
-Equation_base& Pb_MHD::equation(int i) const
+Entree& Pb_MHD::readOn(Entree& is)
 {
-  if (i == 0) return eq_hydraulique;
-  else if (i == 1) return eq_thermique;
-  else if (i == 2) return eq_magnetic_field;
-  else
-    {
-      Cerr << "Pb_Thermohydraulique::equation() : Wrong equation number" << i << "!" << finl;
-      Process::exit();
-    }
-  return eq_hydraulique;
+  return Probleme_base::readOn(is);
 }
 
-void Pb_MHD::associer_milieu_base(const Milieu_base& mil)
-{
-  Pb_Hydraulique::associer_milieu_base(mil);
-  eq_magnetic_field.associer_milieu_base(mil);
-}
-
-int Pb_MHD::verifier()
+int Pb_MHD::nombre_d_equations() const
 {
   return 1;
 }
 
+const Equation_base& Pb_MHD::equation(int i) const
+{
+  if (i != 0)
+    {
+      Cerr << "Pb_MHD::equation() : wrong equation index " << i << finl;
+      Process::exit();
+    }
+  return eq_magnetic_field;
+}
 
-
-
+Equation_base& Pb_MHD::equation(int i)
+{
+  if (i != 0)
+    {
+      Cerr << "Pb_MHD::equation() : wrong equation index " << i << finl;
+      Process::exit();
+    }
+  return eq_magnetic_field;
+}
