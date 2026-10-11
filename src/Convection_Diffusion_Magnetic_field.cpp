@@ -44,8 +44,14 @@ Entree& Convection_Diffusion_Magnetic_field::readOn(Entree& is)
   if (vitesse_magnetique_)
     la_vitesse_transportante_->affecter(vitesse_magnetique_.valeur());
 
+  // The magnetic equation is a pure evolution equation: d b / d t.  Its time
+  // term must therefore use the identity mass matrix, i.e. no coefficient
+  // field.  In particular, the previous value "magnetic_field" was the
+  // *unknown's own name*, which made Solveur_Masse_base::appliquer() divide the
+  // mass term by b: the scheme became nonlinear and the measured diffusion
+  // rate diverged from eta (and from the analytic exp(-eta k^2 t)).
   if (solveur_masse)
-    solveur_masse->set_name_of_coefficient_temporel("magnetic_field");
+    solveur_masse->set_name_of_coefficient_temporel("no_coeff");
 
   return is;
 }
@@ -58,29 +64,37 @@ void Convection_Diffusion_Magnetic_field::set_param(Param& param) const
   // file (it is queried when the diffusion operator is read).
   param.ajouter("diffusivite_magnetique", &diffusivite_magnetique_);
   param.ajouter("vitesse_magnetique", &vitesse_magnetique_);
-  param.ajouter("nb_composantes", &nb_composantes_);
+  // NOTE: `nb_composantes` is NOT an equation keyword: it must be known before
+  // the equations are discretised, so it is read at the *problem* level by
+  // Pb_MHD::readOn() (ahead of the medium) and pushed here via
+  // set_nb_composantes().
 }
 
 /*! @brief Builds the unknown and the transporting velocity fields.
  *
- *  The unknown is a cell-centred multi-component field (one component per
- *  space direction).  This mirrors Convection_Diffusion_Concentration, which
- *  transports several scalars with the same operators; no new discretisation
- *  is introduced.
+ *  Current scope: a single cell-centred scalar component ("magnetic_field"),
+ *  discretised with the temperature machinery.  Multi-component (vector)
+ *  transport is intentionally rejected: with the PolyMAC MPFA diffusion
+ *  operator, a multi-component unknown combined with the scalar density of
+ *  Fluide_Incompressible reads the diffusivity out of bounds in
+ *  Op_Diff_PolyMAC_MPFA_base::update_nu() (N_nu_src == N_mil branch).  Until
+ *  that kernel path supports broadcasting a scalar diffusivity, only
+ *  nb_composantes = 1 is supported.
  */
 void Convection_Diffusion_Magnetic_field::discretiser()
 {
   const Discret_Thyd& dis = ref_cast(Discret_Thyd, discretisation());
   Cerr << "Magnetic field equation discretization" << finl;
 
-  // Number of transported components: full vector by default.
+  // Scalar transport only (see the method comment).
   if (nb_composantes_ < 0)
-    nb_composantes_ = Objet_U::dimension;
-  if (nb_composantes_ < 1 || nb_composantes_ > Objet_U::dimension)
-    Process::exit("Convection_Diffusion_Magnetic_field: 'nb_composantes' must be between 1 and the space "
-                  "dimension.");
-
-  // Magnetic field: one independent component per transported direction.
+    nb_composantes_ = 1;
+  if (nb_composantes_ != 1)
+    Process::exit("Convection_Diffusion_Magnetic_field: only nb_composantes = 1 "
+                  "is currently supported; to use a vector magnetic field set "
+                  "nb_composantes 2 in the problem data and ensure "
+                  "diffusivite_magnetique has 2 components matching.");
+  // Magnetic field: one scalar component.
   dis.concentration(schema_temps(), domaine_dis(), the_magnetic_field_,
                     nb_composantes_, "magnetic_field");
   champs_compris_.ajoute_champ(the_magnetic_field_);
@@ -88,6 +102,11 @@ void Convection_Diffusion_Magnetic_field::discretiser()
   // Transporting velocity: a vector field, zero unless overridden by data.
   dis.vitesse(schema_temps(), domaine_dis(), la_vitesse_transportante_, 1);
   la_vitesse_transportante_->nommer("vitesse_magnetique");
+  // The transporting velocity is not the unknown of any equation, but the
+  // convection operator queries its equation() (through MorEqn) to reach the
+  // boundary-condition descriptors (Champ_Face_base::init_fcl).  Associate it
+  // with this equation, exactly as the unknown is associated by the kernel.
+  la_vitesse_transportante_->associer_eqn(*this);
 
   Equation_base::discretiser();
 

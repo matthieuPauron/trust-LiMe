@@ -48,6 +48,10 @@ public:
   // Number of components of the magnetic field (1 <= nb <= space dimension).
   inline int nb_composantes() const { return nb_composantes_; }
 
+  // Set the component count.  Must be called before discretiser(); Pb_MHD
+  // reads the problem-level `nb_composantes` keyword and forwards it here.
+  inline void set_nb_composantes(int nb) { nb_composantes_ = nb; }
+
   // --- Physical closures used by the inherited operators ------------------
   // Magnetic diffusivity eta: used both as the diffusion coefficient
   // (div(eta grad b)) and for the time-step stability estimate.
