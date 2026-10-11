@@ -42,6 +42,38 @@ Validation notebooks (and their `.data` datasets) used to check the TRUST-LiMe
 module. Each folder under `share/Validation/Rapports_automatiques/` holds a
 notebook plus a `src/` directory containing the datasets it runs.
 
+### Test categories (ASN Guide n° 28)
+
+Each validation **test** — a notebook case run *plus* its assertions — carries
+one category, following the official English translation of **ASN Guide n° 28**
+(*Qualification of scientific computing tools used in the nuclear safety case*,
+25/07/2017):
+
+| Category | Guide ref. | Meaning |
+|---|---|---|
+| **Verification** | § 3.2 | the equations are solved correctly, numerically and data-processing wise: exact invariants, numerical convergence, error handling of malformed input |
+| **Validation – separate effects** | § 3.3 | one isolated physical phenomenon reproduced against an *analytical solution* |
+| **Validation – integral** | § 3.3 | all phenomena and their interactions (reserved: none yet in the standalone phase) |
+
+A notebook contains tests of **one single category**; the standalone magnetic
+notebook is therefore split into `MagneticStandalone_Verification.ipynb` and
+`MagneticStandalone_Validation.ipynb`. The `.data` files are **computations**,
+not tests — a computation can feed tests of different categories
+(`diffusion`/`diffusion_refined` are run in both notebooks: decay vs analytic
+in the Validation one, mesh convergence in the Verification one).
+
+New tests are written in a **fixed sequence** — a test of a later stage may
+only be added once all earlier stages are green for that case:
+
+1. **Verification** first — the equations are solved correctly, numerically
+   and data-processing wise (exact invariants, mesh convergence,
+   malformed-input diagnostics);
+2. then **validation against analytical data** — isolated phenomena
+   reproduced against closed-form solutions;
+3. and only finally **comparison to experiments** — full problem interaction
+   against measured data (e.g. a Hartmann flow profile), i.e. the
+   *Validation – integral* category; none exists yet in the standalone phase.
+
 ---
 
 ## How to run them
@@ -70,33 +102,41 @@ dataset into `build/<dataset name>/` where the results (`.son` probes, `.dt_ev`,
 The `/validate` command automates this. From the repository root:
 
 ```
-/validate share/Validation/Rapports_automatiques/MagneticStandalone/MagneticStandalone.ipynb
+/validate share/Validation/Rapports_automatiques/MagneticStandalone/MagneticStandalone_Verification.ipynb
+/validate share/Validation/Rapports_automatiques/MagneticStandalone/MagneticStandalone_Validation.ipynb
 ```
 
 ---
 
 ## `MagneticStandalone` — standalone magnetic solver
 
-Notebook: `MagneticStandalone.ipynb` · datasets in `src/`
+Notebooks: `MagneticStandalone_Verification.ipynb` (ASN28 **Verification**) and
+`MagneticStandalone_Validation.ipynb` (ASN28 **Validation – separate effects**) ·
+datasets in `src/`
 
 These cases target the magnetic induction equation solved in standalone form
 (see @ref TrustLiMe_model "Problems, equations and boundary conditions"). Every
 dataset is **self-contained**: the mesh is generated inline with `Mailler`/`Pave`,
 so no `.med` file is required and the cases can be run from a clean checkout.
 
-| Dataset | Physics | Reference solution | What it catches |
-|---|---|---|---|
-| `invariance.data` | uniform \f$b\f$, \f$u = 0\f$ | exact invariant: \f$b(t)\equiv b_0\f$ | spurious sources, wrong time factor, bad CL assembly, wrong default velocity |
-| `diffusion.data` | transverse Fourier mode, \f$\eta = 0.05\f$ | \f$b(t) = b_0\,e^{-\eta\pi^2 t}\f$ | wrong magnetic diffusivity scaling, diffusion operator, Dirichlet CL |
-| `diffusion_refined.data` | same, finer mesh | same | mesh convergence (the error must drop) |
-| `advection.data` | Gaussian bump advected by \f$u = (0.2, 0)\f$ | peak conservation + transport direction | convection operator, `vitesse_magnetique` wiring |
-| `vector_components.data` | **vector** unknown (default `nb_composantes`) | two distinct eigenmodes, rates \f$2\eta\pi^2\f$ and \f$5\eta\pi^2\f$ | component independence; catches a component swap or mixed assembly |
-| `steady_state.data` | equilibrium \f$b = y\f$ with **non-uniform** \f$\eta(x) = 1+x\f$ | exact steady state | spurious source, mis-assembled diffusion, functional-\f$\eta\f$ reading path |
-| `varying_velocity.data` | **spatially varying** velocity \f$u = (-y, x)\f$, uniform \f$b\f$ | exact invariant | `Champ_Don → Champ_Inc` transfer onto faces, wrong velocity components |
-| `source_stretching.data` | M1 source \f$S = (b\cdot\nabla)u\f$, \f$u = (x, 0)\f$ | \f$b_0(t) = B_0 e^{t}\f$, \f$b_1\equiv 0\f$ | source magnitude, sign, gradient-index order, per-component structure |
-| `error_missing_eta.data` | no `diffusivite_magnetique` | must fail cleanly | required-keyword diagnostics |
-| `error_bad_nbcomposantes.data` | `nb_composantes 7` in 2D | must fail cleanly | range validation |
-| `error_bad_bc.data` | unknown CL keyword | must fail cleanly | keyword error reporting |
+| Dataset | Physics | ASN28 category | Reference solution | What it catches |
+|---|---|---|---|---|
+| `invariance.data` | uniform \f$b\f$, \f$u = 0\f$ | Verification | exact invariant: \f$b(t)\equiv b_0\f$ | spurious sources, wrong time factor, bad CL assembly, wrong default velocity |
+| `diffusion.data` | transverse Fourier mode, \f$\eta = 0.05\f$ | Validation – separate effects | \f$b(t) = b_0\,e^{-\eta\pi^2 t}\f$ | wrong magnetic diffusivity scaling, diffusion operator, Dirichlet CL |
+| `diffusion_refined.data` | same, finer mesh | Verification (mesh convergence) | same | mesh convergence (the error must drop) |
+| `advection.data` | Gaussian bump advected by \f$u = (0.2, 0)\f$ | Validation – separate effects | peak conservation + transport direction | convection operator, `vitesse_magnetique` wiring |
+| `vector_components.data` | **vector** unknown (default `nb_composantes`) | Validation – separate effects | two distinct eigenmodes, rates \f$2\eta\pi^2\f$ and \f$5\eta\pi^2\f$ | component independence; catches a component swap or mixed assembly |
+| `steady_state.data` | equilibrium \f$b = y\f$ with **non-uniform** \f$\eta(x) = 1+x\f$ | Validation – separate effects | exact steady state | spurious source, mis-assembled diffusion, functional-\f$\eta\f$ reading path |
+| `varying_velocity.data` | **spatially varying** velocity \f$u = (-y, x)\f$, uniform \f$b\f$ | Verification | exact invariant | `Champ_Don → Champ_Inc` transfer onto faces, wrong velocity components |
+| `source_stretching.data` | M1 source \f$S = (b\cdot\nabla)u\f$, \f$u = (x, 0)\f$ | Validation – separate effects | \f$b_0(t) = B_0 e^{t}\f$, \f$b_1\equiv 0\f$ | source magnitude, sign, gradient-index order, per-component structure |
+| `error_missing_eta.data` | no `diffusivite_magnetique` | Verification | must fail cleanly | required-keyword diagnostics |
+| `error_bad_nbcomposantes.data` | `nb_composantes 7` in 2D | Verification | must fail cleanly | range validation |
+| `error_bad_bc.data` | unknown CL keyword | Verification | must fail cleanly | keyword error reporting |
+
+The category column tags the **test** (assertion set), not the dataset: e.g. the
+mesh-convergence test in the Verification notebook runs both `diffusion` and
+`diffusion_refined`, while the decay test in the Validation notebook runs
+`diffusion` alone.
 
 Design choices worth knowing:
 

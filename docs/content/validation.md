@@ -10,7 +10,8 @@ Each case lives in its own folder under
 ```
 share/Validation/Rapports_automatiques/
 ├── MagneticStandalone/       # standalone induction equation (current module)
-│   ├── MagneticStandalone.ipynb
+│   ├── MagneticStandalone_Verification.ipynb   # ASN28 Verification
+│   ├── MagneticStandalone_Validation.ipynb     # ASN28 Validation – separate effects
 │   └── src/*.data
 ├── HartmannFlow/             # placeholder for the coupled MHD case
 │   ├── HartmannFlow.ipynb
@@ -53,6 +54,12 @@ module. Every dataset is self-contained (the mesh is built inline with
 `Mailler`/`Pave`), so no `.med` file is needed. The individual datasets, their
 references, and what each one catches are listed in
 @ref TrustLiMe_testcases "Test cases → `MagneticStandalone`".
+
+Per ASN Guide n° 28 a notebook holds tests of **one single category**, so the
+folder ships two notebooks: `MagneticStandalone_Verification.ipynb` (exact
+invariants, mesh convergence, malformed-input diagnostics) and
+`MagneticStandalone_Validation.ipynb` (isolated phenomena against analytical
+solutions).
 
 ### `HartmannFlow` and `Shercliff_3D_duct`
 
