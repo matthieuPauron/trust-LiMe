@@ -1,6 +1,8 @@
 ---
 description: Fast syntax-only compile of one C++ file
 ---
+Load the `trust-lime-coding` skill for style/idiom context if a follow-up fix
+is requested.
 Run a fast syntax-only compile of $ARGUMENTS using the project's real compiler flags.
 
     bash .opencode/scripts/syntax-check.sh $1
