@@ -40,7 +40,10 @@ TEST(InductionStretching, TypeIsRegisteredUnderItsDataFileKeyword)
  */
 TEST(InductionStretching, ReadOnConsumesItsOwnBraces)
 {
-  EChaineJDD e("induction_stretching { } SENTINEL");
+  // The keyword is consumed by Sources::readOn() (via Source::typer()) *before*
+  // it reaches `is >> source`, so readOn() sees the stream already at "{": feed
+  // the block only, mirroring the real call site and the death test below.
+  EChaineJDD e("{ } SENTINEL");
   Terme_Source_Induction_stretching src;
   e >> src;
 
