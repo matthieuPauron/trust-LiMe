@@ -60,21 +60,23 @@ Two extra switches are available:
 > and the bundled Kokkos headers fail to parse under C++17. `syntax-check.sh`
 > therefore forces `-std=c++20`. Keep that override if you touch the script.
 
+## Skills (load on demand — procedures live there)
+
+| Skill | Owns |
+|---|---|
+| `trust-lime-coding` | Adding classes/keywords, TRUST idioms & style rules, syntax-check loop, `// XD` tags. Read with `KERNEL_REUSE_NOTES.md`. |
+| `trust-lime-testing` | Unit tests (GoogleTest), check/ctest suites, the **green-baseline gate**, ASN 28 staging, failure triage. |
+| `trust-lime-notebooks` | Validation notebooks & `.data` syntax, trustutils API, headless run recipe, **sequential-only** rule. |
+| `trust-lime-docs` | The `make docs` Doxygen/trustify pipeline. |
+
 ## Unit tests (GoogleTest)
 
-`tests/UnitTests/` follows the kernel convention
-(`trust-code/tests/UnitTests/`): `TEST(Suite, Name)`, `EXPECT_*`, `EXPECT_DEATH`,
-inline `EChaineJDD` parsing — no mesh, no solver.
-
 ```bash
-.opencode/scripts/unit-tests.sh --arith-only   # micro + numeric kernels only
+.opencode/scripts/unit-tests.sh --arith-only   # micro + numeric kernels only (seconds)
 .opencode/scripts/unit-tests.sh                # full TRUST build required
 ```
 
-Baltik generates no `unit` target, so the script drives the build itself: flags
-from `compile_commands.json`, link line from baltik's recorded `link.txt`. See
-`tests/UnitTests/README.txt` and `KERNEL_REUSE_NOTES.md` §7ter. Run these first
-— they are seconds, where a notebook run is minutes.
+Conventions, script internals, and the new-test gate: `trust-lime-testing` skill.
 
 ## Agent setup (models & switching)
 
@@ -94,21 +96,15 @@ were raised so long compile errors are not clipped. Keep the primary loop:
 
 ## Validation (Jupyter)
 
-Validation notebooks drive `trustutils.run` (`addCase` → `runCases` →
-`tablePerf`). They must run inside the **TRUST Python environment**, not the
-OpenCode MCP venv:
+Notebooks live under `share/Validation/Rapports_automatiques/` and must run
+inside the **TRUST Python environment** (`venv_trust` + TRUST env), not the
+OpenCode venv. Current notebook: `MagneticStandalone/`. Use `/validate`.
+**All cases run sequentially; `.data` files must never contain TRUST
+parallelism blocks** (`Partition`/`Scatter`/…).
 
-```bash
-source ../trust-code/env_TRUST.sh
-source ../trust-code/env_for_python.sh
-source ~/Development/venv_trust/bin/activate
-jupyter nbconvert --to notebook --execute \
-  --output-dir /tmp/opencode/trust-lime-notebooks \
-  share/Validation/Rapports_automatiques/HartmannFlow/HartmannFlow.ipynb
-```
-
-Notebooks: `HartmannFlow.ipynb`, `Shercliff_3D_duct.ipynb`. Use `/validate`.
-Load the `trust-lime` skill for the full recipe.
+Authoring/running rules, trustutils API, dataset syntax, and the headless
+nbconvert recipe: **`trust-lime-notebooks` skill**. The gate for adding new
+cases and the ASN 28 stage sequence: **`trust-lime-testing` skill**.
 
 ## Compiler & style constraints
 
@@ -116,23 +112,19 @@ Load the `trust-lime` skill for the full recipe.
   -Woverloaded-virtual -Wnon-virtual-dtor -pedantic`. **Warnings are errors** —
   keep them at zero. `-Wconversion` is the usual trap (implicit `double`→`int`,
   sign mismatch).
-- TRUST idioms: `Declare_instanciable` / `Implemente_instanciable`,
-  `Declare_base`, `Sortie`/`Entree` for I/O, `Cerr << ... << finl` for logging,
-  `OWN_PTR` for ownership, French method names (`lire_motcle_non_standard`,
-  `associer_milieu_base`, `discretiser`, `assembler`).
 - Kernel headers are included **with** the `.h` extension:
   `#include <Convection_Diffusion_Temperature.h>`.
 - A `.clang-format` is provided, but automatic formatting on write is **off**
   (see `opencode.jsonc`); turn it on deliberately.
 
+Full idioms (`Declare_instanciable`, `Param`, `REF(...)`, Doxygen mandates,
+`// XD` tags, the class-extension recipe): **`trust-lime-coding` skill**.
+
 ## Extending the kernel from trust-LiMe
 
-Derive from kernel base classes and override the virtual hooks
-(`set_param`, `lire_motcle_non_standard`, `discretiser`, `preparer_calcul`,
-`assembler`, `assembler_blocs`, `associer_milieu_base`, `equation`). Reuse the
-kernel's existing classes (e.g. subclass `Convection_Diffusion_Temperature`)
-rather than reimplementing discretization. The kernel sources are available as
-the `trust-kernel` / `trust-include` references.
+Reuse kernel base classes (e.g. subclass `Convection_Diffusion_Temperature`)
+rather than reimplementing; see the recipe in the `trust-lime-coding` skill.
+Kernel sources are available as the `trust-kernel` / `trust-include` references.
 
 **`KERNEL_REUSE_NOTES.md` (repository root) is the accumulated knowledge base**:
 kernel class choices, keyword-reading order, CL compatibility rules, the
@@ -152,13 +144,13 @@ append new findings there.
 - Validation cases: `share/Validation/Rapports_automatiques/MagneticStandalone/`
   (self-contained `Mailler`/`Pave` meshes, analytic + invariant checks).
   See `docs/content/test_cases.md`.
-- **The module has not been compiled/linked yet in the current environment**
-  (the kernel is not built: the baltik CMake configure cannot find
-  `libparaconf`). Treat the test cases as unvalidated until a full
-  `make module_semi_optim` succeeds.
+- Kernel and module **are built** (`trust-lime`, `trust-lime_semi_opt`,
+  `trust-lime_opt` exist at the repo root) — the historical `libparaconf`
+  configure blocker is resolved. Validation of the cases via the notebooks
+  is still pending (HartmannFlow/Shercliff notebooks were removed).
 - **Unit tests** live in `tests/UnitTests/` (GoogleTest, kernel conventions).
-  The arithmetic suite (`--arith-only`) **runs and passes** today, because the
-  micro + numeric kernels are built; the rest needs the full kernel.
+  The arithmetic suite (`--arith-only`) **runs and passes** today; the rest
+  needs the full kernel.
 
 ## Sanitizers (local debugging)
 
@@ -171,4 +163,15 @@ ld_flags  : -fsanitize=address,undefined
 ```
 
 then `./configure && make module_custom`. Revert `project.cfg` before normal
-builds. See the `trust-lime` skill.
+builds. See the `trust-lime-coding` skill.
+
+## To sort
+
+The following reminders are now formalized in skills and can be deleted once
+confirmed:
+- `# bla #` comment style / sequential-only runs → `trust-lime-notebooks` skill
+- BALTIK docs → https://cea-trust-platform.readthedocs.io/en/v1.9.8/DevTutorials.html
+  → `trust-lime-coding` skill
+- TRUST coding guidelines →
+  https://cea-trust-platform.readthedocs.io/en/v1.9.8/Dev_CodingGuidelines.html
+  → `trust-lime-coding` skill
