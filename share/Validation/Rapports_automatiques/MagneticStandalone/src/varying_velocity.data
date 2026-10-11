@@ -1,0 +1,115 @@
+# =============================================================================
+# Case F : spatially varying velocity, uniform field stays uniform
+#          (TRUST-LiMe standalone MHD)
+# =============================================================================
+#  The advection cases use a CONSTANT velocity. This case exercises the
+#  `vitesse_magnetique` reading path with a FUNCTIONAL, spatially varying
+#  velocity (Champ_Fonc_xyz), which is the code path that copies a Champ_Don
+#  onto the face-centred Champ_Inc used by the convection operator.
+#
+#  With a uniform field b = b0 and any (even strongly varying) velocity u:
+#        (u.grad) b = 0     (because grad b = 0)     and     div(eta grad b) = 0
+#  so b must remain b0 exactly. This is a machine-precision invariant, but here
+#  it is used to prove that a non-constant, non-uniform velocity is correctly
+#  instantiated and transferred onto the faces without corrupting the solution
+#  (a naive copy of face data could, for instance, duplicate or drop a velocity
+#  component and break the operator).
+#
+#  The velocity used is a swirl/vortex  u = (-y, x) : it is strongly varying
+#  and contains both components, so an incorrect component count or ordering
+#  would be caught immediately.
+# =============================================================================
+
+dimension 2
+Pb_MHD pb
+Domaine dom
+
+# --------------------------------- mesh ------------------------------------
+Mailler dom
+{
+    Pave pavé
+    {
+        Origine              0.  0.
+        Nombre_de_Noeuds     33  33
+        Longueurs            1.  1.
+    }
+    {
+        Bord gauche   X = 0.    0. <= Y <= 1.
+        Bord droite   X = 1.    0. <= Y <= 1.
+        Bord bas      Y = 0.    0. <= X <= 1.
+        Bord haut     Y = 1.    0. <= X <= 1.
+    }
+}
+
+Decouper dom
+{
+    Partitionneur tranche { tranches 2 2 }
+    Larg_joint 2
+    Nom_Zones dom
+}
+Fin
+
+Scatter dom.Zones dom
+
+Polymac_p0 dis
+
+Associate pb dom
+Discretize pb dis
+
+# ------------------------------ time integration ----------------------------
+Schema_euler_implicit sch
+Read sch
+{
+    tinit 0.
+    tmax 1.
+    dt_max 0.02
+    facsec 1e6
+    facsec_max 1e6
+    solveur implicite { solveur petsc cli { } }
+}
+
+Associate pb sch
+
+# ---------------------------------- physics ---------------------------------
+Read pb
+{
+    fluide_incompressible
+    {
+        mu      Champ_Uniforme 1 1.0
+        rho     Champ_Uniforme 1 1.0
+        lambda  Champ_Uniforme 1 1.0
+        Cp      Champ_Uniforme 1 1.0
+        beta_th Champ_Uniforme 1 0.0
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        nb_composantes         1
+        diffusivite_magnetique Champ_Uniforme 1 1.0
+        # strongly varying vortex velocity  u = (-y, x)
+        vitesse_magnetique     Champ_Fonc_xyz dom 2 -y x
+
+        diffusion  { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            Bord gauche  Neumann_Paroi_adiabatique
+            Bord droite  Neumann_Paroi_adiabatique
+            Bord bas     Neumann_Paroi_adiabatique
+            Bord haut    Neumann_Paroi_adiabatique
+        }
+        initial_conditions { magnetic_field Champ_Uniforme 1 3.0 }
+    }
+}
+
+# --------------------------------- postprocessing ---------------------------
+Postraitement
+{
+    Sondes
+    {
+        sonde_cbx grav magnetic_field Periode dts Points 1 0.5 0.5
+    }
+}
+
+Solve pb

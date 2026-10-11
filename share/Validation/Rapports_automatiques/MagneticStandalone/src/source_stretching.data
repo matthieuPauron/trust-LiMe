@@ -1,0 +1,130 @@
+# =============================================================================
+# Case G : induction source term S = (b.grad) u   (TRUST-LiMe standalone MHD)
+# =============================================================================
+#  Exercises the M1 source term `induction_stretching`, which adds
+#         S = (b.grad) u
+#  to the right-hand side of the induction equation. u is the frozen (given)
+#  transporting velocity, so grad u is constant and the term is explicit in b.
+#
+#  Reference solution. Choose a uniform magnetic field and a velocity with a
+#  constant, triangular gradient so the source decouples exactly:
+#
+#      u  = (x, 0)   =>   grad u = [[1, 0], [0, 0]]   (2D)
+#      b0 = (B0, 0)  uniform in space
+#
+#  Because b is uniform and u.grad b = 0 and div(eta grad b) = 0, the only
+#  balance is
+#         d b0 / dt = (b0.grad) u = B0 * du0/dx = B0
+#         d b1 / dt = 0
+#  i.e.  b0(t) = B0 * exp(t)  and  b1(t) = 0.
+#
+#  This is a sharp, absolute check of the source magnitude and sign: a wrong
+#  factor, a swapped gradient index, or a missing term changes the exponential
+#  rate and is caught immediately.
+# =============================================================================
+
+dimension 2
+Pb_MHD pb
+Domaine dom
+
+# --------------------------------- mesh ------------------------------------
+Mailler dom
+{
+    Pave pavé
+    {
+        Origine              0.  0.
+        Nombre_de_Noeuds     17  17
+        Longueurs            1.  1.
+    }
+    {
+        Bord gauche   X = 0.    0. <= Y <= 1.
+        Bord droite   X = 1.    0. <= Y <= 1.
+        Bord bas      Y = 0.    0. <= X <= 1.
+        Bord haut     Y = 1.    0. <= X <= 1.
+    }
+}
+
+Decouper dom
+{
+    Partitionneur tranche { tranches 2 2 }
+    Larg_joint 2
+    Nom_Zones dom
+}
+Fin
+
+Scatter dom.Zones dom
+
+Polymac_p0 dis
+
+Associate pb dom
+Discretize pb dis
+
+# ------------------------------ time integration ----------------------------
+#  tmax = 0.5 -> b0 grows from 1 to exp(0.5) ~ 1.6487
+Schema_euler_implicit sch
+Read sch
+{
+    tinit 0.
+    tmax 0.5
+    dt_max 0.002
+    facsec 1e6
+    facsec_max 1e6
+    solveur implicite { solveur petsc cli { } }
+}
+
+Associate pb sch
+
+# ---------------------------------- physics ---------------------------------
+Read pb
+{
+    fluide_incompressible
+    {
+        mu      Champ_Uniforme 1 1.0
+        rho     Champ_Uniforme 1 1.0
+        lambda  Champ_Uniforme 1 1.0
+        Cp      Champ_Uniforme 1 1.0
+        beta_th Champ_Uniforme 1 0.0
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        # TWO components (the default) so that the per-component behaviour of
+        # the source (S0 grows, S1 stays null) is exercised.
+        diffusivite_magnetique Champ_Uniforme 1 0.0      # no diffusion
+        # u = (x, 0) : a velocity with constant triangular gradient
+        vitesse_magnetique     Champ_Fonc_xyz dom 2 x 0
+
+        diffusion  { }
+        convection { amont }
+
+        # The M1 inductive stretching source term.
+        sources
+        {
+            induction_stretching { }
+        }
+
+        boundary_conditions
+        {
+            # b is uniform, so zero-flux everywhere is consistent
+            Bord gauche  Neumann_Paroi_adiabatique
+            Bord droite  Neumann_Paroi_adiabatique
+            Bord bas     Neumann_Paroi_adiabatique
+            Bord haut    Neumann_Paroi_adiabatique
+        }
+        # uniform initial field: b = (B0, 0)
+        initial_conditions { magnetic_field Champ_Uniforme 2 1.0 0.0 }
+    }
+}
+
+# --------------------------------- postprocessing ---------------------------
+Postraitement
+{
+    Sondes
+    {
+        # component 0 must follow exp(t); component 1 must stay at 0
+        sonde_b0 grav magnetic_field0 Periode dts Points 1 0.5 0.5
+        sonde_b1 grav magnetic_field1 Periode dts Points 1 0.5 0.5
+    }
+}
+
+Solve pb

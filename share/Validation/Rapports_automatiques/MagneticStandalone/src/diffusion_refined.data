@@ -1,0 +1,119 @@
+# =============================================================================
+# Case B : decay of a magnetic Fourier mode  (TRUST-LiMe standalone MHD)
+# =============================================================================
+#  Solves the pure diffusion of a transverse magnetic mode with Dirichlet
+#  conditions in Y and zero-flux conditions in X:
+#
+#      b(x,y,t) = A sin(k y) exp(-eta k^2 t) ,  k = pi / Ly
+#
+#  Only component 0 (the transverse field Bx) is transported (nb_composantes 1);
+#  u = 0 so the convection term vanishes identically.
+#
+#  The exact continuum solution is known analytically, which makes the decay
+#  rate a direct measure of the discretised magnetic diffusivity eta.
+#  The test is run at two mesh resolutions: the L2 error against the analytic
+#  solution must decrease (mesh convergence) and stay below tolerance.
+# =============================================================================
+
+dimension 2
+Pb_MHD pb
+Domaine dom
+
+# --------------------------------- mesh ------------------------------------
+#  Lx = 1, Ly = 1, NX x NY cells.  Refine by editing Nombre_de_Noeuds and
+#  saving as diffusion_refined.data.
+Mailler dom
+{
+    Pave pavé
+    {
+        Origine              0.  0.
+        Nombre_de_Noeuds     33 129
+        Longueurs            1.  1.
+    }
+    {
+        Bord gauche   X = 0.    0. <= Y <= 1.
+        Bord droite   X = 1.    0. <= Y <= 1.
+        Bord bas      Y = 0.    0. <= X <= 1.
+        Bord haut     Y = 1.    0. <= X <= 1.
+    }
+}
+
+Decouper dom
+{
+    Partitionneur tranche { tranches 2 8 }
+    Larg_joint 2
+    Nom_Zones dom
+}
+Fin
+
+Scatter dom.Zones dom
+
+# ------------------------------- discretisation ------------------------------
+Polymac_p0 dis
+
+Associate pb dom
+Discretize pb dis
+
+# ------------------------------ time integration ----------------------------
+#  eta = 0.05, k = pi  ->  diffusion time 1/(eta k^2) ~ 2.03 s
+#  tmax = 1  ->  amplitude reduced by exp(-eta k^2 tmax) ~ 0.61
+Schema_euler_implicit sch
+Read sch
+{
+    tinit 0.
+    tmax 1.
+    dt_max 0.01
+    facsec 1e6
+    facsec_max 1e6
+    solveur implicite { solveur petsc cli { } }
+}
+
+Associate pb sch
+
+# ---------------------------------- physics ---------------------------------
+Read pb
+{
+    fluide_incompressible
+    {
+        mu      Champ_Uniforme 1 1.0
+        rho     Champ_Uniforme 1 1.0
+        lambda  Champ_Uniforme 1 1.0
+        Cp      Champ_Uniforme 1 1.0
+        beta_th Champ_Uniforme 1 0.0
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        nb_composantes         1
+        diffusivite_magnetique Champ_Uniforme 1 0.05
+        # no flux -> pure diffusion of the transverse component
+
+        diffusion  { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            # zero flux on the faces normal to X (the mode is uniform in X)
+            Bord gauche  Neumann_Paroi_adiabatique
+            Bord droite  Neumann_Paroi_adiabatique
+            # b = 0 on the faces normal to Y  (Dirichlet)
+            Bord bas      Temperature_imposee_paroi Champ_front_uniforme 1 0.
+            Bord haut     Temperature_imposee_paroi Champ_front_uniforme 1 0.
+        }
+        initial_conditions { magnetic_field Champ_Fonc_xyz dom 1 sin(pi*y) }
+    }
+}
+
+# --------------------------------- postprocessing ---------------------------
+#  Probes are snapped to the nearest cell centre (grav) and written every step.
+Postraitement
+{
+    Sondes
+    {
+        sonde_y025 grav magnetic_field Periode dts Points 1 0.5 0.25
+        sonde_y050 grav magnetic_field Periode dts Points 1 0.5 0.50
+        sonde_y075 grav magnetic_field Periode dts Points 1 0.5 0.75
+    }
+}
+
+Solve pb
