@@ -1,0 +1,55 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  // Project-scoped OpenCode configuration for trust-LiMe.
+  // Layer on top of the global ~/.config/opencode/opencode.jsonc.
+
+  // Make the TRUST kernel sources available to the agent by name, so it can
+  // read the base classes this module derives from.
+  "references": {
+    "trust-kernel": {
+      "path": "../trust-code/src/Kernel",
+      "description": "TRUST kernel sources (base classes, discretization)"
+    },
+    "trust-include": {
+      "path": "../trust-code/include",
+      "description": "TRUST public headers (symlink aggregator)"
+    }
+  },
+
+  // Don't scan generated / bulky trees.
+  "watcher": {
+    "ignore": [
+      "build/**",
+      "documentation/_build/**",
+      "trust-lime*",
+      ".check_sources.ok",
+      "*.ipynb_checkpoints/**"
+    ]
+  },
+
+  // Uncomment to format on write once you are happy with .clang-format.
+  // "formatter": true,
+
+  // LSP: explicitly off in this repo. clangd would index the full TRUST kernel
+  // (compile_commands.json ~25MB) on a 4-thread HDD laptop; syntax-check.sh is
+  // the primary diagnostic path (see AGENTS.md). Remove or flip to enable.
+  "lsp": { "clangd": { "disabled": true } },
+
+  "permissions": [
+    // Full trust: this is a single-developer laptop project.
+    { "action": "shell", "resource": "*", "effect": "allow" },
+
+    // Never push from an agent session.
+    { "action": "shell", "resource": "git push *", "effect": "deny" },
+
+    // The kernel checkout is referenced above; allow reading it.
+    { "action": "external_directory", "resource": "$HOME/Development/trust-code/*", "effect": "allow" }
+  ],
+
+  // Hard denies that survive any allow rule.
+  "experimental": {
+    "policies": [
+      { "action": "permission", "resource": "shell:sudo *", "effect": "deny" }
+    ]
+  }
+}
