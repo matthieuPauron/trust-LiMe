@@ -1,40 +1,14 @@
-# =============================================================================
-# Case E : steady state with a spatially varying diffusivity
-#          (TRUST-LiMe standalone MHD)
-# =============================================================================
-#  Checks two things at once that the transient cases cannot:
-#
-#   1. A TRUE EQUILIBRIUM is preserved.  With
-#
-#          b(x,y) = y          and          eta = eta(x) = 1 + x
-#
-#      both transport terms vanish exactly:
-#        - convection: u = 0
-#        - diffusion: grad b = e_y, so
-#                     div(eta grad b) = div((1+x) e_y) = d/dy(1+x) = 0,
-#                     because eta depends only on x.
-#
-#      Hence b = y is an exact steady solution for any diffusivity that varies
-#      only in x.  (Note the contrast with b = x, which would NOT be an
-#      equilibrium: div((1+x) e_x) = d/dx(1+x) = 1 != 0.)
-#
-#  A spurious source, a mis-assembled diffusion operator, or an incorrectly
-#  interpolated (spatially varying) diffusivity would immediately destroy this
-#  equilibrium. The diffusivity here is given as a FUNCTIONAL field
-#  (Champ_Fonc_xyz), so this also covers the non-uniform-eta reading path.
-# =============================================================================
 
 dimension 2
 Pb_MHD pb
 Domaine dom
 
-# --------------------------------- mesh ------------------------------------
 Mailler dom
 {
     Pave pavé
     {
         Origine              0.  0.
-        Nombre_de_Noeuds     33  33
+        Nombre_de_Noeuds     330 330
         Longueurs            1.  1.
     }
     {
@@ -45,25 +19,13 @@ Mailler dom
     }
 }
 
-Decouper dom
-{
-    Partitionneur tranche { tranches 2 2 }
-    Larg_joint 2
-    Nom_Zones dom
-}
-Fin
-
-Scatter dom.Zones dom
 
 Polymac_p0 dis
 
 Associate pb dom
-Discretize pb dis
 
-# ------------------------------ time integration ----------------------------
-#  Long run with a small diffusivity: any residual drift accumulates and becomes
-#  visible, which is what makes this a sharp test.
-Schema_euler_implicit sch
+
+Schema_euler_implicite sch
 Read sch
 {
     tinit 0.
@@ -75,8 +37,7 @@ Read sch
 }
 
 Associate pb sch
-
-# ---------------------------------- physics ---------------------------------
+Discretize pb dis
 Read pb
 {
     fluide_incompressible
@@ -90,8 +51,6 @@ Read pb
 
     Convection_Diffusion_Magnetic_field
     {
-        nb_composantes         1
-        # SPATIALLY VARYING diffusivity eta = 1 + x (functional field)
         diffusivite_magnetique Champ_Fonc_xyz dom 1 1+x
 
         diffusion  { }
@@ -99,27 +58,24 @@ Read pb
 
         boundary_conditions
         {
-            # b = y is prescribed on the two faces normal to Y
-            Bord bas      Temperature_imposee_paroi Champ_front_uniforme 1 0.
-            Bord haut     Temperature_imposee_paroi Champ_front_uniforme 1 1.
-            # zero flux on the faces normal to X (b does not depend on x)
-            Bord gauche   Neumann_Paroi_adiabatique
-            Bord droite   Neumann_Paroi_adiabatique
+            bas      Temperature_imposee_paroi Champ_front_uniforme 1 0.
+            haut     Temperature_imposee_paroi Champ_front_uniforme 1 1.
+            gauche   Neumann_Paroi_adiabatique
+            droite   Neumann_Paroi_adiabatique
         }
         initial_conditions { magnetic_field Champ_Fonc_xyz dom 1 y }
-    }
-}
-
-# --------------------------------- postprocessing ---------------------------
-Postraitement
+  }
+  Postraitement
 {
     Sondes
     {
-        # b = y  ->  these probes read 0.25 / 0.5 / 0.75 at all times
-        sonde_y025 grav magnetic_field Periode dts Points 1 0.5 0.25
-        sonde_y050 grav magnetic_field Periode dts Points 1 0.5 0.50
-        sonde_y075 grav magnetic_field Periode dts Points 1 0.5 0.75
+        sonde_y025 grav magnetic_field Periode 1e-6 Points 1 0.5 0.25
+        sonde_y050 grav magnetic_field Periode 1e-6 Points 1 0.5 0.50
+        sonde_y075 grav magnetic_field Periode 1e-6 Points 1 0.5 0.75
     }
 }
+
+}
+
 
 Solve pb

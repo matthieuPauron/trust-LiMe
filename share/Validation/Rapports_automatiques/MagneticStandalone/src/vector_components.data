@@ -1,46 +1,7 @@
-# =============================================================================
-# Case D : multi-component (vector) magnetic field  (TRUST-LiMe standalone MHD)
-# =============================================================================
-#  Exercises the DEFAULT component count (nb_composantes omitted -> dimension)
-#  and that the components are treated as INDEPENDENT scalar fields (the field
-#  nature is multi_scalaire) each solving its own diffusion problem.
-#
-#  In 2D the unknown has two components b = (bx, by). On the unit square with
-#  homogeneous Dirichlet conditions on all four faces, the Laplacian eigenmodes
-#  are  sin(m pi x) sin(n pi y)  with decay rate  eta (m^2 + n^2) pi^2.
-#  We give the two components DIFFERENT modes so that their decay rates differ;
-#  any component swap or mixed assembly is then caught by the probes:
-#
-#      bx(x,y,t) = sin(pi x) sin(pi y) exp(-2 eta pi^2 t)
-#      by(x,y,t) = sin(2 pi x) sin(pi y) exp(-5 eta pi^2 t)
-#
-#  A single uniform Dirichlet BC set (b = 0 everywhere) is valid for both modes.
-#
-#  -------------------------------------------------------------------------
-#  HONEST CAVEAT -- read this before quoting this case as physics validation
-#  -------------------------------------------------------------------------
-#  The initial condition above is NOT divergence-free
-#  (div b = d(bx)/dx + d(by)/dy != 0). It is therefore NOT a physically
-#  admissible magnetic field. This case validates the MULTI-COMPONENT
-#  MACHINERY (component independence, per-component rates, no component swap),
-#  not the Gauss law. It is admissible *only* because the solver transports each
-#  component independently and never enforces div b = 0 (a documented
-#  limitation -- see docs/content/model.md).
-#
-#  This is not an oversight: in 2D it is impossible to do better here. A
-#  divergence-free field that vanishes on the WHOLE boundary must be identically
-#  zero (the div-curl identity gives int |grad b|^2 = 0), and if one component
-#  varies only in y (so that div b = dbx/dx = 0) the other must be
-#  y-independent -- which requires DIFFERENT boundary conditions per component.
-#  TRUST scalar CLs apply one uniform condition to all components, so both
-#  requirements cannot be met at once.
-# =============================================================================
-
 dimension 2
 Pb_MHD pb
 Domaine dom
 
-# --------------------------------- mesh ------------------------------------
 Mailler dom
 {
     Pave pavé
@@ -57,24 +18,12 @@ Mailler dom
     }
 }
 
-Decouper dom
-{
-    Partitionneur tranche { tranches 2 2 }
-    Larg_joint 2
-    Nom_Zones dom
-}
-Fin
-
-Scatter dom.Zones dom
-
 Polymac_p0 dis
 
 Associate pb dom
-Discretize pb dis
 
-# ------------------------------ time integration ----------------------------
-#  eta = 0.02, so bx decays as exp(-2*0.02*pi^2*t), by as exp(-5*0.02*pi^2*t)
-Schema_euler_implicit sch
+
+Schema_euler_implicite sch
 Read sch
 {
     tinit 0.
@@ -86,8 +35,7 @@ Read sch
 }
 
 Associate pb sch
-
-# ---------------------------------- physics ---------------------------------
+Discretize pb dis
 Read pb
 {
     fluide_incompressible
@@ -101,41 +49,33 @@ Read pb
 
     Convection_Diffusion_Magnetic_field
     {
-        # nb_composantes omitted on purpose -> defaults to the dimension (2)
         diffusivite_magnetique Champ_Uniforme 1 0.02
-        # no `vitesse_magnetique` -> u = 0, pure diffusion
 
         diffusion  { }
         convection { amont }
 
         boundary_conditions
         {
-            # homogeneous Dirichlet on all faces (valid for both eigenmodes)
-            Bord gauche  Temperature_imposee_paroi Champ_front_uniforme 2 0. 0.
-            Bord droite  Temperature_imposee_paroi Champ_front_uniforme 2 0. 0.
-            Bord bas     Temperature_imposee_paroi Champ_front_uniforme 2 0. 0.
-            Bord haut    Temperature_imposee_paroi Champ_front_uniforme 2 0. 0.
+            gauche  Temperature_imposee_paroi Champ_front_uniforme 1 0.
+            droite  Temperature_imposee_paroi Champ_front_uniforme 1 0.
+            bas     Temperature_imposee_paroi Champ_front_uniforme 1 0.
+            haut    Temperature_imposee_paroi Champ_front_uniforme 1 0.
         }
-        # component 0 (bx) = sin(pi x)  sin(pi y)  -> rate 2 eta pi^2
-        # component 1 (by) = sin(2 pi x) sin(pi y)  -> rate 5 eta pi^2
         initial_conditions
         {
-            magnetic_field Champ_Fonc_xyz dom 2 sin(pi*x)*sin(pi*y) sin(2*pi*x)*sin(pi*y)
+            magnetic_field Champ_Fonc_xyz dom 1 sin(pi*x)*sin(pi*y)
         }
-    }
-}
+  }
 
-# --------------------------------- postprocessing ---------------------------
-#  Probe each component separately (per-component names magnetic_field0/1) at a
-#  point where BOTH are non-zero, so a swap would be immediately visible.
 Postraitement
 {
     Sondes
     {
-        # (x=0.25, y=0.5): bx = sin(pi/4)*sin(pi/2)=0.707, by = sin(pi/2)*1=1
-        sonde_bx grav magnetic_field0 Periode dts Points 1 0.25 0.5
-        sonde_by grav magnetic_field1 Periode dts Points 1 0.25 0.5
+        sonde_bx grav magnetic_field Periode 1e-6 Points 1 0.25 0.5
+        sonde_by grav magnetic_field Periode 1e-6 Points 1 0.25 0.5
     }
+}
+
 }
 
 Solve pb

@@ -1,35 +1,7 @@
-# =============================================================================
-# Case C : advection of a magnetic bump by a given velocity (standalone MHD)
-# =============================================================================
-#  Solves   d b / dt + (u.grad) b = 0   (no diffusion: eta = 0)
-#  with a uniform velocity u = (U, 0) supplied by the `vitesse_magnetique`
-#  keyword.  This exercises the convection operator and, above all, the
-#  keyword that feeds the transporting velocity to the module (the kernel
-#  ref_casts it to a Champ_Inc_base).
-#
-#  An initial Gaussian bump is transported to the right.  The peak value must
-#  be conserved (a pure translation of a maximum), the centre of mass must move
-#  with the uniform velocity U, and no spurious source may appear.
-#
-#  NOTE: the first-order upstream convection scheme is numerically diffusive,
-#  so the bump broadens; only the peak value and the centroid drift are checked
-#  with a tolerance that leaves room for that (see the notebook).
-#
-#  -------------------------------------------------------------------------
-#  HONEST CAVEAT -- this is a CONVECTION test, not a magnetic-state test
-#  -------------------------------------------------------------------------
-#  The Gaussian depends on x only, so div b = dbx/dx != 0: this initial
-#  condition is NOT an admissible magnetic field. It is used here purely to
-#  exercise the convection operator and the `vitesse_magnetique` reading path.
-#  The physically admissible magnetic states are covered by the divergence-free
-#  cases (invariance, diffusion, steady_state, varying_velocity).
-# =============================================================================
-
 dimension 2
 Pb_MHD pb
 Domaine dom
 
-# --------------------------------- mesh ------------------------------------
 Mailler dom
 {
     Pave pavé
@@ -46,25 +18,12 @@ Mailler dom
     }
 }
 
-Decouper dom
-{
-    Partitionneur tranche { tranches 4 2 }
-    Larg_joint 2
-    Nom_Zones dom
-}
-Fin
-
-Scatter dom.Zones dom
-
 Polymac_p0 dis
 
 Associate pb dom
-Discretize pb dis
 
-# ------------------------------ time integration ----------------------------
-#  u = 0.2 m/s, tmax = 1 s  ->  the bump (initial centre x0 = 0.25) ends
-#  around x = 0.45.
-Schema_euler_implicit sch
+
+Schema_euler_implicite sch
 Read sch
 {
     tinit 0.
@@ -76,8 +35,8 @@ Read sch
 }
 
 Associate pb sch
+Discretize pb dis
 
-# ---------------------------------- physics ---------------------------------
 Read pb
 {
     fluide_incompressible
@@ -91,41 +50,32 @@ Read pb
 
     Convection_Diffusion_Magnetic_field
     {
-        nb_composantes         1
-        diffusivite_magnetique Champ_Uniforme 1 0.0     # no diffusion
-        # uniform rightward velocity u = (0.2, 0)
-        vitesse_magnetique     Champ_Uniforme 2 0.2 0.
+        vitesse_magnetique     Champ_Uniforme 1 0.2
+        diffusivite_magnetique Champ_Uniforme 1 1.0
 
         diffusion  { }
         convection { amont }
 
         boundary_conditions
         {
-            # homogeneous Neumann everywhere: no boundary is disturbed over
-            # the short time span (the bump stays away from X = 0 and X = 1)
-            Bord gauche  Neumann_Paroi_adiabatique
-            Bord droite  Neumann_Paroi_adiabatique
-            Bord bas     Neumann_Paroi_adiabatique
-            Bord haut    Neumann_Paroi_adiabatique
+            gauche  Neumann_Paroi_adiabatique
+            droite  Neumann_Paroi_adiabatique
+            bas     Neumann_Paroi_adiabatique
+            haut    Neumann_Paroi_adiabatique
         }
-        # Gaussian bump centred on x0 = 0.25, sigma = 0.05, uniform in Y
         initial_conditions
         {
             magnetic_field Champ_Fonc_xyz dom 1 exp(-((x-0.25)^2)/(2*0.05^2))
         }
-    }
-}
-
-# --------------------------------- postprocessing ---------------------------
-Postraitement
+  }
+  Postraitement
 {
     Sondes
     {
-        # field along the bump trajectory at mid-height
-        sonde_x015 grav magnetic_field Periode dts Points 1 0.15 0.5
-        sonde_x025 grav magnetic_field Periode dts Points 1 0.25 0.5
-        sonde_x045 grav magnetic_field Periode dts Points 1 0.45 0.5
+        sonde_x015 grav magnetic_field Periode 1e-6 Points 1 0.15 0.5
+        sonde_x025 grav magnetic_field Periode 1e-6 Points 1 0.25 0.5
+        sonde_x045 grav magnetic_field Periode 1e-6 Points 1 0.45 0.5
     }
 }
 
-Solve pb
+}

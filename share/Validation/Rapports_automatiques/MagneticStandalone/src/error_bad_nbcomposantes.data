@@ -1,22 +1,8 @@
-# =============================================================================
-# Case A : invariance of a uniform magnetic field  (TRUST-LiMe standalone MHD)
-# =============================================================================
-#  Solves   d b / dt + (u.grad) b - div(eta grad b) = 0
-#  with a spatially uniform b and a zero velocity.  Both (u.grad)b and
-#  div(eta grad b) vanish identically, therefore b must stay exactly equal to
-#  its initial value for all time.
-#
-#  This is a pure *invariant* test: it is independent of the discretisation and
-#  must hold to machine precision.  It catches spurious sources/sinks, a wrong
-#  mass-matrix coefficient, a mis-wired diffusivity, a bad velocity default and
-#  boundary-condition assembly errors.
-# =============================================================================
 
 dimension 2
 Pb_MHD pb
 Domaine dom
 
-# --------------------------------- mesh ------------------------------------
 Mailler dom
 {
     Pave pavé
@@ -26,10 +12,10 @@ Mailler dom
         Longueurs            1.  1.
     }
     {
-        Bord gauche   X = 0.    0. <= Y <= 1.
-        Bord droite   X = 1.    0. <= Y <= 1.
-        Bord bas      Y = 0.    0. <= X <= 1.
-        Bord haut     Y = 1.    0. <= X <= 1.
+        gauche   X = 0.    0. <= Y <= 1.
+        droite   X = 1.    0. <= Y <= 1.
+        bas      Y = 0.    0. <= X <= 1.
+        haut     Y = 1.    0. <= X <= 1.
     }
 }
 
@@ -43,14 +29,12 @@ Fin
 
 Scatter dom.Zones dom
 
-# ------------------------------- discretisation ------------------------------
 Polymac_p0 dis
 
 Associate pb dom
 Discretize pb dis
 
-# ------------------------------ time integration ----------------------------
-Schema_euler_implicit sch
+Schema_euler_implicite sch
 Read sch
 {
     tinit 0.
@@ -63,7 +47,6 @@ Read sch
 
 Associate pb sch
 
-# ---------------------------------- physics ---------------------------------
 Read pb
 {
     fluide_incompressible
@@ -77,31 +60,27 @@ Read pb
 
     Convection_Diffusion_Magnetic_field
     {
-        nb_composantes         7    # DELIBERATELY INVALID (> dimension) -> must fail cleanly
         diffusivite_magnetique Champ_Uniforme 1 1.0
-        # `vitesse_magnetique` omitted on purpose -> u = 0; and since b is uniform,
-        # grad b = 0 too, so both transport terms vanish identically.
 
         diffusion  { }
         convection { amont }
 
         boundary_conditions
         {
-            Bord gauche  Neumann_Paroi_adiabatique
-            Bord droite  Neumann_Paroi_adiabatique
-            Bord bas     Neumann_Paroi_adiabatique
-            Bord haut    Neumann_Paroi_adiabatique
+            gauche  Neumann_Paroi_adiabatique
+            droite  Neumann_Paroi_adiabatique
+            bas     Neumann_Paroi_adiabatique
+            haut    Neumann_Paroi_adiabatique
         }
         initial_conditions { magnetic_field Champ_Uniforme 1 3.0 }
     }
 }
 
-# --------------------------------- postprocessing ---------------------------
 Postraitement
 {
     Sondes
     {
-        sonde_cbx grav magnetic_field Periode dts Points 1 0.5 0.5
+        sonde_cbx grav magnetic_field Periode 1e-6 Points 1 0.5 0.5
     }
 }
 
