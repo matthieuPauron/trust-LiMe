@@ -155,8 +155,15 @@ append new findings there.
   See `docs/content/test_cases.md`.
 - Kernel and module **are built** (`trust-lime`, `trust-lime_semi_opt`,
   `trust-lime_opt` exist at the repo root) — the historical `libparaconf`
-  configure blocker is resolved. Validation of the cases via the notebooks
-  is still pending (HartmannFlow/Shercliff notebooks were removed).
+  configure blocker is resolved.
+- **All 10 MagneticStandalone validation notebooks pass** (checked 2026-10-13)
+  and are concatenated into `MagneticStandalone_validation.pdf` at the repo
+  root by `.opencode/scripts/run-validation-pdf.sh` (rc=0). The
+  `VectorComponents` form was removed: the module is scalar-only
+  (`nb_composantes = 1`), multi-component goes with M3.
+- The `induction_stretching` source needs the velocity face field's
+  **auxiliary element variables** or `grad_u` reads garbage — see
+  `KERNEL_REUSE_NOTES.md` ("Getting a velocity gradient for free").
 - **Unit tests** live in `tests/UnitTests/` (GoogleTest, kernel conventions).
   The arithmetic suite (`--arith-only`) **runs and passes** today; the rest
   needs the full kernel.

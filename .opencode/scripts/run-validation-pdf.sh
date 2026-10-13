@@ -52,7 +52,8 @@ for nb in "$nbroot"/*/*.ipynb; do
     continue
   fi
   pdf="$pdfdir/${form}.pdf"
-  mv "$pdfdir/$(basename "$nb" .ipynb).pdf" "$pdf"
+  produced="$pdfdir/$(basename "$nb" .ipynb).pdf"
+  if [ "$produced" != "$pdf" ]; then mv "$produced" "$pdf"; fi
   pdfs+=("$pdf")
   log "OK: $form -> $pdf"
 done
