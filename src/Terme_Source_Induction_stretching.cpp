@@ -17,6 +17,7 @@
 #include <Matrice_Morse.h>
 #include <Param.h>
 #include <Process.h>
+#include <Champ_Face_PolyMAC_MPFA.h>
 
 Implemente_instanciable(Terme_Source_Induction_stretching,
                         "induction_stretching|induction_stretching_Elem_PolyMAC_MPFA",
@@ -89,6 +90,26 @@ int Terme_Source_Induction_stretching::initialiser(double temps)
 {
   const Convection_Diffusion_Magnetic_field& eqn = equation_mag_.valeur();
 
+  // The kernel gradient of u (Discret_Thyd::grad_u -> grad_Champ_Face_PolyMAC_MPFA)
+  // reconstructs the cell-centred grad from the *element* values of the velocity
+  // face field, which are auxiliary variables of that field. Operators acting on
+  // the velocity normally request them (e.g. Op_Conv_EF_Stab_PolyMAC_MPFA_Face::
+  // completer), but here the transported unknown is an Elem field, so its
+  // convection/diffusion operators are Elem-based and nobody asks for the
+  // velocity's auxiliary variables: they must be requested explicitly, otherwise
+  // grad(u) reads out-of-bounds garbage instead of the velocity values.
+  const Champ_Inc_base& vit_c = eqn.vitesse_transportante();
+  if (sub_type(Champ_Face_PolyMAC_MPFA, vit_c))
+    {
+      Champ_Face_PolyMAC_MPFA& vit = ref_cast_non_const(Champ_Face_PolyMAC_MPFA, vit_c);
+      vit.init_auxiliary_variables();
+      // update_ve() gates on the MD_Vector of the *current* time case only; drive
+      // it over every temporal case so that passe()/futur() (which grad_u reads)
+      // are all populated.
+      for (int n = 0; n < vit.nb_valeurs_temporelles(); n++)
+        vit.update_ve(vit.futur(n));
+    }
+
   // grad(u): face velocity -> cell-centred grad with dim*dim components.
   const Discret_Thyd& dis = ref_cast(Discret_Thyd, eqn.discretisation());
   dis.grad_u(eqn.domaine_dis(), eqn.domaine_Cl_dis(), eqn.vitesse_transportante(), gradient_vitesse_);
@@ -149,32 +170,6 @@ void Terme_Source_Induction_stretching::ajouter_source(DoubleTab& secmem) const
     for (int i = 0; i < D; i++)
       for (int j = 0; j < D; j++)
         g(e, i * D + j) = gu(nf_tot + e * D + j, i);
-
-  // DBG
-  {
-    static int dbg = 0;
-    if (dbg++ < 1 && Process::me() == 0)
-      {
-        const DoubleTab& gp = gradient_vitesse_->passe();
-        const Champ_Inc_base& vel = equation_mag_.valeur().vitesse_transportante();
-        const DoubleTab& vv = vel.valeurs();
-        Cerr << "DBG nf_tot=" << nf_tot << " ne=" << ne << " D=" << D
-             << " gu.rows=" << gu.dimension_tot(0) << " gu.cols=" << (gu.nb_dim() > 1 ? gu.dimension(1) : 1)
-             << " vel.r=" << vv.dimension_tot(0) << " vel.c=" << (vv.nb_dim() > 1 ? vv.dimension(1) : 1) << finl;
-        for (int r = 0; r < 8 && r < vv.dimension_tot(0); r++) Cerr << "  vel(" << r << ",0)=" << vv(r, 0) << finl;
-        // center element 119 = (i=7,j=7) -> x=y=0.46875
-        for (int e = 0; e < ne; e += 119)
-          {
-            Cerr << "  elem " << e << ": doc(u_i/dx_j=gu(nf+eD+j,i)):";
-            for (int i = 0; i < D; i++)
-              for (int j = 0; j < D; j++) Cerr << " " << gu(nf_tot + e * D + j, i);
-            Cerr << "  || passe:";
-            for (int i = 0; i < D; i++)
-              for (int j = 0; j < D; j++) Cerr << " " << gp(nf_tot + e * D + j, i);
-            Cerr << finl;
-          }
-      }
-  }
 
   // Physical rate S_i = sum_j b_j * du_i/dx_j. The contraction itself lives in
   // a header-only, unit-testable function: see Induction_stretching_kernel.h.

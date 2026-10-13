@@ -248,6 +248,28 @@ table must re-extract with `g(e, i*dim+j) = gu(nf_tot + e*dim + j, i)`, where
 `nf_tot = ref_cast(Domaine_VF, eqn.domaine_dis()).nb_faces_tot()` (see
 `Terme_Source_Induction_stretching::ajouter_source` for the full pattern).
 
+**Hard prerequisite: the velocity's *auxiliary element variables* must exist, or
+`grad_u` silently reads out-of-bounds garbage.** `grad_Champ_Face_PolyMAC_MPFA::
+calc_gradfve()` reads the velocity's **element** values from `vel.passe()` at
+extended rows `nf_tot + e*dim + d` — those rows only exist if the field has been
+extended to the `mdv_ch_face` MD_Vector (`md_vector_faces()` ⊕
+`md_vector_elements()×dim`, i.e. `nb_faces_tot + nb_elem×dim` rows). On the
+`Champ_Face_PolyMAC_MPFA` this extension is done by `init_auxiliary_variables()`
+(public), which is normally triggered by a **Face** operator's `completer()`
+(e.g. `Op_Conv_EF_Stab_PolyMAC_MPFA_Face::completer`). For the standalone
+magnetic equation the unknown is an Elem field, so its convection/diffusion
+operators are Elem-based (`Op_Conv_Amont_PolyMAC_HFV_Elem`,
+`Op_Diff_PolyMAC_MPFA_Elem`) and *nobody* requests the velocity's aux variables:
+`vel.valeurs()` keeps `nb_faces_tot` rows and `grad_u` reads past the end —
+yielding garbage values like `8`/`0` instead of `∇u`.
+Fix (used in `Terme_Source_Induction_stretching::initialiser`): guard with
+`sub_type(Champ_Face_PolyMAC_MPFA, vit)`, call `vit.init_auxiliary_variables()`,
+then re-drive `vit.update_ve(vit.futur(n))` for every temporal case — because
+`update_ve()` gates on the MD_Vector of the *current* case only, while
+`calc_gradfve` reads the `passe()` case. With this in place
+`SourceStretching` gives `b(0.5)=1.6468` vs `exp(0.5)=1.6487` (~0.1%, the
+implicit-Euler time error).
+
 ---
 
 ## 7ter. Unit tests (baltik modules)
