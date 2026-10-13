@@ -209,15 +209,44 @@ Contract for a source attached to an equation's `sources { ... }` block:
    redeclare them (duplicate-declaration error). It does **not** declare
    `localisation_source` (that lives on `Source_Generique_base`).
 6. `has_interface_blocs()` returns **`int`**, not `bool`.
+7. **Every source holding a field must override `mettre_a_jour()` /
+   `resetTime()`** to forward them to the field. `Sources::mettre_a_jour` /
+   `resetTime` call each source unconditionally, and the `Source_base`
+   implementations `exit()` with "You must to overload ...". An empty forwarding
+   body suffices when the field is time-independent.
+8. **`secmem` is the *integrated* RHS** in both the legacy `ajouter` and the
+   bloc `ajouter_blocs` path. A volumetric source must therefore be weighted by
+   the cell measure `porosite_elem() * volumes()` before `secmem(e,i) += ...`
+   (convention of `Source_Generique_P0_Elem::ajouter` /
+   `Terme_Source_Decroissance_Radioactive_Elem_PolyMAC_CDO`). Omitting the
+   weight divides the source by the cell volume in the update and the explicit
+   integration blows up (residual ~1e35).
+9. **Use a divergence-free transporting velocity for source-only tests.**
+   TRUST's `convection { amont }` is *conservative* (`∇·(ub) = (u·∇)b +
+   b∇·u`), so for a uniform field and a non-solenoidal u (e.g. `u=(x,0)`,
+   `∇·u=1`) it contributes a spurious `−b∇·u` decay that masks the source.
+   With `u=(x,−y)` (`∇·u=0`), convection vanishes for a uniform b and the
+   source is measured cleanly.
 
 ### Getting a velocity gradient for free
 
 `Discret_Thyd::grad_u(z, zcl, ch_vitesse, ch)` builds the kernel field
-**`gradient_vitesse`** (`grad_U_Champ_Face_PolyMAC_CDO`, cell-centred, with
-`dim*dim` components named `dUdX,dUdY[,dVdX,dVdY[,dWdZ]]`, component
-`i*dim+j` = `du_i/dx_j`). This is the *same* ∇u the momentum equation uses, so
-source terms and momentum stay consistent. The base `Discret_Thyd::grad_u`
-exits cleanly if a discretisation does not implement it.
+**`gradient_vitesse`**, the *same* ∇u the momentum equation uses, so source
+terms and momentum stay consistent. The base `Discret_Thyd::grad_u` exits
+cleanly if a discretisation does not implement it.
+
+**Layout of the resulting field (hard-won — do not assume `(ne, dim²)`):**
+the concrete field is `grad_Champ_Face_PolyMAC_MPFA`, a *face* field. Its
+`valeurs()` has `nb_faces_tot() + nb_elem()*dim` rows and `N*dim` columns:
+- face rows `[0, nb_faces_tot)`: gradient at faces,
+- row `nb_faces_tot + e*dim + j`, column `i` = **d u_i / d x_j** for element e
+  and phase n=0 (i.e. `du_i/dx_j  =  gu(nf_tot + e*dim + j, i)`, **note the
+  transpose** relative to the natural `i*dim+j` per-element layout).
+
+Consequently, a consumer wanting a per-element `(ne, dim*dim)` `[du_i/dx_j]`
+table must re-extract with `g(e, i*dim+j) = gu(nf_tot + e*dim + j, i)`, where
+`nf_tot = ref_cast(Domaine_VF, eqn.domaine_dis()).nb_faces_tot()` (see
+`Terme_Source_Induction_stretching::ajouter_source` for the full pattern).
 
 ---
 
@@ -348,11 +377,11 @@ dimensions. Scope is 2D. For each decision: is it pinned by a test, and where?
 | 1 | **No $\rho C_p$ factor.** The equation is magnetic, not thermal; the time factor must be exactly 1. This is the single most dangerous inherited decision (the base class is the *energy* equation). | ✅ | `diffusion`, `diffusion_refined` — the *absolute* decay rate $e^{-\eta\pi^2t}$ pins the constant; a $\rho C_p$ factor would be off by ~10³ |
 | 2 | **η is used verbatim** as the diffusion coefficient (not a transformed quantity). | ✅ | `diffusion` (rate), `steady_state` (divergence form) |
 | 3 | **η is used for the operator *and* for the time-step estimate** (`diffusivite_pour_transport` / `..._pour_pas_de_temps` both return η). | ⚠️ partial | only indirectly (a wrong value changes dt, not the converged solution) |
-| 4 | **Components are transported independently** — no coupling, no projection. | ✅ | `vector_components` (two distinct eigen-rates) |
+| 4 | **Components are transported independently** — no coupling, no projection. | ❌ **not testable today** | the module is scalar-only (`nb_composantes = 1`); the multi-component vector case is deferred with M3. Two distinct eigen-rates would pin it — see the `vector_components` note below |
 | 5 | **No spurious source**: equilibria are preserved exactly. | ✅ | `invariance` (1e-10), `steady_state` (1e-8) |
 | 6 | **Diffusion is in divergence form** $\nabla\!\cdot\!(\eta\nabla b)$, so a spatially varying η behaves correctly. | ✅ | `steady_state` ($\eta=1+x$, exact equilibrium) |
 | 7 | **Velocity is given data and is frozen**; no feedback from $b$ to $u$. | ✅ | `advection`, `varying_velocity` |
-| 7b | **M1 source $S=(b\cdot\nabla)u$** has the right magnitude, sign, gradient-index order and per-component structure. | ✅ | `source_stretching` ($b_0=B_0e^t$, $b_1\equiv0$) |
+| 7b | **M1 source $S=(b\cdot\nabla)u$** has the right magnitude, sign and gradient-index order (scalar transport). | ✅ | `source_stretching` ($b=B_0e^t$) |
 | 7c | The source is **explicit (lagged)** and adds nothing to the Jacobian. | ✅ by construction | `dimensionner_blocs()` is empty; verified by the growth rate matching $e^t$ to <1% |
 | 8 | **BC semantics**: Dirichlet prescribes $b$, Neumann means zero *flux* $\partial b/\partial n=0$. | ✅ | implied by `diffusion` (a wrong Dirichlet would change the eigenvalue set, so the analytic rate would not match) |
 | 9 | **Only insulated (Neumann) and prescribed (Dirichlet) walls are supported** — the conducting-wall condition (interface current / Ohm's law) is out of scope. | 📋 declared | `docs/content/model.md` §6 |
@@ -379,8 +408,11 @@ Consequences for how the cases must be read:
 | Case | Physically admissible magnetic state? |
 |---|---|
 | `invariance`, `diffusion`, `steady_state`, `varying_velocity` | **yes** ($\nabla\cdot b=0$) |
-| `vector_components` | **no** — machinery test for multi-component handling |
 | `advection` | **no** — convection-operator test only |
+
+(The former `vector_components` form — a machinery test for multi-component
+handling — was removed: the scalar-only module cannot run it. Its two-distinct-
+eigen-rates idea is the natural test once vector `nb_composantes` lands.)
 
 If Gauss-law correctness ever becomes a requirement, it needs an M3-style
 projection or a vector-potential formulation, plus **per-component boundary

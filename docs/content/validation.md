@@ -9,10 +9,13 @@ Each case lives in its own folder under
 
 ```
 share/Validation/Rapports_automatiques/
-├── MagneticStandalone/       # standalone induction equation (current module)
-│   ├── MagneticStandalone_Verification.ipynb   # ASN28 Verification
-│   ├── MagneticStandalone_Validation.ipynb     # ASN28 Validation – separate effects
-│   └── src/*.data
+├── MagneticStandalone/             # standalone induction equation
+│   ├── Invariance/                 # one validation form per test case
+│   │   ├── Invariance.ipynb        # notebook named after its form folder
+│   │   └── src/invariance.data
+│   ├── Diffusion/  DiffusionRefined/  Advection/
+│   ├── SteadyState/  VaryingVelocity/  SourceStretching/
+│   └── ErrorMissingEta/  ErrorBadNbcomposantes/  ErrorBadBc/
 ├── HartmannFlow/             # placeholder for the coupled MHD case
 │   ├── HartmannFlow.ipynb
 │   └── src/
@@ -20,6 +23,14 @@ share/Validation/Rapports_automatiques/
     ├── Shercliff_3D_duct.ipynb
     └── src/
 ```
+
+Four formatting rules are enforced by `.opencode/scripts/check-validation.sh`
+(`/check-validation`): the notebook lives at the form root only —
+`Rapports_automatiques/<Category>/<FormName>/<FormName>.ipynb`, never in
+`src/`; datasets are **sequential-only** (no `Decouper`/`Scatter` partition
+machinery in a `.data`, no `partition()` / `nbProcs>1` in a notebook); and a
+notebook runs **one and only one test case** (one `addCase` per notebook —
+see the `trust-lime-notebooks` skill).
 
 ---
 
@@ -43,6 +54,15 @@ Inside a case folder, the datasets live in `src/`; `run.addCase` copies each
 dataset into `build/<dataset name>/` where the results (`.son` probes, `.dt_ev`,
 …) are written. The notebooks read results back from `run.BUILD_DIRECTORY`.
 
+### PDF report
+
+Each form can be exported to PDF and the per-form PDFs concatenated into a
+single report at the repository root (`MagneticStandalone_validation.pdf`),
+via `.opencode/scripts/run-validation-pdf.sh` (execute → `--to pdf` →
+`pdfunite`). The report is a generated artifact and stays untracked; the rule
+lives in the `trust-lime-notebooks` skill ("PDF export & the repository
+report").
+
 ---
 
 ## The cases
@@ -55,11 +75,12 @@ module. Every dataset is self-contained (the mesh is built inline with
 references, and what each one catches are listed in
 @ref TrustLiMe_testcases "Test cases → `MagneticStandalone`".
 
-Per ASN Guide n° 28 a notebook holds tests of **one single category**, so the
-folder ships two notebooks: `MagneticStandalone_Verification.ipynb` (exact
-invariants, mesh convergence, malformed-input diagnostics) and
-`MagneticStandalone_Validation.ipynb` (isolated phenomena against analytical
-solutions).
+Per ASN Guide n° 28 a notebook holds tests of **one single category**, and it
+runs **one and only one test case**. The folder therefore ships one validation
+form per dataset (`MagneticStandalone/<FormName>/<FormName>.ipynb`), covering
+exact invariants, mesh convergence, malformed-input diagnostics and isolated
+phenomena against analytical solutions; a future Verification/Validation
+category split folds into the form naming.
 
 ### `HartmannFlow` and `Shercliff_3D_duct`
 

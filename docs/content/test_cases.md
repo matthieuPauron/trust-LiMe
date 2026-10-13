@@ -55,12 +55,17 @@ one category, following the official English translation of **ASN Guide n° 28**
 | **Validation – separate effects** | § 3.3 | one isolated physical phenomenon reproduced against an *analytical solution* |
 | **Validation – integral** | § 3.3 | all phenomena and their interactions (reserved: none yet in the standalone phase) |
 
-A notebook contains tests of **one single category**; the standalone magnetic
-notebook is therefore split into `MagneticStandalone_Verification.ipynb` and
-`MagneticStandalone_Validation.ipynb`. The `.data` files are **computations**,
-not tests — a computation can feed tests of different categories
-(`diffusion`/`diffusion_refined` are run in both notebooks: decay vs analytic
-in the Validation one, mesh convergence in the Verification one).
+A notebook runs **one and only one test case** and contains tests of **one
+single category**. Following the TRUST validation-form layout
+(`Rapports_automatiques/<Category>/<FormName>/<FormName>.ipynb`), the standalone
+magnetic folder ships one *form folder* per dataset, each containing
+`<FormName>.ipynb` + `src/<case>.data` (`MagneticStandalone/Invariance/`,
+`MagneticStandalone/Diffusion/`, …, `MagneticStandalone/ErrorBadBc/`). The
+`.data` files are **computations**, not tests — a dataset such as `diffusion`
+feeds both a Validation test (decay against the analytic solution, in
+`Diffusion/Diffusion.ipynb`) and, together with `diffusion_refined`, a
+Verification test (mesh convergence, whose per-case bounds are asserted in
+`Diffusion/Diffusion.ipynb` and `DiffusionRefined/DiffusionRefined.ipynb`).
 
 New tests are written in a **fixed sequence** — a test of a later stage may
 only be added once all earlier stages are green for that case:
@@ -102,17 +107,20 @@ dataset into `build/<dataset name>/` where the results (`.son` probes, `.dt_ev`,
 The `/validate` command automates this. From the repository root:
 
 ```
-/validate share/Validation/Rapports_automatiques/MagneticStandalone/MagneticStandalone_Verification.ipynb
-/validate share/Validation/Rapports_automatiques/MagneticStandalone/MagneticStandalone_Validation.ipynb
+/check-validation   # R1-R4 formatting gate — must be green first
+/validate share/Validation/Rapports_automatiques/MagneticStandalone/Diffusion/Diffusion.ipynb
 ```
 
 ---
 
 ## `MagneticStandalone` — standalone magnetic solver
 
-Notebooks: `MagneticStandalone_Verification.ipynb` (ASN28 **Verification**) and
-`MagneticStandalone_Validation.ipynb` (ASN28 **Validation – separate effects**) ·
-datasets in `src/`
+One validation form per test case (TRUST layout
+`Rapports_automatiques/<Category>/<FormName>/<FormName>.ipynb`): the folder
+holds `Invariance/`, `Diffusion/`, `DiffusionRefined/`, `Advection/`,
+`SteadyState/`, `VaryingVelocity/`, `SourceStretching/`
+and the negative `Error_missing_eta` – `Error_bad_nbcomposantes` –
+`Error_bad_bc` forms; each form folder contains its notebook + `src/<case>.data`
 
 These cases target the magnetic induction equation solved in standalone form
 (see @ref TrustLiMe_model "Problems, equations and boundary conditions"). Every
@@ -125,30 +133,26 @@ so no `.med` file is required and the cases can be run from a clean checkout.
 | `diffusion.data` | transverse Fourier mode, \f$\eta = 0.05\f$ | Validation – separate effects | \f$b(t) = b_0\,e^{-\eta\pi^2 t}\f$ | wrong magnetic diffusivity scaling, diffusion operator, Dirichlet CL |
 | `diffusion_refined.data` | same, finer mesh | Verification (mesh convergence) | same | mesh convergence (the error must drop) |
 | `advection.data` | Gaussian bump advected by \f$u = (0.2, 0)\f$ | Validation – separate effects | peak conservation + transport direction | convection operator, `vitesse_magnetique` wiring |
-| `vector_components.data` | **vector** unknown (default `nb_composantes`) | Validation – separate effects | two distinct eigenmodes, rates \f$2\eta\pi^2\f$ and \f$5\eta\pi^2\f$ | component independence; catches a component swap or mixed assembly |
 | `steady_state.data` | equilibrium \f$b = y\f$ with **non-uniform** \f$\eta(x) = 1+x\f$ | Validation – separate effects | exact steady state | spurious source, mis-assembled diffusion, functional-\f$\eta\f$ reading path |
 | `varying_velocity.data` | **spatially varying** velocity \f$u = (-y, x)\f$, uniform \f$b\f$ | Verification | exact invariant | `Champ_Don → Champ_Inc` transfer onto faces, wrong velocity components |
-| `source_stretching.data` | M1 source \f$S = (b\cdot\nabla)u\f$, \f$u = (x, 0)\f$ | Validation – separate effects | \f$b_0(t) = B_0 e^{t}\f$, \f$b_1\equiv 0\f$ | source magnitude, sign, gradient-index order, per-component structure |
+| `source_stretching.data` | M1 source \f$S = (b\cdot\nabla)u\f$, \f$u = (x, 0)\f$ | Validation – separate effects | \f$b(t) = B_0 e^{t}\f$ | source magnitude, sign, gradient-index order |
 | `error_missing_eta.data` | no `diffusivite_magnetique` | Verification | must fail cleanly | required-keyword diagnostics |
 | `error_bad_nbcomposantes.data` | `nb_composantes 7` in 2D | Verification | must fail cleanly | range validation |
 | `error_bad_bc.data` | unknown CL keyword | Verification | must fail cleanly | keyword error reporting |
 
-The category column tags the **test** (assertion set), not the dataset: e.g. the
-mesh-convergence test in the Verification notebook runs both `diffusion` and
-`diffusion_refined`, while the decay test in the Validation notebook runs
-`diffusion` alone.
+The category column tags the **test** (assertion set), not the dataset: e.g.
+the mesh-convergence test spans the `DiffusionRefined` form (refined bound)
+and the `Diffusion` form (coarse bound), while the decay test lives in
+`Diffusion/Diffusion.ipynb` alone.
 
 Design choices worth knowing:
 
-- **`nb_composantes 1`** in most cases — the natural reduction of
+- **`nb_composantes 1`** in all cases — the natural reduction of
   \f$\nabla\cdot b = 0\f$ for a purely transverse field keeps the datasets
-  simple. `vector_components.data` deliberately omits the keyword to exercise
-  the **default** (one component per space direction).
-- **Different eigen-rates per component.** In `vector_components.data` the two
-  components are given modes with *different* decay rates
-  (\f$\sin(\pi x)\sin(\pi y)\f$ and \f$\sin(2\pi x)\sin(\pi y)\f$), so a
-  component swap or a mixed assembly is caught rather than hidden behind
-  identical rates.
+  simple. The multi-component (vector) unknown is a later phase (the
+  `discretiser()` currently rejects `nb_composantes != 1`); a former
+  `VectorComponents` form was removed when it became clear the scalar-only
+  module cannot run it.
 - **Probes use `grav`** — they are snapped to the nearest cell centre. The
   diffusion check therefore compares the *amplitude ratio* \f$b(t)/b(0)\f$,
   which is independent of where the probe sits on the mesh.
@@ -160,8 +164,8 @@ Design choices worth knowing:
   a position-dependent \f$\eta_{\rm eff}\f$) and exercises a different reading
   path than a uniform `Champ_Uniforme`.
 - **Negative cases are run directly** with the `trust` command rather than
-  through `runCases()` (which would abort the notebook); the notebook asserts a
-  non-zero exit code and a non-empty diagnostic.
+  through `runCases()` (which would abort the notebook); each negative form
+  (`Error*`) asserts a non-zero exit code and a non-empty diagnostic.
 
 ---
 

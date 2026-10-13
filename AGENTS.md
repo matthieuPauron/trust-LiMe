@@ -98,9 +98,18 @@ were raised so long compile errors are not clipped. Keep the primary loop:
 
 Notebooks live under `share/Validation/Rapports_automatiques/` and must run
 inside the **TRUST Python environment** (`venv_trust` + TRUST env), not the
-OpenCode venv. Current notebook: `MagneticStandalone/`. Use `/validate`.
-**All cases run sequentially; `.data` files must never contain TRUST
-parallelism blocks** (`Partition`/`Scatter`/…).
+OpenCode venv. One validation form per test case, at
+`<Category>/<FormName>/<FormName>.ipynb`; current forms: `MagneticStandalone/*/`
+(e.g. `MagneticStandalone/Diffusion/Diffusion.ipynb`). Use `/validate`.
+
+**Formatting rules — enforced by `.opencode/scripts/check-validation.sh`
+(`/check-validation`):** the `.ipynb` lives at the form root only
+(`Rapports_automatiques/<Category>/<FormName>/<FormName>.ipynb`, never in
+`src/`), each notebook runs **one and only one test case** (one `addCase`),
+and **all cases run sequentially** — `.data` files must never contain TRUST
+parallelism machinery (`Decouper`/`Partitionneur`/`Scatter`/`Larg_joint`/
+`Nom_Zones`/…), and notebooks must not call `partition()` or set `nbProcs>1`.
+Run the check before `/validate`.
 
 Authoring/running rules, trustutils API, dataset syntax, and the headless
 nbconvert recipe: **`trust-lime-notebooks` skill**. The gate for adding new
@@ -165,11 +174,19 @@ ld_flags  : -fsanitize=address,undefined
 then `./configure && make module_custom`. Revert `project.cfg` before normal
 builds. See the `trust-lime-coding` skill.
 
+## Data file comment convention
+
+- Comments in `.data` files must use the `# ... #` format: a `#` at the
+  beginning and a `#` at the end of the line, with spaces between the `#`
+  markers and the comment content (e.g. `# this is a comment #`).
+  Alternatively, C-style `/* ... */` block comments are accepted.
+- This rule ensures consistent parsing since TRUST data files have no line
+  concept and use block-based syntax.
+- The earlier `# bla #` style is formalized here and can be removed from
+  "To sort" once confirmed.
+
 ## To sort
 
-The following reminders are now formalized in skills and can be deleted once
-confirmed:
-- `# bla #` comment style / sequential-only runs → `trust-lime-notebooks` skill
 - BALTIK docs → https://cea-trust-platform.readthedocs.io/en/v1.9.8/DevTutorials.html
   → `trust-lime-coding` skill
 - TRUST coding guidelines →
