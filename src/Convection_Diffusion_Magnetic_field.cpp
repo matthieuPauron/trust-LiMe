@@ -72,28 +72,22 @@ void Convection_Diffusion_Magnetic_field::set_param(Param& param) const
 
 /*! @brief Builds the unknown and the transporting velocity fields.
  *
- *  Current scope: a single cell-centred scalar component ("magnetic_field"),
- *  discretised with the temperature machinery.  Multi-component (vector)
- *  transport is intentionally rejected: with the PolyMAC MPFA diffusion
- *  operator, a multi-component unknown combined with the scalar density of
- *  Fluide_Incompressible reads the diffusivity out of bounds in
- *  Op_Diff_PolyMAC_MPFA_base::update_nu() (N_nu_src == N_mil branch).  Until
- *  that kernel path supports broadcasting a scalar diffusivity, only
- *  nb_composantes = 1 is supported.
+ *  Current scope: up to `dimension` transported components
+ *  ("magnetic_field"), discretised with the concentration (multi-scalar
+ *  concentration) machinery of Discret_Thyd.
  */
 void Convection_Diffusion_Magnetic_field::discretiser()
 {
   const Discret_Thyd& dis = ref_cast(Discret_Thyd, discretisation());
   Cerr << "Magnetic field equation discretization" << finl;
 
-  // Scalar transport only (see the method comment).
+  // Nb_composantes must be known before discretisation (read at the problem
+  // level by Pb_MHD::readOn()); default: one component per space direction.
   if (nb_composantes_ < 0)
-    nb_composantes_ = 1;
-  if (nb_composantes_ != 1)
-    Process::exit("Convection_Diffusion_Magnetic_field: only nb_composantes = 1 "
-                  "is currently supported; to use a vector magnetic field set "
-                  "nb_composantes 2 in the problem data and ensure "
-                  "diffusivite_magnetique has 2 components matching.");
+    nb_composantes_ = dimension;
+  if (nb_composantes_ < 1 or nb_composantes_ > dimension)
+    Process::exit("Convection_Diffusion_Magnetic_field: nb_composantes must be "
+                  "between 1 and the space dimension.");
   // Magnetic field: one scalar component.
   dis.concentration(schema_temps(), domaine_dis(), the_magnetic_field_,
                     nb_composantes_, "magnetic_field");

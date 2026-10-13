@@ -68,7 +68,9 @@ public:
   // Reuse the kernel scalar (thermal) boundary conditions.  The thermal
   // scalar CLs (paroi_adiabatique, frontiere_ouverte_temperature_imposee, ...)
   // are then accepted by Cond_lim_base::compatible_avec_eqn().  Physics-specific
-  // magnetic CLs are deliberately deferred (see PLAN_magnetic_standalone.md).
+  // magnetic CLs are deliberately deferred.  Vocabulary: magnetic_field_impose
+  // (Dirichlet), paroi_isolante_magnetique (homogeneous Neumann),
+  // paroi_conductrice_magnetique (perfect conductor, b x n = 0).
   const Motcle& domaine_application() const override;
 
 protected:
@@ -84,8 +86,11 @@ protected:
   // Magnetic diffusivity eta, read from the `diffusivite_magnetique` keyword.
   OWN_PTR(Champ_Don_base) diffusivite_magnetique_;
 
-  // Transporting velocity, read from the optional `vitesse_magnetique` keyword.
+// Transporting velocity, read from the optional `vitesse_magnetique` keyword.
   OWN_PTR(Champ_Don_base) vitesse_magnetique_;
+  bool ohmic_heating_;
+  bool turbulence_mhd_;
+
 
   // The Champ_Inc actually handed to the convection operator (face centred).
   OWN_PTR(Champ_Inc_base) la_vitesse_transportante_;
