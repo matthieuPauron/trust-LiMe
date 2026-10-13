@@ -93,7 +93,7 @@ else
 fi
 
 # Reuse the exact TRUST flags, with the GoogleTest include path appended.
-flags="$(cd "$repo_root" && EXTRA_CXXFLAGS="-I$gtest_root/include" \
+flags="$(cd "$repo_root" && EXTRA_CXXFLAGS="-I$gtest_root/include ${EXTRA_CXXFLAGS:-}" \
          SYNTAX_CHECK_PRINT_FLAGS=1 bash .opencode/scripts/syntax-check.sh src/Pb_MHD.cpp)"
 
 objects=()
