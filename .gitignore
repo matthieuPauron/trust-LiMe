@@ -68,3 +68,22 @@ build/
 README_BALTIK_ECLIPSE
 
 .ipynb_checkpoints/
+
+# TRUST run artifacts (validation cases) — regenerated, never commit these
+*.TU
+*.sons
+*.son
+*.stop
+*.log
+*.dt_ev
+*.progress
+*.sauv
+
+# Generated validation report (run-validation-pdf.sh output) — untracked
+/MagneticStandalone_validation.pdf
+
+# Editor lock / autosave / swap files
+.#*
+\#*#
+*.swp
+*.swo
