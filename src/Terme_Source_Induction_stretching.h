@@ -45,6 +45,8 @@ public:
   // --- Framework hooks ----------------------------------------------------
   void associer_pb(const Probleme_base&) override;
   int initialiser(double temps) override;
+  void mettre_a_jour(double temps) override;
+  void resetTime(double temps) override;
 
   // --- Source evaluation --------------------------------------------------
   DoubleTab& calculer(DoubleTab& secmem) const override;

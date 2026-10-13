@@ -9,6 +9,8 @@
 #include <Discret_Thyd.h>
 #include <Domaine_dis_base.h>
 #include <Domaine_Cl_dis_base.h>
+#include <Domaine_VF.h>
+#include <Milieu_base.h>
 #include <Champ_Inc_base.h>
 #include <Champ_Fonc_base.h>
 #include <Probleme_base.h>
@@ -17,7 +19,7 @@
 #include <Process.h>
 
 Implemente_instanciable(Terme_Source_Induction_stretching,
-                        "induction_stretching",
+                        "induction_stretching|induction_stretching_Elem_PolyMAC_MPFA",
                         Source_base);
 // XD induction_stretching source_base induction_stretching BRACE
 // XD_CONT Induction source term S = (b.grad) u added to the right-hand side of the standalone magnetic
@@ -101,20 +103,97 @@ int Terme_Source_Induction_stretching::initialiser(double temps)
   return 1;
 }
 
+/*! @brief Advances the cached grad(u) field's time.
+ *
+ *  The transporting velocity is frozen (given data), so grad u is constant and
+ *  no value needs recomputing. The field is still advanced in time because the
+ *  framework requires every source term owning a field to overload
+ *  Source_base::mettre_a_jour() — the base class exits otherwise.
+ */
+void Terme_Source_Induction_stretching::mettre_a_jour(double temps)
+{
+  if (gradient_vitesse_)
+    gradient_vitesse_->mettre_a_jour(temps);
+}
+
+/*! @brief Resets the cached grad(u) field's time (see mettre_a_jour()). */
+void Terme_Source_Induction_stretching::resetTime(double temps)
+{
+  if (gradient_vitesse_)
+    gradient_vitesse_->resetTime(temps);
+}
+
 /*! @brief Adds S = (b.grad) u to `secmem`.
  *
  *  Explicit (lagged) in b: S_i = sum_j  b_j * (d u_i / d x_j).
- *  With the kernel gradient field layout (2D: dUdX,dUdY,dVdX,dVdY), the
- *  component (i*dim + j) of grad(u) is d u_i / d x_j.
+ *
+ *  The kernel velocity-gradient field (grad_Champ_Face_PolyMAC_MPFA) stores the
+ *  face gradients in its first nb_faces_tot() rows, then the element gradients:
+ *  row `nb_faces_tot + e*dim + j`, column `i` holds d u_i / d x_j for element e.
+ *  We re-extract it into a plain (nb_elem, dim*dim) table (slot i*dim+j =
+ *  du_i/dx_j), which is the contract of the unit-testable kernel
+ *  induction_stretching_ajouter().
  */
 void Terme_Source_Induction_stretching::ajouter_source(DoubleTab& secmem) const
 {
   const DoubleTab& b = equation_mag_.valeur().inconnue().valeurs();  // (nb_elem, nb_compos_b)
-  const DoubleTab& gu = gradient_vitesse_->valeurs();               // (nb_elem, dim*dim)
+  const DoubleTab& gu = gradient_vitesse_->valeurs();               // (nf_tot + ne*dim, comp)
 
-  // The contraction itself lives in a header-only, unit-testable function: see
-  // Induction_stretching_kernel.h.
-  induction_stretching_ajouter(b, gu, nb_compos_b_, dim_, secmem);
+  // Per-element gradient, laid out as the kernel expects: g(e, i*dim+j) = du_i/dx_j.
+  const Domaine_VF& dvf = ref_cast(Domaine_VF, equation_mag_->domaine_dis());
+  const int ne = dvf.nb_elem();
+  const int nf_tot = dvf.nb_faces_tot();
+  const int D = dim_;
+  DoubleTab g(ne, D * D);
+  for (int e = 0; e < ne; e++)
+    for (int i = 0; i < D; i++)
+      for (int j = 0; j < D; j++)
+        g(e, i * D + j) = gu(nf_tot + e * D + j, i);
+
+  // DBG
+  {
+    static int dbg = 0;
+    if (dbg++ < 1 && Process::me() == 0)
+      {
+        const DoubleTab& gp = gradient_vitesse_->passe();
+        const Champ_Inc_base& vel = equation_mag_.valeur().vitesse_transportante();
+        const DoubleTab& vv = vel.valeurs();
+        Cerr << "DBG nf_tot=" << nf_tot << " ne=" << ne << " D=" << D
+             << " gu.rows=" << gu.dimension_tot(0) << " gu.cols=" << (gu.nb_dim() > 1 ? gu.dimension(1) : 1)
+             << " vel.r=" << vv.dimension_tot(0) << " vel.c=" << (vv.nb_dim() > 1 ? vv.dimension(1) : 1) << finl;
+        for (int r = 0; r < 8 && r < vv.dimension_tot(0); r++) Cerr << "  vel(" << r << ",0)=" << vv(r, 0) << finl;
+        // center element 119 = (i=7,j=7) -> x=y=0.46875
+        for (int e = 0; e < ne; e += 119)
+          {
+            Cerr << "  elem " << e << ": doc(u_i/dx_j=gu(nf+eD+j,i)):";
+            for (int i = 0; i < D; i++)
+              for (int j = 0; j < D; j++) Cerr << " " << gu(nf_tot + e * D + j, i);
+            Cerr << "  || passe:";
+            for (int i = 0; i < D; i++)
+              for (int j = 0; j < D; j++) Cerr << " " << gp(nf_tot + e * D + j, i);
+            Cerr << finl;
+          }
+      }
+  }
+
+  // Physical rate S_i = sum_j b_j * du_i/dx_j. The contraction itself lives in
+  // a header-only, unit-testable function: see Induction_stretching_kernel.h.
+  DoubleTrav s(secmem);
+  s = 0.;
+  induction_stretching_ajouter(b, g, nb_compos_b_, D, s);
+
+  // secmem is the *integrated* right-hand side of the scheme: a volumetric
+  // source must be weighted by the cell measure (porosity * volume) before being
+  // accumulated — this is the convention used by the kernel element sources
+  // (e.g. Terme_Source_Decroissance_Radioactive_Elem_PolyMAC_CDO). Without the
+  // weight the source is effectively divided by the cell volume in the update,
+  // so the explicit integration of db/dt = b explodes (residual ~1e35).
+  const DoubleVect& poro = equation_mag_->milieu().porosite_elem();
+  const DoubleVect& vol = dvf.volumes();
+  const int nb_elem = secmem.dimension(0), nb_comp = secmem.dimension(1);
+  for (int e = 0; e < nb_elem; e++)
+    for (int i = 0; i < nb_comp; i++)
+      secmem(e, i) += poro(e) * vol(e) * s(e, i);
 }
 
 DoubleTab& Terme_Source_Induction_stretching::ajouter(DoubleTab& secmem) const
