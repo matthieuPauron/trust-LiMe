@@ -23,6 +23,7 @@ The module has **two** kinds of tests:
 | `unit_magnetic_field.cpp` | equation keyword, `domaine_application() == "Thermique"` (the BC-compatibility contract), `Pb_MHD` equation count, out-of-range index |
 | `unit_induction_source.cpp` | `induction_stretching` keyword; `readOn()` consumes its own braces (regression); unknown keyword is rejected |
 | `unit_induction_kernel.cpp` | the arithmetic of \f$S = (b\cdot\nabla)u\f$: index layout, single-component case, accumulation, element-wise application |
+| `unit_mhd_postraitement_kernel.cpp` | the arithmetic of the post-treatment fields: \f$|b|^2\f$, energy, cyclotron, \f$u\cdot b\f$, Poynting, curl/helicity index order, \f$Rm\f$, \f$Pm\f$ |
 
 `unit_induction_kernel.cpp` deserves a special mention: the kernel velocity
 gradient stores component \f$i\cdot\mathrm{dim}+j\f$ for
@@ -60,7 +61,11 @@ single category**. Following the TRUST validation-form layout
 (`Rapports_automatiques/<Category>/<FormName>/<FormName>.ipynb`), the standalone
 magnetic folder ships one *form folder* per dataset, each containing
 `<FormName>.ipynb` + `src/<case>.data` (`MagneticStandalone/Invariance/`,
-`MagneticStandalone/Diffusion/`, …, `MagneticStandalone/ErrorBadBc/`). The
+`MagneticStandalone/Diffusion/`, …, `MagneticStandalone/ErrorBadBc/`).
+Each form exists **in 2D and in 3D**: `MagneticStandalone3D/<FormName>/` is the
+3D twin of `MagneticStandalone/<FormName>/` (same physics, same assertions;
+the dataset gains `dimension 3`, three-component vectors, and `Polyedriser dom`
+after `Mailler` — PolyMAC_MPFA needs polyhedral cells in 3D). The
 `.data` files are **computations**, not tests — a dataset such as `diffusion`
 feeds both a Validation test (decay against the analytic solution, in
 `Diffusion/Diffusion.ipynb`) and, together with `diffusion_refined`, a
@@ -135,9 +140,9 @@ so no `.med` file is required and the cases can be run from a clean checkout.
 | `advection.data` | Gaussian bump advected by \f$u = (0.2, 0)\f$ | Validation – separate effects | peak conservation + transport direction | convection operator, `vitesse_magnetique` wiring |
 | `steady_state.data` | equilibrium \f$b = y\f$ with **non-uniform** \f$\eta(x) = 1+x\f$ | Validation – separate effects | exact steady state | spurious source, mis-assembled diffusion, functional-\f$\eta\f$ reading path |
 | `varying_velocity.data` | **spatially varying** velocity \f$u = (-y, x)\f$, uniform \f$b\f$ | Verification | exact invariant | `Champ_Don → Champ_Inc` transfer onto faces, wrong velocity components |
-| `source_stretching.data` | M1 source \f$S = (b\cdot\nabla)u\f$, \f$u = (x, 0)\f$ | Validation – separate effects | \f$b(t) = B_0 e^{t}\f$ | source magnitude, sign, gradient-index order |
+| `source_stretching.data` | M1 source \f$S = (b\cdot\nabla)u\f$, \f$u = (x, -y)\f$ (div-free) | Validation – separate effects | \f$b(t) = B_0 e^{t}\f$ | source magnitude, sign, gradient-index order |
 | `error_missing_eta.data` | no `diffusivite_magnetique` | Verification | must fail cleanly | required-keyword diagnostics |
-| `error_bad_nbcomposantes.data` | `nb_composantes 7` in 2D | Verification | must fail cleanly | range validation |
+| `error_bad_nbcomposantes.data` | `nb_composantes 7` in 2D (also invalid in 3D) | Verification | must fail cleanly | range validation |
 | `error_bad_bc.data` | unknown CL keyword | Verification | must fail cleanly | keyword error reporting |
 
 The category column tags the **test** (assertion set), not the dataset: e.g.
@@ -147,6 +152,12 @@ and the `Diffusion` form (coarse bound), while the decay test lives in
 
 Design choices worth knowing:
 
+- **Every case has a 3D twin** under `MagneticStandalone3D/<FormName>/`. The 3D
+  forms keep the same physics and assertions; the datasets differ only in
+  `dimension 3`, three-component vectors/probes and `Polyedriser dom` after
+  `Mailler`. Meshes keep the 2D resolution only in the direction that matters
+  (e.g. the diffusion mode direction) and stay coarse elsewhere, so the 3D runs
+  are affordable.
 - **`nb_composantes 1`** in all cases — the natural reduction of
   \f$\nabla\cdot b = 0\f$ for a purely transverse field keeps the datasets
   simple. The multi-component (vector) unknown is a later phase (the
@@ -166,6 +177,32 @@ Design choices worth knowing:
 - **Negative cases are run directly** with the `trust` command rather than
   through `runCases()` (which would abort the notebook); each negative form
   (`Error*`) asserts a non-zero exit code and a non-empty diagnostic.
+
+---
+
+## `Postraitement_fields` — derived MHD post-treatment fields
+
+One form per post-treatment field of
+@ref TrustLiMe_model "Problems, equations and boundary conditions" §4bis, each
+with one 1-probe dataset asserting the analytic value of the field on a
+uniform (or exactly-linear) configuration:
+
+| Form | Field | Configuration | Checked value |
+|---|---|---|---|
+| `EnergieMagnetique` | `energie_magnetique` | $b_0 = 2.5$, $\mu_0 = 2$ | $6.25/4 = 1.5625$ |
+| `PulsationCyclotronique` | `pulsation_cyclotronique` | $b_0 = 2.5$, $q/m = 2$ (keyword) | $5$ |
+| `VecteurPoynting` | `vecteur_poynting` | $b = (1,2)$, $u = (3,4)$, $\mu_0 = 1$ | $S = (4, -2)$ |
+| `HeliciteCroisee` | `helicite_croisee` | $b = (1,2)$, $u = (3,4)$ | $u\cdot b = 11$ |
+| `HeliciteCinetique` | `helicite_cinetique` | 3D, $u = (y, z, x)$ (exactly linear) | $-(x{+}y{+}z)$ at $(0.375)^3$ |
+| `NombreDeReynoldsMagnetique` | `nombre_de_reynolds_magnetique` | 10×10 mesh, $u = (3,0)$, $\eta = 2$ | $3\cdot 0.1/2 = 0.15$ |
+| `NombreDePrandtlMagnetique` | `nombre_de_prandtl_magnetique` | $\mu = 2$, $\rho = 4$, $\eta = 0.25$ | $\nu/\eta = 2$ |
+
+Categories (ASN 28): *Validation – separate effects* — each form checks one
+physical convention (formula/sign/normalisation) against a closed-form value.
+The forms exercise both the post-processing plumbing
+(`creer_champ`/`has_champ`/`get_champ`, probes through `Postraitement`) and the
+elementwise arithmetic — which is pinned harder (layout conventions) by
+`unit_mhd_posttraitement_kernel.cpp` without a mesh at all.
 
 ---
 

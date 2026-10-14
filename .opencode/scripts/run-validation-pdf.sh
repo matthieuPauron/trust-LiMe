@@ -2,7 +2,8 @@
 # run-all MagneticStandalone validation notebooks, export each to PDF, and
 # concatenate the PDFs into a single report at the trust-LiMe repository root.
 repo=/home/matthieu/Development/trust-LiMe
-nbroot=$repo/share/Validation/Rapports_automatiques/MagneticStandalone
+# 2D first, then 3D: forms are visited in category order.
+cats="MagneticStandalone MagneticStandalone3D"
 work=/tmp/opencode/lime_pdf
 outdir=$work/notebooks
 pdfdir=$work/pdf
@@ -31,31 +32,33 @@ log "shell=$shell_name"
 
 rc_total=0
 pdfs=()
-for nb in "$nbroot"/*/*.ipynb; do
-  [ -f "$nb" ] || continue
-  form=$(basename "$(dirname "$nb")")
-  log "=== $form"
-  jupyter nbconvert --to notebook --execute \
-    --output-dir "$outdir" "$nb" >> "$runlog" 2>&1
-  r=$?
-  if [ $r -ne 0 ]; then
-    log "FAILED (execute): $form"
-    rc_total=1
-    continue
-  fi
-  done_nb="$outdir/$(basename "$nb")"
-  jupyter nbconvert --to pdf --output-dir "$pdfdir" "$done_nb" >> "$runlog" 2>&1
-  r=$?
-  if [ $r -ne 0 ]; then
-    log "FAILED (pdf): $form"
-    rc_total=1
-    continue
-  fi
-  pdf="$pdfdir/${form}.pdf"
-  produced="$pdfdir/$(basename "$nb" .ipynb).pdf"
-  if [ "$produced" != "$pdf" ]; then mv "$produced" "$pdf"; fi
-  pdfs+=("$pdf")
-  log "OK: $form -> $pdf"
+for cat in $cats; do
+  nbroot=$repo/share/Validation/Rapports_automatiques/$cat
+  for nb in "$nbroot"/*/*.ipynb; do
+    [ -f "$nb" ] || continue
+    form=$(basename "$(dirname "$nb")")
+    # unique output name: form names repeat across categories (e.g. Invariance)
+    tag="${cat}_${form}"
+    log "=== $cat/$form"
+    jupyter nbconvert --to notebook --execute \
+      --output-dir "$outdir" --output "$tag" "$nb" >> "$runlog" 2>&1
+    r=$?
+    if [ $r -ne 0 ]; then
+      log "FAILED (execute): $cat/$form"
+      rc_total=1
+      continue
+    fi
+    jupyter nbconvert --to pdf --output-dir "$pdfdir" --output "$tag" \
+      "$outdir/${tag}.ipynb" >> "$runlog" 2>&1
+    r=$?
+    if [ $r -ne 0 ]; then
+      log "FAILED (pdf): $cat/$form"
+      rc_total=1
+      continue
+    fi
+    pdfs+=("$pdfdir/${tag}.pdf")
+    log "OK: $cat/$form -> $pdfdir/${tag}.pdf"
+  done
 done
 
 log "--- concatenating ${#pdfs[@]} PDFs"

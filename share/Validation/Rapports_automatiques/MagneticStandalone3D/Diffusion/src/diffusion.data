@@ -1,0 +1,100 @@
+# ============================================================================= #
+# Case B (3D) : decay of a magnetic Fourier mode  (TRUST-LiMe standalone MHD) #
+# ============================================================================= #
+# 3D counterpart of MagneticStandalone/Diffusion. Pure diffusion of a        #
+# transverse magnetic mode with Dirichlet conditions in Y and zero-flux      #
+# conditions in X and Z:                                                    #
+#     b(x,y,z,t) = A sin(k y) exp(-eta k^2 t) ,  k = pi / Ly                #
+# The mode is uniform in X and Z, so the decay rate eta*pi^2 is unchanged    #
+# with respect to the 2D case. Only component 0 transported; u = 0.         #
+# Exact analytic solution known; decay rate measures discretised eta.       #
+# ============================================================================= #
+dimension 3
+Pb_MHD pb
+Domaine dom
+
+Mailler dom
+{
+    Pave slab
+    {
+        # keep the 2D resolution along the mode direction (Y), coarse in X/Z #
+        Origine              0.  0.  0.
+        Nombre_de_Noeuds     9  65  9
+        Longueurs            1.  1.  1.
+    }
+    {
+        Bord gauche   X = 0.    0. <= Y <= 1.  0. <= Z <= 1.
+        Bord droite   X = 1.    0. <= Y <= 1.  0. <= Z <= 1.
+        Bord bas      Y = 0.    0. <= X <= 1.  0. <= Z <= 1.
+        Bord haut     Y = 1.    0. <= X <= 1.  0. <= Z <= 1.
+        Bord devant   Z = 0.    0. <= X <= 1.  0. <= Y <= 1.
+        Bord derriere Z = 1.    0. <= X <= 1.  0. <= Y <= 1.
+    }
+}
+
+# PolyMAC_MPFA works on polyhedra: convert the Pave hexahedra (3D only) #
+Polyedriser dom
+
+Polymac_p0 dis
+
+Associate pb dom
+
+Schema_Euler_Implicite sch
+Read sch
+{
+    tinit 0.
+    tmax 1.
+    dt_max 0.01
+    facsec 1e6
+    facsec_max 1e6
+    solveur implicite { solveur petsc cli { } }
+}
+
+Associate pb sch
+Discretize pb dis
+
+Read pb
+{
+    nb_composantes 1
+    fluide_incompressible
+    {
+        mu      Champ_Uniforme 1 1.0
+        rho     Champ_Uniforme 1 1.0
+        lambda  Champ_Uniforme 1 1.0
+        Cp      Champ_Uniforme 1 1.0
+        beta_th Champ_Uniforme 1 0.0
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        diffusivite_magnetique Champ_Uniforme 1 0.05
+        # no vitesse_magnetique -> u = 0, pure diffusion #
+
+        diffusion  { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            gauche   Neumann_Paroi_adiabatique
+            droite   Neumann_Paroi_adiabatique
+            devant   Neumann_Paroi_adiabatique
+            derriere Neumann_Paroi_adiabatique
+            bas      Temperature_imposee_paroi Champ_front_uniforme 1 0.
+            haut     Temperature_imposee_paroi Champ_front_uniforme 1 0.
+        }
+        initial_conditions { magnetic_field Champ_Fonc_xyz dom 1 sin(pi*y) }
+  }
+
+  Postraitement
+  {
+    Sondes
+    {
+      sonde_y025 grav magnetic_field Periode 1e-6 Points 1 0.5 0.25 0.5
+      sonde_y050 grav magnetic_field Periode 1e-6 Points 1 0.5 0.50 0.5
+      sonde_y075 grav magnetic_field Periode 1e-6 Points 1 0.5 0.75 0.5
+    }
+  }
+
+}
+
+Solve pb

@@ -28,7 +28,8 @@ TRUST env), NOT the OpenCode MCP venv. Run everything in one shell invocation:
 
 Notebooks (under share/Validation/Rapports_automatiques/): one
 `Rapports_automatiques/<Category>/<FormName>/<FormName>.ipynb` per test case.
-The standalone magnetic forms are `MagneticStandalone/*/`:
+The standalone magnetic forms are `MagneticStandalone/*/` (2D) and
+`MagneticStandalone3D/*/` (the 3D twins, same form names):
 `Invariance/`, `Diffusion/`, `DiffusionRefined/`, `Advection/`,
 `SteadyState/`, `VaryingVelocity/`, `SourceStretching/`, and the
 negative `Error*` forms.

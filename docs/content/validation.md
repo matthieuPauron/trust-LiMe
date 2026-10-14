@@ -9,13 +9,15 @@ Each case lives in its own folder under
 
 ```
 share/Validation/Rapports_automatiques/
-├── MagneticStandalone/             # standalone induction equation
+├── MagneticStandalone/             # standalone induction equation (2D)
 │   ├── Invariance/                 # one validation form per test case
 │   │   ├── Invariance.ipynb        # notebook named after its form folder
 │   │   └── src/invariance.data
 │   ├── Diffusion/  DiffusionRefined/  Advection/
 │   ├── SteadyState/  VaryingVelocity/  SourceStretching/
 │   └── ErrorMissingEta/  ErrorBadNbcomposantes/  ErrorBadBc/
+├── MagneticStandalone3D/           # the same 10 forms, one-to-one, in 3D
+│   └── <FormName>/…                # (Polyedriser dom after Mailler — see below)
 ├── HartmannFlow/             # placeholder for the coupled MHD case
 │   ├── HartmannFlow.ipynb
 │   └── src/
@@ -23,6 +25,12 @@ share/Validation/Rapports_automatiques/
     ├── Shercliff_3D_duct.ipynb
     └── src/
 ```
+
+The `MagneticStandalone3D` forms differ from their 2D counterpart only in the
+dataset: `dimension 3`, three-component vector data, three-coordinate probes,
+and **`Polyedriser dom`** right after `Mailler` (PolyMAC_MPFA requires polyhedral
+cells in 3D; the `Pave` hexahedra are converted in place). The notebooks and the
+asserted tolerances are shared with the 2D forms.
 
 Four formatting rules are enforced by `.opencode/scripts/check-validation.sh`
 (`/check-validation`): the notebook lives at the form root only —
@@ -57,8 +65,9 @@ dataset into `build/<dataset name>/` where the results (`.son` probes, `.dt_ev`,
 ### PDF report
 
 Each form can be exported to PDF and the per-form PDFs concatenated into a
-single report at the repository root (`MagneticStandalone_validation.pdf`),
-via `.opencode/scripts/run-validation-pdf.sh` (execute → `--to pdf` →
+single report at the repository root (`MagneticStandalone_validation.pdf`,
+20 forms: the 10 2D then the 10 3D), via
+`.opencode/scripts/run-validation-pdf.sh` (execute → `--to pdf` →
 `pdfunite`). The report is a generated artifact and stays untracked; the rule
 lives in the `trust-lime-notebooks` skill ("PDF export & the repository
 report").

@@ -14,9 +14,10 @@
 #                            kernel archive name from the mode, so a
 #                            module_semi_optim cannot link against an _opt kernel
 #   3. unit-tests.sh        - the suites that need the standard kernel
-#   4. validation notebooks     - MagneticStandalone/*/<FormName>.ipynb (one per
-#                            case), exported to PDF and concatenated into
-#                            MagneticStandalone_validation.pdf at the repo root
+#   4. validation notebooks     - MagneticStandalone{,3D}/*/<FormName>.ipynb
+#                            (one per case, 2D then 3D), exported to PDF and
+#                            concatenated into MagneticStandalone_validation.pdf
+#                            at the repo root
 #
 # Usage: bash .opencode/scripts/after-trust-optim.sh [--once] [--mode=optim|semi_optim]
 #        --once  check immediately instead of polling every minute
@@ -112,7 +113,7 @@ if [[ "$mode" == "semi_optim" ]]; then
 else
   module_target=module_optim
 fi
-say "STEP 2/4: make $module_target (slow: HDD, 4 threads)"
+say "STEP 2/4: make $module_target (large kernel: slow)"
 source ./env_trust_LiMe.sh > /tmp/opencode/env_module.log 2>&1
 make "$module_target" > /tmp/opencode/module_build.log 2>&1
 rc=$?

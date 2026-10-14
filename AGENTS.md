@@ -32,14 +32,28 @@ Always run from the repository root. The TRUST kernel must already be built.
 | `make check_optim` / `make ctest_optim` | Baltik / ctest test suites (also `_semi_optim`, `_debug`). |
 | `make help` | List every target. |
 
-This machine is a 4-thread ThinkPad T430s with an HDD: builds are slow. Prefer
-`module_*` targets and give the shell a generous timeout.
+### Dev hosts
+
+Two machines are used; both matter when judging build time.
+
+| Host | CPU | Storage | Practical effect |
+|---|---|---|---|
+| Laptop (T430s class) | 4 threads | HDD | Slowest; full kernel builds hurt. Prefer `module_*` and a generous timeout. |
+| Workstation (`matthieu-precisiont5610`) | AMD Ryzen 5 5600X, 6 cores / 12 threads, 15 GiB RAM | root on Samsung 870 EVO SSD (`sda`, 320 GB, ~75 GB free); the 1.8 TB WD (`sdb`) is an external HDD | Faster, but full kernel builds are still long. Keep preferring `module_*`. |
+
+Kernel builds are slow on both hosts (the kernel is large), so prefer `module_*`
+targets and give the shell a generous timeout.
+
+Current toolchain on the workstation: OpenCode v2.0.28
+(`~/.opencode/bin/opencode`), Hermes Agent v0.21.7 (git install in `~/.hermes`),
+TRUST kernel built in the sibling checkout `../trust-code`.
 
 ## Getting diagnostics fast
 
 OpenCode V2 supports LSP, but it is deliberately disabled for this repo (see
-`opencode.jsonc`): on this 4-thread HDD laptop, clangd would index the full
-kernel. The fast path is the compiler directly; use it instead of waiting for a
+`opencode.jsonc`): clangd would index the full TRUST kernel
+(`compile_commands.json` is ~25 MB), which is not worth the cost on either dev
+host. The fast path is the compiler directly; use it instead of waiting for a
 full build:
 
 ```bash
@@ -94,13 +108,41 @@ Build output is filtered by the `rtk` plugin, and global `tool_output` limits
 were raised so long compile errors are not clipped. Keep the primary loop:
 `syntax-check.sh` → `make module_semi_optim` → validate.
 
+## Hermes Agent (unattended / scheduled runs)
+
+Hermes Agent (`~/.hermes`, git install) drives OpenCode as a **delegated coding
+worker** using its bundled `opencode` skill (`opencode run` in this repo).
+OpenCode stays the interactive driver; Hermes only adds scheduling and delivery.
+Set up 2026-10-13, on the workstation only — the T430s has no Hermes install.
+
+- Project binding: `hermes project show trust-lime` (primary = this repo;
+  second folder = `../trust-code`).
+- Scheduled job: `trust-lime-arith-nightly` (`7bd53fa53065`), `0 3 * * *`, runs
+  `~/.hermes/scripts/trust-lime-arith-tests.sh` — which wraps
+  `.opencode/scripts/unit-tests.sh --arith-only` — and delivers to `local`
+  (`--failure-deliver local`, so failures do not spam a channel).
+  Inspect with `hermes cron list` / `hermes cron runs <id>`.
+- **Pin a working model on every Hermes-driven run.** On 2026-10-13 the NVIDIA
+  NIM endpoint hung on `/v1/chat/completions` for this account (while
+  `/v1/models` still answered), which also breaks the OpenCode default
+  (`nvidia/moonshotai/kimi-k3`). The cron job is therefore pinned with
+  `--provider gemini --model gemini-3.1-flash-lite`, and any `opencode run`
+  should pass `--model google/gemini-3.1-flash-lite` while that persists.
+- `opencode` must resolve on the **gateway's** `PATH`, not just an interactive
+  shell: `~/.local/bin/opencode -> ~/.opencode/bin/opencode` provides that.
+- Emergency stop for all scheduled/gateway work: `hermes pause`.
+- No local models are used here — cloud providers only.
+
 ## Validation (Jupyter)
 
 Notebooks live under `share/Validation/Rapports_automatiques/` and must run
 inside the **TRUST Python environment** (`venv_trust` + TRUST env), not the
 OpenCode venv. One validation form per test case, at
 `<Category>/<FormName>/<FormName>.ipynb`; current forms: `MagneticStandalone/*/`
-(e.g. `MagneticStandalone/Diffusion/Diffusion.ipynb`). Use `/validate`.
+(2D) and `MagneticStandalone3D/*/` (the 3D twins — same form names; 3D
+datasets add `Polyedriser dom` after `Mailler`, PolyMAC_MPFA needs polyhedra
+in 3D). Example: `MagneticStandalone/Diffusion/Diffusion.ipynb`. Use
+`/validate`.
 
 **Formatting rules — enforced by `.opencode/scripts/check-validation.sh`
 (`/check-validation`):** the `.ipynb` lives at the form root only
@@ -151,16 +193,25 @@ append new findings there.
 - The module solves the **standalone** magnetic induction equation
   (see `docs/content/model.md` and `PLAN_magnetic_standalone.md`).
 - Validation cases: `share/Validation/Rapports_automatiques/MagneticStandalone/`
-  (self-contained `Mailler`/`Pave` meshes, analytic + invariant checks).
-  See `docs/content/test_cases.md`.
+  (2D) and `MagneticStandalone3D/` (the 3D twins, same form names) —
+  self-contained `Mailler`/`Pave` meshes (3D uses `Polyedriser dom`),
+  analytic + invariant checks. See `docs/content/test_cases.md`.
 - Kernel and module **are built** (`trust-lime`, `trust-lime_semi_opt`,
   `trust-lime_opt` exist at the repo root) — the historical `libparaconf`
   configure blocker is resolved.
-- **All 10 MagneticStandalone validation notebooks pass** (checked 2026-10-13)
-  and are concatenated into `MagneticStandalone_validation.pdf` at the repo
-  root by `.opencode/scripts/run-validation-pdf.sh` (rc=0). The
-  `VectorComponents` form was removed: the module is scalar-only
-  (`nb_composantes = 1`), multi-component goes with M3.
+- **All 20 MagneticStandalone validation notebooks pass in 2D and 3D**
+  (checked 2026-10-14) and are concatenated into a single
+  `MagneticStandalone_validation.pdf` at the repo root by
+  `.opencode/scripts/run-validation-pdf.sh` (rc=0). Multi-component
+  `nb_composantes` works and is exercised by the post-treatment forms
+  (`vecteur_poynting`, `helicite_croisee`); the old `VectorComponents` form
+  remains removed.
+- **Post-treatment fields** (cyclotron pulsation, magnetic energy, Poynting
+  vector, crossed/kinetic helicity, magnetic Reynolds and Prandtl numbers) are
+  exposed by the equation via `creer_champ`/`has_champ`/`get_champ` with a
+  field class `src/Champ_Fonc_MHD.{h,cpp}` — validation forms live in
+  `share/Validation/Rapports_automatiques/Postraitement_fields/<FormName>/`
+  (one form per field). The recipe lives in `KERNEL_REUSE_NOTES.md` §8.
 - The `induction_stretching` source needs the velocity face field's
   **auxiliary element variables** or `grad_u` reads garbage — see
   `KERNEL_REUSE_NOTES.md` ("Getting a velocity gradient for free").
