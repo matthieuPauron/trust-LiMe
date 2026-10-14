@@ -74,7 +74,18 @@ if base is None and entries:
     base = args_of(best)
 base = base or ["g++"]
 
-out = []
+# The recorded compiler is usually TRUST's mpich wrapper
+# ($TRUST/lib/src/LIBMPI/mpich/bin/mpicxx), which injects the MPI include dir
+# implicitly.  This script swaps it for a plain compiler, so restore that
+# include path explicitly, otherwise mpi.h is not found (e.g. OverlapDEC.hxx).
+mpi_inc = []
+comp = base[0]
+if comp and ("mpicxx" in comp or "mpic++" in comp or "mpicc" in comp):
+    cand = os.path.join(os.path.dirname(os.path.dirname(comp)), "include")
+    if os.path.isdir(cand):
+        mpi_inc.append("-I" + cand)
+
+out = list(mpi_inc)
 skip_next = False
 for i, tok in enumerate(base):
     if i == 0:

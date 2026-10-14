@@ -30,8 +30,8 @@
   // "formatter": true,
 
   // LSP: explicitly off in this repo. clangd would index the full TRUST kernel
-  // (compile_commands.json ~25MB) on a 4-thread HDD laptop; syntax-check.sh is
-  // the primary diagnostic path (see AGENTS.md). Remove or flip to enable.
+  // (compile_commands.json ~25MB); syntax-check.sh is the primary diagnostic
+  // path (see AGENTS.md). Remove or flip to enable.
   "lsp": { "clangd": { "disabled": true } },
 
   "permissions": [
