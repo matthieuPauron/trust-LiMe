@@ -1,0 +1,87 @@
+# ============================================================================= #
+# Post-treatment field : nombre_de_reynolds_magnetique  (TRUST-LiMe MHD) #
+# ============================================================================= #
+# Local (cell) magnetic Reynolds number Rm = |u| L_e / eta, with L_e the     #
+# cell size (the magnetic twin of the kernel Reynolds_maille, at elements).  #
+# Uniform u = (3, 0), eta = 2, unit square, 10x10 cells: L_e = 0.1 =>        #
+# Rm = 3 * 0.1 / 2 = 0.15 everywhere.                                        #
+# ============================================================================= #
+dimension 2
+Pb_MHD pb
+Domaine dom
+
+Mailler dom
+{
+    Pave pave
+    {
+        Origine              0.  0.
+        Nombre_de_Noeuds     11  11
+        Longueurs            1.  1.
+    }
+    {
+        Bord gauche   X = 0.    0. <= Y <= 1.
+        Bord droite   X = 1.    0. <= Y <= 1.
+        Bord bas      Y = 0.    0. <= X <= 1.
+        Bord haut     Y = 1.    0. <= X <= 1.
+    }
+}
+
+Polymac_p0 dis
+
+Associate pb dom
+
+Schema_Euler_Implicite sch
+Read sch
+{
+    tinit 0.
+    tmax 0.05
+    dt_max 0.02
+    facsec 1e6
+    facsec_max 1e6
+    solveur implicite { solveur petsc cli { } }
+}
+
+Associate pb sch
+Discretize pb dis
+
+Read pb
+{
+    nb_composantes 1
+    fluide_incompressible
+    {
+        mu      Champ_Uniforme 1 1.0
+        rho     Champ_Uniforme 1 1.0
+        lambda  Champ_Uniforme 1 1.0
+        Cp      Champ_Uniforme 1 1.0
+        beta_th Champ_Uniforme 1 0.0
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        diffusivite_magnetique Champ_Uniforme 1 2.0
+        vitesse_magnetique     Champ_Uniforme 2 3. 0.
+
+        diffusion  { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            gauche  Neumann_Paroi_adiabatique
+            droite  Neumann_Paroi_adiabatique
+            bas     Neumann_Paroi_adiabatique
+            haut    Neumann_Paroi_adiabatique
+        }
+        initial_conditions { magnetic_field Champ_Uniforme 1 1.0 }
+  }
+
+  Postraitement
+  {
+    Sondes
+    {
+      sonde_rm grav nombre_de_reynolds_magnetique Periode 1e-6 Points 1 0.45 0.55
+    }
+  }
+
+}
+
+Solve pb

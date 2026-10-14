@@ -192,7 +192,58 @@ subclasses of the kernel CLs registered under magnetic keyword names.
 
 ---
 
+## 4bis. Post-treatment fields
+
+The equation exposes the following **derived MHD fields**, computed on demand
+from the solved magnetic field `b` and the frozen velocity `u` (element P0
+fields, same support as `magnetic_field`). They are registered through the
+equation's `creer_champ` / `has_champ` / `get_champ` hooks, so they are usable
+by name in `Postraitement` (`champs`, `Sondes`, `Statistiques`) like any
+kernel field:
+
+| Post field | Nature | Formula | Validity |
+|---|---|---|---|
+| `pulsation_cyclotronique` | scalar | \f$\omega_c = (q/m)\,|b|\f$ | any |
+| `energie_magnetique` | scalar | \f$e_m = |b|^2 / (2\mu_0)\f$ | any |
+| `vecteur_poynting` | vector | \f$S = \mu_0^{-1}\,(|b|^2 u - (u\cdot b)\,b)\f$ | needs the velocity |
+| `helicite_croisee` | scalar | \f$h_c = u\cdot b\f$ | needs the velocity |
+| `helicite_cinetique` | scalar | \f$h_k = u\cdot(\nabla\times u)\f$ | \f$\equiv 0\f$ in 2D (out-of-plane vorticity) |
+| `nombre_de_reynolds_magnetique` | scalar | \f$Rm = |u|\,L_e/\eta\f$, \f$L_e = V_e^{1/d}\f$ | needs the velocity |
+| `nombre_de_prandtl_magnetique` | scalar | \f$Pm = \nu/\eta\f$ | — |
+
+Two equation keywords tune them (no influence on the transport itself):
+
+| Keyword | Type | Default | Used by |
+|---|---|---|---|
+| `mu0` | float | \f$1\f$ | `energie_magnetique`, `vecteur_poynting` |
+| `rapport_charge_masse` | float | \f$e/m_e = 1.75882001076\times 10^{11}\f$ C/kg (positron charge, electron mass) | `pulsation_cyclotronique` |
+
+Conventions and deferred scope:
+
+- The **magnetic Reynolds number** is the *local* number on the cell (the
+  magnetic twin of the kernel `Reynolds_maille`, but at elements):
+  \f$Rm_e = |u_e|\,L_e/\eta_e\f$ with \f$L_e = V_e^{1/d}\f$ the cell size. A
+  *global* number is a user-supplied value (as for the hydraulic Re); supply it
+  yourself with a `Definition_champs`/`Transformation` if needed.
+- **Crossed helicity** and **Poynting** need the velocity: they are computed
+  from the frozen `vitesse_magnetique` (zero if not specified).
+- Fields in a *vector* magnetic equation (`nb_composantes 2` or more) include
+  every transported component; the untransported components act as \f$0\f$
+  (scalar model: \f$b\f$ has one component).
+- Not implemented (need new discretisation machinery): `tension_magnetique`
+  (needs \f$\\nabla b\f$), `helicite_magnetique` and `helicite_generalisee`
+  (need a vector-potential solve, M3).
+
+Implementation: one field class, `src/Champ_Fonc_MHD.{h,cpp}` (a
+`Champ_Fonc_Elem_PolyMAC_CDO` whose `mettre_a_jour()` dispatches on the field
+name); the per-cell formulas are factored into the unit-testable,
+framework-free `src/MHD_posttraitement_kernel.h`. Validation examples live in
+`share/Validation/Rapports_automatiques/Postraitement_fields/`.
+
+---
+
 ## 6. Known limitations / deferred work
+
 
 1. **Gauss law is not enforced.** \f$\nabla\cdot b = 0\f$ is assumed, not
    projected.

@@ -1,0 +1,88 @@
+# ============================================================================= #
+# Post-treatment field : pulsation_cyclotronique  (TRUST-LiMe standalone MHD) #
+# ============================================================================= #
+# omega_c = (q/m) |b|. Uniform b = 2.5 and rapport_charge_masse = 2.0        #
+# (overriding the default e/m_e): omega_c = 2. * 2.5 = 5. everywhere.        #
+# ============================================================================= #
+dimension 2
+Pb_MHD pb
+Domaine dom
+
+Mailler dom
+{
+    Pave pave
+    {
+        Origine              0.  0.
+        Nombre_de_Noeuds     11  11
+        Longueurs            1.  1.
+    }
+    {
+        Bord gauche   X = 0.    0. <= Y <= 1.
+        Bord droite   X = 1.    0. <= Y <= 1.
+        Bord bas      Y = 0.    0. <= X <= 1.
+        Bord haut     Y = 1.    0. <= X <= 1.
+    }
+}
+
+Polymac_p0 dis
+
+Associate pb dom
+
+Schema_Euler_Implicite sch
+Read sch
+{
+    tinit 0.
+    tmax 0.05
+    dt_max 0.02
+    facsec 1e6
+    facsec_max 1e6
+    solveur implicite { solveur petsc cli { } }
+}
+
+Associate pb sch
+Discretize pb dis
+
+Read pb
+{
+    # Scalar model: the module transports a single magnetic component #
+    nb_composantes 1
+    fluide_incompressible
+    {
+        mu      Champ_Uniforme 1 1.0
+        rho     Champ_Uniforme 1 1.0
+        lambda  Champ_Uniforme 1 1.0
+        Cp      Champ_Uniforme 1 1.0
+        beta_th Champ_Uniforme 1 0.0
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        diffusivite_magnetique Champ_Uniforme 1 1.0
+        # q/m used by the pulsation_cyclotronique field (default e/m_e) #
+        rapport_charge_masse 2.0
+
+        diffusion  { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            gauche  Neumann_Paroi_adiabatique
+            droite  Neumann_Paroi_adiabatique
+            bas     Neumann_Paroi_adiabatique
+            haut    Neumann_Paroi_adiabatique
+        }
+        # uniform scalar field b0 = 2.5 : omega_c = (q/m) b0 = 5. #
+        initial_conditions { magnetic_field Champ_Uniforme 1 2.5 }
+  }
+
+  Postraitement
+  {
+    Sondes
+    {
+      sonde_omega grav pulsation_cyclotronique Periode 1e-6 Points 1 0.45 0.55
+    }
+  }
+
+}
+
+Solve pb

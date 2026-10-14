@@ -305,6 +305,55 @@ Things worth knowing if you add tests to a **baltik module**:
 
 ---
 
+## 8. Registering a post-treatment field (Champ_Fonc) on an equation
+
+The recipe to expose a derived field (e.g. `energie_magnetique`) so that
+`Postraitement { champs { f elem } }`, `Sondes` and `Statistiques` can use it
+by name (mirrors `Navier_Stokes_std::{creer_champ,has_champ,get_champ}`):
+
+1. **Create lazily in the equation's `creer_champ(const Motcle&)`** (called at
+   Postraitement/*Sondes* read time through `refChamp { Pb_champ pb <name> }`,
+   which does `pb.creer_champ(nom)` then `pb.get_champ(nom)`). A P0 element
+   field on the PolyMAC family is a `Champ_Fonc_Elem_PolyMAC_CDO` — either use
+   that class directly or subclass it (we use `src/Champ_Fonc_MHD.h`, with a
+   `mettre_a_jour(tps)` override which recomputes the values). In `creer_champ`:
+   `champ.typer("Champ_Fonc_MHD")`, configure it (name, nature, nb_comp,
+   `associer_domaine_dis_base(z)` **before** `fixer_nb_valeurs_nodales`), then
+   `champs_compris_.ajoute_champ(champ)`.
+2. **`Champs_compris_::ajoute_champ` indexes the field by `le_nom()` (both
+   casings) *and* by every component name** (e.g. `vecteur_poynting` and
+   `vecteur_poynting_x`), so component probes are handled by the kernel.
+3. **Override `has_champ(nom, ref_champ)` to call your `get_champ` first.**
+   `Probleme_base::get_champ` resolves fields through
+   `equation(i).has_champ(nom, ref)` — and the default
+   `Equation_base::has_champ` merely hands over the registered field **without
+   recomputing it**. If you only recompute inside `get_champ`, the value
+   written at t=0 is whatever the field held at creation (we observed a zero
+   first probe line until the field refreshed). Our `has_champ(nom, ref)`
+   therefore does `ref_champ = get_champ(nom)`.
+4. **Advertise the names in `get_noms_champs_postraitables(noms)`** even
+   before creation: `Sondes::readOn` calls `set_noms_champs_postraitables()`
+   (`pb.get_noms_champs_postraitables()`) *before* reading probes, and
+   `Sonde::create_champ_generique` silently skips names it does not see there.
+5. **The Champ_Fonc is NOT recomputed by Postraitement itself**
+   (`Champ_Generique_refChamp::mettre_a_jour` is a no-op; refChamp serves the
+   referenced field as-is). All freshness must come from your `get_champ` (we
+   recompute when `champ.temps() != inconnue().temps()`, i.e. once per step).
+
+The u-dependent fields reuse the velocity infrastructure:
+
+- `la_vitesse_transportante_->valeur_aux_elems(domaine.xp(), polys, u)` gives
+  the frozen velocity at the elements (auxiliary variables of the MPFA face
+  field — request them once with `init_auxiliary_variables()` + a full
+  `update_ve(futur(n))` sweep, exactly like `Terme_Source_Induction_stretching`).
+- `Discret_Thyd::grad_u(z, z, la_vitesse, grad)` gives the element block
+  (row nf_tot + e*dim + j, col i => du_i/dx_j); the per-element physics (curl,
+  Poynting, dots) lives in the framework-free `MHD_posttraitement_kernel.h`
+  and is pinned by `tests/UnitTests/unit_mhd_posttraitement_kernel.cpp`.
+
+The scripts: `syntax-check.sh` restores the MPI include dir when the recorded
+compiler is an mpich wrapper (mpi.h used to be missing) — keep that.
+
 ## 9. Open items / gotchas found
 
 - `compile_commands.json` is stale (`c++17`); always force `-std=c++20`.
@@ -392,7 +441,9 @@ failure is a genuine test failure (not just a plot mismatch).
 ### Business-logic contracts (what the tests actually pin)
 
 "Testing" here means the **modelling decisions**, not the discretisation
-dimensions. Scope is 2D. For each decision: is it pinned by a test, and where?
+dimensions. Scope is 2D *and* 3D: every form exists in both
+`MagneticStandalone/` and `MagneticStandalone3D/` (the 3D twins keep the same
+assertions). For each decision: is it pinned by a test, and where?
 
 | # | Modelling decision | Pinned? | By |
 |---|---|:--:|---|

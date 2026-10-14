@@ -79,16 +79,19 @@ fi
 mkdir -p "$build_dir"
 
 if [[ "$mode" == "arith" ]]; then
-  test_sources=(tests/UnitTests/unit_induction_kernel.cpp)
+  test_sources=(tests/UnitTests/unit_induction_kernel.cpp
+                tests/UnitTests/unit_mhd_posttraitement_kernel.cpp)
   module_sources=()
   main_source=tests/UnitTests/main_gtest_lite.cpp
 else
   test_sources=(tests/UnitTests/unit_magnetic_field.cpp
                 tests/UnitTests/unit_induction_source.cpp
-                tests/UnitTests/unit_induction_kernel.cpp)
+                tests/UnitTests/unit_induction_kernel.cpp
+                tests/UnitTests/unit_mhd_posttraitement_kernel.cpp)
   module_sources=(src/Convection_Diffusion_Magnetic_field.cpp
                   src/Pb_MHD.cpp
-                  src/Terme_Source_Induction_stretching.cpp)
+                  src/Terme_Source_Induction_stretching.cpp
+                  src/Champ_Fonc_MHD.cpp)
   main_source=tests/UnitTests/main_gtest.cpp
 fi
 
