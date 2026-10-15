@@ -6,6 +6,11 @@ kernel fact is rediscovered the hard way.
 
 Paths below are relative to the trust-code checkout (`../trust-code` here).
 
+> **This checkout is a *fork* of trust-code, not the official tree.** Maximum reuse
+> and minimum new code remain the default, but the kernel **may** be modified when
+> reuse is genuinely impractical. Every kernel change must pass a test gate — see
+> §0bis.
+
 ---
 
 ## 0. Quick facts that repeatedly save time
@@ -18,6 +23,75 @@ Paths below are relative to the trust-code checkout (`../trust-code` here).
 | **Fast diagnostics** | `bash .opencode/scripts/syntax-check.sh src/Foo.cpp` (seconds). |
 | **Field factories** | All live on `Discret_Thyd` (the discretisation base): `temperature(sch,z,ch,nb_comp)`, `concentration(sch,z,ch,nb_constituants,nom)`, `vitesse(sch,z,ch,nb_comp)`. They all funnel into `Discretisation_base::discretiser_champ(...)`. |
 | **Kernel has no curl operator** | No rotation operator in `src/Kernel/Operateurs`. M0/M1 do not need it. |
+
+---
+
+## 0bis. Forked trust-code: when and how to modify the kernel
+
+The `trust-code` checkout is a **fork**, not the official CEA tree:
+
+| Remote | URL | Role |
+|---|---|---|
+| `origin` | `git@gitlab.com:matthieuPauron/trust-code-for-trust-li-me.git` | the fork — all work is pushed here |
+| `upstream` | `git@gitlab.com:cea-trust-platform/trust/trust-code.git` | official CEA repo — **read-only** |
+
+`upstream` has **no push URL** (`remote.upstream.pushurl` is empty), so any
+`git push upstream …` fails by construction; `git fetch upstream` still works for
+staying in sync. This is what keeps an accident from ever reaching the official
+project.
+
+### Policy
+
+Maximum reuse is still the default: prefer subclassing/overriding in
+`trust-LiMe/src` over touching the kernel. But because this is a fork, a kernel
+change is **allowed** when reuse is impractical, under three conditions:
+
+1. **Minimal** — change only what the module needs; no reformatting, no drive-by
+   refactors, no touching numerical kernels unless *that* is the point.
+2. **Non-regressing** — the kernel's own test suite must stay green (test gate below).
+3. **Documented** — record the change and its rationale in this file, and consider
+   proposing it upstream.
+
+### Test gate (mandatory before *and* after any kernel edit)
+
+Kernel source edits are only valid if the kernel tests do not regress:
+
+```bash
+cd ../trust-code
+make check_optim      # baseline — must be green BEFORE you start
+# … edit kernel files on a dedicated branch (see workflow) …
+make check_optim      # must still be green AFTER
+```
+
+Then prove the module still builds and validates against the modified kernel:
+
+```bash
+cd ../trust-LiMe
+make module_semi_optim
+# re-run the unit tests and validation notebooks (trust-lime-testing skill)
+```
+
+A kernel change that breaks a kernel test case is **not acceptable** — fix it or
+drop it. See the `trust-lime-testing` skill for the green-baseline discipline.
+
+### Workflow
+
+1. Branch in the fork for each kernel change: `git checkout -b kernel/<topic>`
+   (never edit `master`/`next` directly).
+2. Capture the green baseline first (`make check_optim`).
+3. Make the **minimal** edit; prefer an added header/source or a small override
+   over an invasive rewrite.
+4. Re-run the kernel suite (gate above), then rebuild and validate the module.
+5. Append the finding to this file; if the change is upstream-worthy, open a Merge
+   Request against the official repo — the local `upstream` stays read-only and the
+   MR goes through maintainer review.
+
+### Trade-off to remember
+
+Reusing the kernel means inheriting its test coverage for free. The moment you
+modify it, you own that maintenance burden: every future `git fetch upstream` may
+conflict, and you can no longer assume the kernel behaves exactly as upstream.
+Keep every change small, justified, and easy to rebase.
 
 ---
 
@@ -183,7 +257,7 @@ the equations.
 
 ---
 
-## 7bis. Writing a `Source_base` term (hard-won details)
+## 9. Writing a `Source_base` term (hard-won details)
 
 Contract for a source attached to an equation's `sources { ... }` block:
 
@@ -272,7 +346,7 @@ implicit-Euler time error).
 
 ---
 
-## 7ter. Unit tests (baltik modules)
+## 10. Unit tests (baltik modules)
 
 The TRUST kernel tests its internals with **GoogleTest** in
 `trust-code/tests/UnitTests/` (`unit_*.cpp`, `TEST(Suite, Name)`,
@@ -305,7 +379,7 @@ Things worth knowing if you add tests to a **baltik module**:
 
 ---
 
-## 8. Registering a post-treatment field (Champ_Fonc) on an equation
+## 11. Registering a post-treatment field (Champ_Fonc) on an equation
 
 The recipe to expose a derived field (e.g. `energie_magnetique`) so that
 `Postraitement { champs { f elem } }`, `Sondes` and `Statistiques` can use it
@@ -354,7 +428,7 @@ The u-dependent fields reuse the velocity infrastructure:
 The scripts: `syntax-check.sh` restores the MPI include dir when the recorded
 compiler is an mpich wrapper (mpi.h used to be missing) — keep that.
 
-## 9. Open items / gotchas found
+## 12. Open items / gotchas found
 
 - `compile_commands.json` is stale (`c++17`); always force `-std=c++20`.
 - `TRUST_Deriv` (OWN_PTR) uses `operator bool` / `.valeur()` / `.non_nul()`?
@@ -366,7 +440,7 @@ compiler is an mpich wrapper (mpi.h used to be missing) — keep that.
 
 ---
 
-## 10. Writing self-contained TRUST test cases (no `.med` needed)
+## 13. Writing self-contained TRUST test cases (no `.med` needed)
 
 Useful when a validation case must run from a clean checkout:
 
@@ -423,7 +497,7 @@ Because probes are snapped to mesh points, prefer **ratios** (`b(t)/b(0)`) over
 absolute values when comparing against an analytic solution: the reference then
 does not depend on the exact probe location.
 
-## 11. Validation workflow
+## 14. Validation workflow
 
 ```bash
 # module must be built first

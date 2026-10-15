@@ -211,7 +211,7 @@ append new findings there.
   exposed by the equation via `creer_champ`/`has_champ`/`get_champ` with a
   field class `src/Champ_Fonc_MHD.{h,cpp}` — validation forms live in
   `share/Validation/Rapports_automatiques/Postraitement_fields/<FormName>/`
-  (one form per field). The recipe lives in `KERNEL_REUSE_NOTES.md` §8.
+  (one form per field). The recipe lives in `KERNEL_REUSE_NOTES.md` §11.
 - The `induction_stretching` source needs the velocity face field's
   **auxiliary element variables** or `grad_u` reads garbage — see
   `KERNEL_REUSE_NOTES.md` ("Getting a velocity gradient for free").
