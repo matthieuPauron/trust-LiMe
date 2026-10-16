@@ -123,11 +123,19 @@ The `/validate` command automates this. From the repository root:
 One validation form per test case (TRUST layout
 `Rapports_automatiques/<Category>/<FormName>/<FormName>.ipynb`): the folder
 holds `Invariance/`, `Diffusion/`, `DiffusionRefined/`, `Advection/`,
-`SteadyState/`, `VaryingVelocity/`, `SourceStretching/`, `Hartmann1D/`
-and the negative `Error_missing_eta` – `Error_bad_nbcomposantes` –
-`Error_bad_bc` forms; each form folder contains its notebook + `src/<case>.data`
+`SteadyState/`, `VaryingVelocity/`, `SourceStretching/`, `Hartmann1D/`,
+`MMS_Diff2D/`, `MMS_ExpTrig2D/`, `MMS_Trig2D/` and the negative
+`Error_missing_eta` – `Error_bad_nbcomposantes` – `Error_bad_bc` forms;
+each form folder contains its notebook + `src/<case>.data`. These cases
+target the magnetic induction equation solved in standalone form.
 
-These cases target the magnetic induction equation solved in standalone form
+### MagneticCoupled (low-Rm with Lorentz force)
+
+The `force_lorentz` keyword activates a one-way coupled momentum equation
+via `J × B`. See `MagneticCoupled/ForceLorentzBalance/` for the validation
+form (hydrostatic balance: Δp = −0.1886 vs analytic −0.18, |u| → 0).
+Further coupled benchmarks (Shercliff 3D duct, Ha/Re parameter scan) are
+tracked as open targets.
 (see @ref TrustLiMe_model "Problems, equations and boundary conditions"). Every
 dataset is **self-contained**: the mesh is generated inline with `Mailler`/`Pave`,
 so no `.med` file is required and the cases can be run from a clean checkout.
@@ -226,8 +234,9 @@ elementwise arithmetic — which is pinned harder (layout conventions) by
 
 ## Historical cases
 
-`HartmannFlow` and `Shercliff_3D_duct` are placeholders for the full coupled
-MHD cases. They still reference the pre-rewrite dataset layout (they run a
-Navier–Stokes + energy + magnetic system), which is **not** what the current
-standalone module solves. They are kept for reference and will be reworked once
-the Lorentz force / M1 source term are implemented.
+`HartmannFlow` and `Shercliff_3D_duct` are kept for reference only: they
+still reference the pre-rewrite dataset layout (a Navier–Stokes + energy +
+magnetic system), which is **not** what the current standalone module solves.
+The coupled low-Rm mode (`force_lorentz` + optional `Navier_Stokes_standard`)
+is now wired in `Pb_MHD` and validated by `MagneticCoupled/ForceLorentzBalance/`.
+The Shercliff 3D duct benchmark remains an open coupled-case target.

@@ -273,4 +273,6 @@ no div-b enforcement              div-b via edge elements (planned)
 | **4** | 1 day | Documentation, review, sanitizers |
 | **Total** | **~10–13 days** | Sequential, no full `make optim` |
 
-**Note**: All cases run sequentially (nbProcs=1) per trust-LiMe validation rules.
+**Note**: All cases run sequentially (nbProcs=1) per trust-LiMe validation rules,
+except the two `Invariance` forms, which are allowlisted in `parallel_ok[]` and
+run on 2 ranks.

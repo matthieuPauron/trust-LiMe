@@ -90,11 +90,12 @@ category split folds into the form naming.
 
 ### `HartmannFlow` and `Shercliff_3D_duct`
 
-The historical placeholders for the full coupled MHD cases were **removed**:
-they still referenced the pre-rewrite dataset layout (a Navier–Stokes + energy +
-magnetic system), which is **not** what the current standalone module solves.
-Recreate them once the Lorentz force (M2) and the divergence-free projection (M3)
-land — see @ref TrustLiMe_model "Problems, equations and boundary conditions".
+The standalone induction equation does not solve a Navier–Stokes + energy +
+magnetic system, so the old placeholders no longer apply. The coupled low-Rm
+mode (`force_lorentz` + optional `Navier_Stokes_standard`) is documented in
+@ref TrustLiMe_model "Problems, equations and boundary conditions" §4bis and
+validated by `MagneticCoupled/ForceLorentzBalance/`. The Shercliff 3D duct
+benchmark remains an open coupled-case target (Tassone et al.).
 
 The **standalone half** of the Hartmann problem — the induced field produced by a
 given Hartmann velocity profile with insulating walls — is covered today by the

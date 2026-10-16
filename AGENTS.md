@@ -151,7 +151,34 @@ in 3D). Example: `MagneticStandalone/Diffusion/Diffusion.ipynb`. Use
 and **all cases run sequentially** — `.data` files must never contain TRUST
 parallelism machinery (`Decouper`/`Partitionneur`/`Scatter`/`Larg_joint`/
 `Nom_Zones`/…), and notebooks must not call `partition()` or set `nbProcs>1`.
-Run the check before `/validate`.
+**Parallel exception.** A form may run on `N` cores only if its path is listed in
+`parallel_ok[]` in `check-validation.sh`. The dataset must then carry the three
+comment-marker regions (`# BEGIN MESH #`, `# BEGIN PARTITION`, `# BEGIN SCATTER`)
+that `trust -partition` toggles. Currently the allowlisted forms are:
+MagneticStandalone/Invariance/ (2D + 3D), MagneticStandalone/Diffusion/,
+MagneticStandalone/DiffusionRefined/, MagneticStandalone/Advection/,
+MagneticStandalone/Shercliff2D/, MagneticStandalone/SourceStretching/,
+MagneticStandalone/SteadyState/, MagneticStandalone/VaryingVelocity/,
+MagneticStandalone3D/Invariance/ (2D + 3D), MagneticStandalone3D/Diffusion/,
+MagneticStandalone3D/DiffusionRefined/, MagneticStandalone3D/Advection/,
+MagneticStandalone3D/Shercliff2D/, MagneticStandalone3D/SourceStretching/,
+MagneticStandalone3D/SteadyState/, MagneticStandalone3D/VaryingVelocity/,
+Postraitement_fields/CourantMagnetique/, Postraitement_fields/DivergenceMagnetique/,
+Postraitement_fields/EnergieMagnetique/, Postraitement_fields/ForceLorentz/,
+Postraitement_fields/HeliciteCinetique/, Postraitement_fields/HeliciteCroisee/,
+Postraitement_fields/NombreDePrandtlMagnetique/, Postraitement_fields/NombreDeReynoldsMagnetique/,
+Postraitement_fields/PulsationCyclotronique/, Postraitement_fields/RotationnelMagnetique/,
+Postraitement_fields/TensionMagnetique/, Postraitement_fields/VecteurPoynting/.
+All other forms are sequential-only. Run the check before `/validate`.
+
+## Known gaps / open items
+
+- **`ForceLorentzBalance`** (MagneticCoupled): runs sequentially pending a parallel-safe pressure solver. The kernel's SSOR preconditioner does not support the Matrice_Morse type used by the coupled system; PETSc `hypre` alternative converges the magnetic solve but the Navier–Stokes solve later diverges (`KSP_DIVERGED_NANORINF`). Decision needed: keep sequential or debug the parallel divergence (lagged `b` Lorentz source / aux-element velocity dofs under partitioning).
+- **`MMS_Poly_2D`**: dataset only, no notebook, non-standard `# PARALLEL OK 1 #` header, unused near-duplicate of `MMS_Trig2D`. Delete or complete as a form.
+- **`MMS_Diff3D`**: ported, allowlisted `.data` but no notebook; 2D/3D twin rule (R5) is broken — add the 3D notebook or drop from allowlist.
+- **`Stretching`**: legacy reference run with assertion-free notebook, allowlisted and marked but excluded from the PDF runner. `SourceStretching` is the validated replacement.
+- **MMS/Stretching notebooks**: three MMS notebooks + `Stretching` have no `assert` in their source; they are smoke/convergence data producers, not validation forms as advertised.
+- **`force_lorentz` coupling is one-way**: the NS velocity does not feed the magnetic convection; low-Rm limit (Rm ≪ 1) validated against Tassone et al. breeding blanket parameter ranges.
 
 Authoring/running rules, trustutils API, dataset syntax, and the headless
 nbconvert recipe: **`trust-lime-notebooks` skill**. The gate for adding new
