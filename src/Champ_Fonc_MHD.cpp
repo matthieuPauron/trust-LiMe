@@ -33,7 +33,14 @@ void Champ_Fonc_MHD::configurer(const Convection_Diffusion_Magnetic_field& eqn, 
   kind_ = kind;
 
   const int dim = Objet_U::dimension;
-  const bool vectoriel = (kind == "vecteur_poynting");
+  // Vector fields: Poynting, tension, Lorentz (always), curl and current
+  // (in 3D; in 2D they reduce to the single out-of-plane component -> scalar).
+  bool vectoriel;
+  if (kind == "rotationnel_magnetique" || kind == "courant_magnetique")
+    vectoriel = (dim == 3);
+  else
+    vectoriel = (kind == "vecteur_poynting" || kind == "tension_magnetique"
+                 || kind == "force_lorentz");
 
   nommer(kind);
   associer_domaine_dis_base(eqn.domaine_dis());
@@ -56,6 +63,12 @@ void Champ_Fonc_MHD::configurer(const Convection_Diffusion_Magnetic_field& eqn, 
     fixer_unite("J/m3");
   else if (kind == "vecteur_poynting")
     fixer_unite("W/m2");
+  else if (kind == "tension_magnetique" || kind == "force_lorentz")
+    fixer_unite("N/m3");   // force density
+  else if (kind == "divergence_magnetique")
+    fixer_unite("-");      // dimensionless (user's units of b per unit length)
+  else if (kind == "rotationnel_magnetique" || kind == "courant_magnetique")
+    fixer_unite("A/m2");   // current density
   else
     fixer_unite("-");      // dimensionless / user's units
   changer_temps(-1.);  // force the first mettre_a_jour() to compute
@@ -92,6 +105,22 @@ void Champ_Fonc_MHD::calculer()
 
   if (kind_ == "helicite_cinetique")
     eq.gradient_vitesse_elements(gu_elem_);
+
+  // The grad-b based fields (tension, curl, divergence, current, Lorentz):
+  // nb_composantes() == dimension is enforced by creer_champ (they are
+  // rejected for the scalar model); a result with nb_b < dim would be
+  // silently incomplete, so keep a hard check here as well.
+  const bool champ_grad_b = (kind_ == "tension_magnetique" || kind_ == "rotationnel_magnetique"
+                             || kind_ == "divergence_magnetique" || kind_ == "courant_magnetique"
+                             || kind_ == "force_lorentz");
+  if (champ_grad_b)
+    {
+      if (nb_b != dim)
+        Process::exit("Champ_Fonc_MHD::calculer: 'tension_magnetique' and the "
+                      "curl/divergence/current/Lorentz fields require a full vector "
+                      "magnetic field (nb_composantes = dimension).");
+      eq.gradient_b_elements(gb_elem_);
+    }
 
   // Per-element diffusivity / viscosity support both (1,1) and (ne,1) layouts
   const DoubleTab& tab_eta = eq.diffusivite_pour_transport().valeurs();
@@ -149,12 +178,72 @@ void Champ_Fonc_MHD::calculer()
       for (int e = 0; e < ne; e++)
         vals(e, 0) = mhd_prandtl_magnetique(coeff_elem(tab_nu, e), coeff_elem(tab_eta, e));
     }
+  else if (kind_ == "tension_magnetique")
+    {
+      for (int e = 0; e < ne; e++)
+        {
+          mhd_tension_magnetique(&b(e, 0), &gb_elem_(e, 0), nb_b, dim, mu0, s);
+          for (int d = 0; d < dim; d++)
+            vals(e, d) = s[d];
+        }
+    }
+  else if (kind_ == "rotationnel_magnetique")
+    {
+      // 2D: scalar (out-of-plane w_z); 3D: vector.
+      for (int e = 0; e < ne; e++)
+        {
+          mhd_curl_b(&gb_elem_(e, 0), dim, w);
+          if (dim == 2)
+            vals(e, 0) = w[0];
+          else
+            for (int d = 0; d < dim; d++)
+              vals(e, d) = w[d];
+        }
+    }
+  else if (kind_ == "divergence_magnetique")
+    {
+      // ∇·b = tr(∇b) via Green-Gauss reconstruction.
+      // For interior cells (all faces have neighbours), the Green-Gauss
+      // reconstruction is exact for linear fields — the computed value
+      // matches the analytic divergence to machine precision.
+      // Boundary cells (walls with homogeneous Neumann CLs) use the
+      // element's own value for boundary faces ("zero normal gradient"),
+      // giving O(h) accuracy; validation probes must target interior cells.
+      for (int e = 0; e < ne; e++)
+        vals(e, 0) = mhd_div_b(&gb_elem_(e, 0), nb_b, dim);
+    }
+  else if (kind_ == "courant_magnetique")
+    {
+      // J = curl(b)/mu0: 2D scalar (J_z); 3D vector.
+      for (int e = 0; e < ne; e++)
+        {
+          mhd_curl_b(&gb_elem_(e, 0), dim, w);
+          mhd_courant_magnetique(w, dim, mu0, s);
+          if (dim == 2)
+            vals(e, 0) = s[0];
+          else
+            for (int d = 0; d < dim; d++)
+              vals(e, d) = s[d];
+        }
+    }
+  else if (kind_ == "force_lorentz")
+    {
+      // F = (curl b) x b / mu0: 2D vector (in-plane); 3D vector.
+      for (int e = 0; e < ne; e++)
+        {
+          mhd_curl_b(&gb_elem_(e, 0), dim, w);
+          mhd_force_lorentz(w, &b(e, 0), nb_b, dim, mu0, s);
+          for (int d = 0; d < dim; d++)
+            vals(e, d) = s[d];
+        }
+    }
   else
     {
       Cerr << "Error in Champ_Fonc_MHD::calculer: unknown post-treatment field kind '" << kind_
            << "' (expected energie_magnetique, pulsation_cyclotronique, vecteur_poynting, "
-           << "helicite_croisee, helicite_cinetique, nombre_de_reynolds_magnetique "
-           << "or nombre_de_prandtl_magnetique)." << finl;
+           << "helicite_croisee, helicite_cinetique, nombre_de_reynolds_magnetique, "
+           << "nombre_de_prandtl_magnetique, tension_magnetique, rotationnel_magnetique, "
+           << "divergence_magnetique, courant_magnetique or force_lorentz)." << finl;
       Process::exit();
     }
 

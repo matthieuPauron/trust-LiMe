@@ -1,0 +1,91 @@
+# ============================================================================= #
+# Post-treatment field : force_lorentz  (TRUST-LiMe standalone MHD) #
+# ============================================================================= #
+# Lorentz force density F = J x b = (curl b) x b / mu0, from the module-      #
+# reconstructed element gradient of b (Ampere's law + cross product).         #
+# Vector model, exactly linear field b = (-y, x): curl b = (0,0,2) (w_z=2),  #
+# so with mu0 = 1: F = (-w_z b_y, w_z b_x) = (-2 x, -2 y) exactly.           #
+# At the probed cell centre (0.45, 0.55): F = (-0.9, -1.1).                  #
+# ============================================================================= #
+dimension 2
+Pb_MHD pb
+Domaine dom
+
+Mailler dom
+{
+    Pave pave
+    {
+        Origine              0.  0.
+        Nombre_de_Noeuds     11  11
+        Longueurs            1.  1.
+    }
+    {
+        Bord gauche   X = 0.    0. <= Y <= 1.
+        Bord droite   X = 1.    0. <= Y <= 1.
+        Bord bas      Y = 0.    0. <= X <= 1.
+        Bord haut     Y = 1.    0. <= X <= 1.
+    }
+}
+
+Polymac_p0 dis
+
+Associate pb dom
+
+Schema_Euler_Implicite sch
+Read sch
+{
+    tinit 0.
+    tmax 0.05
+    dt_max 0.02
+    facsec 1e6
+    facsec_max 1e6
+    solveur implicite { solveur petsc cli { } }
+}
+
+Associate pb sch
+Discretize pb dis
+
+Read pb
+{
+    # Vector model: differential fields require the full vector b. #
+    nb_composantes 2
+    fluide_incompressible
+    {
+        mu      Champ_Uniforme 1 1.0
+        rho     Champ_Uniforme 1 1.0
+        lambda  Champ_Uniforme 1 1.0
+        Cp      Champ_Uniforme 1 1.0
+        beta_th Champ_Uniforme 1 0.0
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        # eta = 0 and no velocity: the linear field is an exact equilibrium. #
+        diffusivite_magnetique Champ_Uniforme 1 0.
+
+        diffusion  { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            gauche  Neumann_Paroi_adiabatique
+            droite  Neumann_Paroi_adiabatique
+            bas     Neumann_Paroi_adiabatique
+            haut    Neumann_Paroi_adiabatique
+        }
+        # exactly linear vector field b = (-y, x) #
+        initial_conditions { magnetic_field Champ_Fonc_xyz dom 2 -y x }
+  }
+
+  Postraitement
+  {
+    Sondes
+    {
+      # probe snapped to the cell centre (0.45, 0.55): F = (-0.9, -1.1) #
+      sonde_fl grav force_lorentz Periode 1e-6 Points 1 0.45 0.55
+    }
+  }
+
+}
+
+Solve pb

@@ -67,12 +67,14 @@ public:
   // data keyword.
   const Champ_base& vitesse_pour_transport() const override;
 
-  // Reuse the kernel scalar (thermal) boundary conditions.  The thermal
-  // scalar CLs (paroi_adiabatique, frontiere_ouverte_temperature_imposee, ...)
-  // are then accepted by Cond_lim_base::compatible_avec_eqn().  Physics-specific
-  // magnetic CLs are deliberately deferred.  Vocabulary: magnetic_field_impose
-  // (Dirichlet), paroi_isolante_magnetique (homogeneous Neumann),
-  // paroi_conductrice_magnetique (perfect conductor, b x n = 0).
+  // Magnetic (and reused thermal) boundary conditions.  The domain reports
+  // Thermique so the kernel scalar (thermal) classes remain accepted
+  // (Cond_lim_base::compatible_avec_eqn()), and the dedicated
+  //  (homogeneous Neumann) is now declared here
+  // (Phase B.1, subdir-free in src/, no new runtime dependency).  Remaining
+  // vocabulary: magnetic_field_impose (Dirichlet), paroi_conductrice_magnetique
+  // (perfect conductor: b x n = 0; deferred until the per-component CL API is
+  // validated -- see Phase B.2 in the roadmap).
   const Motcle& domaine_application() const override;
 
   // --- Post-treatment fields ----------------------------------------------
@@ -97,6 +99,14 @@ public:
   // Element block of the kernel `gradient_vitesse` field, re-extracted in the
   // natural layout: g(e, i*dim + j) = du_i/dx_j.
   void gradient_vitesse_elements(DoubleTab& g) const;
+
+  // Per-element gradient of the magnetic unknown, reconstructed by
+  // Green-Gauss: gb(e, i*dim + j) = d b_i / d x_j.  (Used by
+  // tension_magnetique.)  Interior face values are centred averages of the
+  // two adjacent elements (exact for linear fields on any mesh); boundary
+  // faces take the element's own value (zero normal gradient), which is
+  // consistent with the module's only supported wall BCs (Neumann-like).
+  void gradient_b_elements(DoubleTab& gb) const;
 
   // True if `nom` names one of our derived fields (base or component name).
   bool est_champ_postraitable(const Motcle& nom) const;
@@ -132,6 +142,12 @@ protected:
   OWN_PTR(Champ_Fonc_base) ch_helicite_cinetique_;
   OWN_PTR(Champ_Fonc_base) ch_reynolds_magnetique_;
   OWN_PTR(Champ_Fonc_base) ch_prandtl_magnetique_;
+  OWN_PTR(Champ_Fonc_base) ch_tension_magnetique_;
+  // Differential (grad-b based) fields: curl, divergence, current, Lorentz.
+  OWN_PTR(Champ_Fonc_base) ch_rotationnel_magnetique_;
+  OWN_PTR(Champ_Fonc_base) ch_divergence_magnetique_;
+  OWN_PTR(Champ_Fonc_base) ch_courant_magnetique_;
+  OWN_PTR(Champ_Fonc_base) ch_force_lorentz_;
 
 private:
 

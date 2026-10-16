@@ -176,6 +176,16 @@ const OWN_PTR(Champ_Fonc_base)* Convection_Diffusion_Magnetic_field::champ_postr
     return &ch_reynolds_magnetique_;
   if (nom == "nombre_de_prandtl_magnetique")
     return &ch_prandtl_magnetique_;
+  if (nom == "tension_magnetique")
+    return &ch_tension_magnetique_;
+  if (nom == "rotationnel_magnetique")
+    return &ch_rotationnel_magnetique_;
+  if (nom == "divergence_magnetique")
+    return &ch_divergence_magnetique_;
+  if (nom == "courant_magnetique")
+    return &ch_courant_magnetique_;
+  if (nom == "force_lorentz")
+    return &ch_force_lorentz_;
   // Vector field and its components ("vecteur_poynting_x", ...).
   if (nom.debute_par("vecteur_poynting"))
     return &ch_vecteur_poynting_;
@@ -240,6 +250,24 @@ void Convection_Diffusion_Magnetic_field::creer_champ(const Motcle& motlu)
   // A component request ("vecteur_poynting_x") creates the full base field.
   const Motcle kind = motlu.debute_par("vecteur_poynting") ? Motcle("vecteur_poynting") : motlu;
 
+  // The grad-b based post-treatment fields act on the full vector magnetic field.
+  // The scalar model (nb_composantes 1) transports a single component and their
+  // complete form is not meaningful, so they are rejected rather than
+  // silently emitted (mirrors Champ_Fonc_MHD's calculer() guard).
+  const bool champ_grad_b = (kind == "tension_magnetique" || kind == "rotationnel_magnetique"
+                             || kind == "divergence_magnetique" || kind == "courant_magnetique"
+                             || kind == "force_lorentz");
+  if (champ_grad_b && nb_composantes() != dimension)
+    {
+      Cerr << "Convection_Diffusion_Magnetic_field: the post-treatment field '"
+           << kind << "' requires a full vector magnetic field "
+           << "(nb_composantes = dimension in the problem block), while this "
+           << "case transports nb_composantes = " << nb_composantes()
+           << ".  Please set nb_composantes accordingly or drop the field "
+           << "from the Postraitement block." << finl;
+      Process::exit();
+    }
+
   champp->typer("Champ_Fonc_MHD");
 
   Champ_Fonc_MHD& ch = ref_cast(Champ_Fonc_MHD, champp->valeur());
@@ -285,6 +313,11 @@ void Convection_Diffusion_Magnetic_field::get_noms_champs_postraitables(Noms& no
   noms_compris.add("helicite_cinetique");
   noms_compris.add("nombre_de_reynolds_magnetique");
   noms_compris.add("nombre_de_prandtl_magnetique");
+  noms_compris.add("tension_magnetique");
+  noms_compris.add("rotationnel_magnetique");
+  noms_compris.add("divergence_magnetique");
+  noms_compris.add("courant_magnetique");
+  noms_compris.add("force_lorentz");
 
   if (opt == DESCRIPTION)
     Cerr << que_suis_je() << " : " << noms_compris << finl;
@@ -371,3 +404,108 @@ void Convection_Diffusion_Magnetic_field::gradient_vitesse_elements(DoubleTab& g
         g(e, i * dim + j) = gu(nf_tot + e * dim + j, i);
 }
 
+
+void Convection_Diffusion_Magnetic_field::gradient_b_elements(DoubleTab& gb) const
+{
+  const Domaine_VF& dvf = ref_cast(Domaine_VF, domaine_dis());
+  const DoubleTab& b = inconnue().valeurs();
+  const int ne = dvf.nb_elem(), nb_b = nb_composantes(), dim = Objet_U::dimension;
+  gb.resize(ne, nb_b * dim);
+  gb = 0.;
+
+  const IntTab& face_voisins = dvf.face_voisins();
+  const DoubleTab& face_normales = dvf.face_normales();
+  const DoubleVect& volumes = dvf.volumes();
+  const int nb_faces = dvf.nb_faces();
+
+  // Pass 1 — standard Green-Gauss (interior exact for linear fields).
+  for (int f = 0; f < nb_faces; f++)
+    {
+      const int e0 = face_voisins(f, 0), e1 = face_voisins(f, 1);
+      for (int c = 0; c < nb_b; c++)
+        {
+          const double bf = (e1 < 0) ? b(e0, c) : 0.5 * (b(e0, c) + b(e1, c));
+          if (e0 >= 0 && e0 < ne)
+            for (int d = 0; d < dim; d++)
+              gb(e0, c * dim + d) += bf * face_normales(f, d) / volumes(e0);
+          if (e1 >= 0 && e1 < ne)
+            for (int d = 0; d < dim; d++)
+              gb(e1, c * dim + d) -= bf * face_normales(f, d) / volumes(e1);
+        }
+    }
+
+  // Pass 2 — boundary-cell correction (B2): replace the full gradient tensor
+  // of boundary cells by the gradient of an interior neighbour, which for a
+  // linear field is exact and O(h) for general nonlinear fields.  This gives
+  // exact (linear-field) divergence at the two wall-adjacent cells, where
+  // Pass 1 would have O(h) error.
+  // Determine boundary/inertior status based on cell adjacency to wall faces.
+  std::vector<int> is_boundary(ne, 0);
+  for (int f = 0; f < nb_faces; f++)
+    {
+      const int e0 = face_voisins(f, 0), e1 = face_voisins(f, 1);
+      if (e0 >= 0 && e0 < ne && e1 < 0)
+        is_boundary[e0] = 1;
+      if (e1 >= 0 && e1 < ne && e0 < 0)
+        is_boundary[e1] = 1;
+    }
+
+  // Build adjacency list for boundary cells.
+  std::vector<std::vector<int>> adj(ne);
+  for (int f = 0; f < nb_faces; f++)
+    {
+      const int e0 = face_voisins(f, 0), e1 = face_voisins(f, 1);
+      if (e0 < 0 || e0 >= ne || e1 < 0 || e1 >= ne)
+        continue;
+      adj[e0].push_back(e1);
+      adj[e1].push_back(e0);
+    }
+
+  // Find reference interior neighbour via BFS (depth cap 3) for each boundary cell.
+  std::vector<int> ref(ne, -1);
+  for (int e = 0; e < ne; e++)
+    {
+      if (!is_boundary[e])
+        continue;
+      // BFS outward to first fully-interior cell.
+      std::vector<char> seen(ne, 0);
+      seen[e] = 1;
+      std::vector<int> frontier = {e};
+      for (int depth = 0; depth < 3 && ref[e] < 0; depth++)
+        {
+          std::vector<int> nxt;
+          for (int cur : frontier)
+            {
+              for (int n : adj[cur])
+                {
+                  if (seen[n])
+                    continue;
+                  seen[n] = 1;
+                  nxt.push_back(n);
+                  if (!is_boundary[n])
+                    { ref[e] = n; break; }
+                }
+              if (ref[e] >= 0)
+                break;
+            }
+          frontier = nxt;
+        }
+      // Fallback: nearest-adject neighbor.
+      if (ref[e] < 0)
+        for (int n : adj[e])
+          { if (is_boundary[n] == 0) { ref[e] = n; break; } }
+      if (ref[e] < 0)
+        if (adj[e].size() > 0)
+          ref[e] = adj[e][0];
+    }
+
+  // Apply correction: copy full tensor from interior reference (only if has ref).
+  for (int e = 0; e < ne; e++)
+    {
+      if (ref[e] < 0)
+        continue;
+      const int r = ref[e];
+      for (int k = 0; k < nb_b * dim; k++)
+        gb(e, k) = gb(r, k);
+    }
+}

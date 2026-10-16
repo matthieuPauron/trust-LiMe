@@ -127,4 +127,93 @@ inline double mhd_prandtl_magnetique(const double nu, const double eta)
   return nu / eta;
 }
 
+/*! @brief Magnetic tension force density Ft = (1/mu0) (b . grad) b,
+ *         i.e. Ft_i = (1/mu0) sum_j b_j * d b_i / d x_j.
+ *
+ *  @param b     the magnetic field at the element, nb_b components.
+ *  @param grad_b the element gradient of b, row-major layout:
+ *                grad_b[i * dim + j] = d b_i / d x_j (same convention as the
+ *                grad_u layout used by helicite_cinetique).
+ *  @param nb_b  number of transported components; equals dim for a full vector
+ *               field (guarded: the post field rejects the scalar model).
+ *  @param dim   space dimension (2 or 3).
+ *  @param mu0   magnetic permeability.
+ *  @param ft    output vector, dim components.
+ */
+inline void mhd_tension_magnetique(const double* b, const double* grad_b, const int nb_b, const int dim,
+                                   const double mu0, double* ft)
+{
+  assert(nb_b == dim);
+  for (int i = 0; i < dim; i++)
+    {
+      double acc = 0.;
+      for (int j = 0; j < nb_b; j++)
+        acc += b[j] * grad_b[i * dim + j];
+      ft[i] = acc / mu0;
+    }
+}
+
+/*! @brief Curl of b from the element gradient: w = curl b = grad x b.
+ *         2D: single out-of-plane component w_z = d b_y/dx - d b_x/dy.
+ *         3D: w = (w_x, w_y, w_z).
+ */
+inline void mhd_curl_b(const double* g, const int dim, double* w)
+{
+  if (dim == 2)
+    {
+      // w_z = d b_y/dx - d b_x/dy = g[1*2+0] - g[0*2+1]
+      w[0] = g[2] - g[1];
+    }
+  else
+    {
+      assert(dim == 3);
+      w[0] = g[7] - g[5]; // d b_z/dy - d b_y/dz
+      w[1] = g[2] - g[6]; // d b_x/dz - d b_z/dx
+      w[2] = g[3] - g[1]; // d b_y/dx - d b_x/dy
+    }
+}
+
+/*! @brief Divergence of b: div b = trace(grad b) = sum_i d b_i/dx_i. */
+inline double mhd_div_b(const double* g, const int nb_b, const int dim)
+{
+  double s = 0.;
+  for (int i = 0; i < nb_b; i++)
+    s += g[i * dim + i];
+  return s;
+}
+
+/*! @brief Electric current density J = curl(b) / mu0 (Ampere's law).
+ *         2D: single out-of-plane component J_z. 3D: vector.
+ */
+inline void mhd_courant_magnetique(const double* w, const int dim, const double mu0, double* j)
+{
+  if (dim == 2)
+    j[0] = w[0] / mu0;
+  else
+    for (int d = 0; d < dim; d++)
+      j[d] = w[d] / mu0;
+}
+
+/*! @brief Lorentz force density F = J x b = (curl b) x b / mu0.
+ *         2D: w = (0,0,w_z), b in-plane -> F = (-w_z b_y, w_z b_x)/mu0.
+ *         3D: full cross product (w x b)/mu0.
+ */
+inline void mhd_force_lorentz(const double* w, const double* b, const int nb_b, const int dim,
+                              const double mu0, double* fl)
+{
+  if (dim == 2)
+    {
+      // (0,0,w_z) x (b_x,b_y,0) = (-w_z b_y, w_z b_x, 0)
+      fl[0] = -w[0] * b[1] / mu0;
+      fl[1] = w[0] * b[0] / mu0;
+    }
+  else
+    {
+      assert(dim == 3);
+      fl[0] = (w[1] * b[2] - w[2] * b[1]) / mu0;
+      fl[1] = (w[2] * b[0] - w[0] * b[2]) / mu0;
+      fl[2] = (w[0] * b[1] - w[1] * b[0]) / mu0;
+    }
+}
+
 #endif /* MHD_POSTTRAITEMENT_KERNEL_INCLUDED */
