@@ -1,4 +1,0 @@
-Parameters {
-	Title "Stretching term validation (induction equation)"
-	Description "Test case for induction_stretching with known velocity field v = (y, 0). The stretching term (B·∇)v affects magnetic field evolution."
-}
