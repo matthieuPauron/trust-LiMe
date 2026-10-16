@@ -1,0 +1,77 @@
+# PARALLEL OK 1 #
+
+Dimension 2
+
+Domaine dom
+Mailler dom
+{
+    Pave Cavite
+    {
+        Origine 0. 0.
+        Nombre_de_Noeuds 33 33
+        Longueurs 1.0 1.0
+    }
+    {
+        Bord gauche   X = 0.   0. <= Y <= 1.0
+        Bord droit    X = 1.0  0. <= Y <= 1.0
+        Bord bas      Y = 0.   0. <= X <= 1.0
+        Bord haut     Y = 1.0  0. <= X <= 1.0
+    }
+}
+
+Polymac_p0 dis
+
+Schema_Euler_Implicite sch
+Read sch
+{
+    tinit 0.
+    tmax 0.2
+    dt_impr 0.05
+    dt_min 1.e-6
+    dt_max 0.05
+    seuil_statio 1.e-12
+    facsec 1.0
+    nb_pas_dt_max 5
+    solveur implicite { solveur gmres { diag seuil 1.e-12 nb_it_max 150 } }
+}
+
+Pb_MHD pbmhd
+Associate pbmhd dom
+Associate pbmhd sch
+Discretize pbmhd dis
+
+Read pbmhd
+{
+    nb_composantes 2
+    fluide_incompressible
+    {
+        mu      Champ_Uniforme 1 1.0
+        rho     Champ_Uniforme 1 1.0
+        lambda  Champ_Uniforme 1 1.0
+        Cp      Champ_Uniforme 1 1.0
+        beta_th Champ_Uniforme 1 0.0
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        diffusivite_magnetique Champ_Uniforme 1 0.01
+        convection { amont }
+        diffusion { }
+        sources
+        {
+            Terme_Source_Mag Champ_Fonc_xyz dom 2 0.0 0.0 0.0
+        }
+        initial_conditions { magnetic_field Champ_Uniforme 2 0.0 0.0 }
+        boundary_conditions {
+            gauche  Temperature_imposee_paroi Champ_front_uniforme 2 0.0 0.0
+            droit   Temperature_imposee_paroi Champ_front_uniforme 2 0.0 0.0
+            bas     Temperature_imposee_paroi Champ_front_uniforme 2 0.0 0.0
+            haut    Temperature_imposee_paroi Champ_front_uniforme 2 0.0 0.0
+        }
+    }
+    Postraitement
+    {
+        Champs dt_post 0.2 { magnetic_field elem }
+    }
+}
+Solve pbmhd
