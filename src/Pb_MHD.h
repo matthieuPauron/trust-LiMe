@@ -1,10 +1,28 @@
 /****************************************************************************
- * trust-LiMe — Pb_MHD: standalone magnetic problem.
+ * trust-LiMe — Pb_MHD: magnetic problem, standalone or low-Rm coupled.
  *
- * One single equation: the magnetic induction equation
- * Convection_Diffusion_Magnetic_field.  No hydraulics, no energy equation.
- * The problem shell is deliberately as thin as Pb_Conduction: it only maps
- * equation(0) to the magnetic equation.
+ * Equation 0 is always the magnetic induction equation
+ * Convection_Diffusion_Magnetic_field.  Any further Equation_base written in
+ * the problem block (typically Navier_Stokes_std for the low-Rm coupled mode,
+ * where the Lorentz force 'force_lorentz' source drives the momentum) is read
+ * by the kernel's optional-equation mechanism (Probleme_base::read_optional_
+ * equations) and held in eq_opt_, exactly like Pb_Hydraulique's optional
+ * turbulence equations:
+ *
+ *     Pb_MHD pb
+ *     {
+ *         nb_composantes 2
+ *         fluide_incompressible { ... }
+ *         Convection_Diffusion_Magnetic_field { ... }
+ *         Navier_Stokes_standard                # optional; presence => coupled
+ *         {
+ *             ...
+ *             sources { force_lorentz { } }
+ *         }
+ *     }
+ *
+ * nombre_d_equations() is 1 standalone, 1 + eq_opt_.size() otherwise.
+ * The problem shell stays deliberately thin.
  ****************************************************************************/
 
 #ifndef PB_MHD_H_
@@ -13,9 +31,11 @@
 #include <Probleme_base.h>
 #include <Convection_Diffusion_Magnetic_field.h>
 
-/*! @brief Standalone magnetic problem: a single magnetic induction equation.
+/*! @brief Magnetic problem: the magnetic induction equation, optionally
+ *         followed by extra equations (e.g. Navier-Stokes for the coupled
+ *         low-Rm mode with the Lorentz force).
  *
- *  @sa Probleme_base, Convection_Diffusion_Magnetic_field, Pb_Conduction
+ *  @sa Probleme_base, Convection_Diffusion_Magnetic_field, Terme_Source_Lorentz
  */
 class Pb_MHD : public Probleme_base
 {
