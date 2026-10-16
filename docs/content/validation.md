@@ -15,15 +15,12 @@ share/Validation/Rapports_automatiques/
 │   │   └── src/invariance.data
 │   ├── Diffusion/  DiffusionRefined/  Advection/
 │   ├── SteadyState/  VaryingVelocity/  SourceStretching/
+│   ├── Hartmann1D/                 # Hartmann induced field (1D physics)
 │   └── ErrorMissingEta/  ErrorBadNbcomposantes/  ErrorBadBc/
-├── MagneticStandalone3D/           # the same 10 forms, one-to-one, in 3D
+├── MagneticStandalone3D/           # the same 11 forms, one-to-one, in 3D
 │   └── <FormName>/…                # (Polyedriser dom after Mailler — see below)
-├── HartmannFlow/             # placeholder for the coupled MHD case
-│   ├── HartmannFlow.ipynb
-│   └── src/
-└── Shercliff_3D_duct/        # placeholder for the coupled MHD case
-    ├── Shercliff_3D_duct.ipynb
-    └── src/
+└── Postraitement_fields/           # one form per post-treatment field
+    └── <FormName>/…                # (∇b / |b|² / u·b based — see the table below)
 ```
 
 The `MagneticStandalone3D` forms differ from their 2D counterpart only in the
@@ -66,7 +63,7 @@ dataset into `build/<dataset name>/` where the results (`.son` probes, `.dt_ev`,
 
 Each form can be exported to PDF and the per-form PDFs concatenated into a
 single report at the repository root (`MagneticStandalone_validation.pdf`,
-20 forms: the 10 2D then the 10 3D), via
+22 forms: the 11 2D then the 11 3D), via
 `.opencode/scripts/run-validation-pdf.sh` (execute → `--to pdf` →
 `pdfunite`). The report is a generated artifact and stays untracked; the rule
 lives in the `trust-lime-notebooks` skill ("PDF export & the repository
@@ -93,9 +90,13 @@ category split folds into the form naming.
 
 ### `HartmannFlow` and `Shercliff_3D_duct`
 
-Placeholders for the full coupled MHD cases. They still reference the
-pre-rewrite dataset layout (a Navier–Stokes + energy + magnetic system), which is
-**not** what the current standalone module solves. They are kept for reference
-and will be reworked once the Lorentz force (M2) and the divergence-free
-projection (M3) land — see @ref TrustLiMe_model "Problems, equations and boundary
-conditions".
+The historical placeholders for the full coupled MHD cases were **removed**:
+they still referenced the pre-rewrite dataset layout (a Navier–Stokes + energy +
+magnetic system), which is **not** what the current standalone module solves.
+Recreate them once the Lorentz force (M2) and the divergence-free projection (M3)
+land — see @ref TrustLiMe_model "Problems, equations and boundary conditions".
+
+The **standalone half** of the Hartmann problem — the induced field produced by a
+given Hartmann velocity profile with insulating walls — is covered today by the
+`Hartmann1D` form (`MagneticStandalone/Hartmann1D/` and its 3D twin), see
+@ref TrustLiMe_testcases "Test cases".

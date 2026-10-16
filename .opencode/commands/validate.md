@@ -31,7 +31,7 @@ Notebooks (under share/Validation/Rapports_automatiques/): one
 The standalone magnetic forms are `MagneticStandalone/*/` (2D) and
 `MagneticStandalone3D/*/` (the 3D twins, same form names):
 `Invariance/`, `Diffusion/`, `DiffusionRefined/`, `Advection/`,
-`SteadyState/`, `VaryingVelocity/`, `SourceStretching/`, and the
+`SteadyState/`, `VaryingVelocity/`, `SourceStretching/`, `Hartmann1D/`, and the
 negative `Error*` forms.
 
 HartmannFlow and Shercliff_3D_duct were removed; recreate them only when the

@@ -199,22 +199,51 @@ append new findings there.
 - Kernel and module **are built** (`trust-lime`, `trust-lime_semi_opt`,
   `trust-lime_opt` exist at the repo root) — the historical `libparaconf`
   configure blocker is resolved.
-- **All 20 MagneticStandalone validation notebooks pass in 2D and 3D**
-  (checked 2026-10-14) and are concatenated into a single
-  `MagneticStandalone_validation.pdf` at the repo root by
+- **All 22 MagneticStandalone validation notebooks pass in 2D and 3D**
+  (checked 2026-10-15; `Hartmann1D` added last) and are concatenated into a
+  single `MagneticStandalone_validation.pdf` at the repo root by
   `.opencode/scripts/run-validation-pdf.sh` (rc=0). Multi-component
   `nb_composantes` works and is exercised by the post-treatment forms
-  (`vecteur_poynting`, `helicite_croisee`); the old `VectorComponents` form
-  remains removed.
+  (`vecteur_poynting`, `helicite_croisee`) and by `Hartmann1D`
+  (`nb_composantes 2`); the old `VectorComponents` form remains removed.
 - **Post-treatment fields** (cyclotron pulsation, magnetic energy, Poynting
-  vector, crossed/kinetic helicity, magnetic Reynolds and Prandtl numbers) are
-  exposed by the equation via `creer_champ`/`has_champ`/`get_champ` with a
-  field class `src/Champ_Fonc_MHD.{h,cpp}` — validation forms live in
+  vector, crossed/kinetic helicity, magnetic Reynolds and Prandtl numbers,
+  magnetic tension) are exposed by the equation via
+  `creer_champ`/`has_champ`/`get_champ` with a field class
+  `src/Champ_Fonc_MHD.{h,cpp}` — validation forms live in
   `share/Validation/Rapports_automatiques/Postraitement_fields/<FormName>/`
   (one form per field). The recipe lives in `KERNEL_REUSE_NOTES.md` §11.
 - The `induction_stretching` source needs the velocity face field's
   **auxiliary element variables** or `grad_u` reads garbage — see
-  `KERNEL_REUSE_NOTES.md` ("Getting a velocity gradient for free").
+  `KERNEL_REUSE_NOTES.md` ("Getting a velocity gradient for free"). Its element
+  gradient is also **biased in the two cells adjacent to a wall** (the kernel
+  averages face gradients and a boundary face only gets a Dirichlet
+  contribution; measured exactly halved for a linear velocity). `Hartmann1D`
+  documents and bounds that effect — see `KERNEL_REUSE_NOTES.md`.
+- **Divergence of the magnetic field** `∇·b`: the module assumes `∇·b = 0`
+  but does **not enforce** it (same pattern as the thermalhydraulics velocity
+  field). The `∇b` is reconstructed via Green–Gauss (`gradient_b_elements`)
+  — this reconstruction is **exact for linear fields at interior cells** (all
+  faces have neighbours). Boundary cells (walls with homogeneous Neumann CLs)
+  have O(h) accuracy due to the "zero normal gradient" approximation (`bf =
+  b(e0)` at walls). **Validation probes must target interior cells** when
+  comparing against an analytic field.  A lightweight divergence-correc-
+  tion at interior cells can be added post-hoc (see Path 2 below), but the
+  raw Green-Gauss value is already correct for the intended validation use
+  case.  Path 2 (pressure-correction approach, detailed below) would achieve
+  machine‑precision ∇·b = 0 globally but requires new solver infrastructure
+  beyond the M0/M1 standalone scope.
+- **Coupled low-Rm mode (Lorentz force) is wired**: `Pb_MHD` accepts optional
+  extra equations (kernel `eq_opt_` mechanism) — adding
+  `Navier_Stokes_standard` to the problem block gives a two-equation coupled
+  problem, and the `force_lorentz` source (`src/Terme_Source_Lorentz.{h,cpp}`,
+  J×B per unit mass, lagged b, Boussinesq-PolyMAC face/element assembly)
+  couples b → momentum. One-way only: the NS velocity does not feed the
+  magnetic convection yet. Validation form:
+  `share/Validation/Rapports_automatiques/MagneticCoupled/ForceLorentzBalance/`
+  (Lorentz hydrostatic balance: Δp = −0.1886 vs analytic −0.18, |u| → 0).
+  Recipe and traps (source-typing suffix, `solveur_pression`, the static
+  `trust-lime_opt` rebuild) in `KERNEL_REUSE_NOTES.md` §12bis.
 - **Unit tests** live in `tests/UnitTests/` (GoogleTest, kernel conventions).
   The arithmetic suite (`--arith-only`) **runs and passes** today; the rest
   needs the full kernel.

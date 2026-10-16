@@ -20,6 +20,7 @@ time integration, data-file parsing, and boundary/source machinery for free.
 - @subpage TrustLiMe_testcases
 - @subpage TrustLiMe_validation
 - @subpage TrustLiMe_docsys
+- @subpage TrustLiMe_hermes
 - @subpage KeywordsReference
 
 ---
@@ -52,6 +53,8 @@ The HTML output is written to `docs/build/html/index.html`.
 - Want to run it? See @ref TrustLiMe_testcases "Test cases" and
   @ref TrustLiMe_validation "Validation cases".
 - Writing documentation? See @ref TrustLiMe_docsys "Documentation system".
+- Automating checks or running the agent unattended? See
+  @ref TrustLiMe_hermes "Using Hermes Agent".
 
 <h2>Credits</h2>
 
