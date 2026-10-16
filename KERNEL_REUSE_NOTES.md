@@ -344,6 +344,51 @@ then re-drive `vit.update_ve(vit.futur(n))` for every temporal case — because
 `SourceStretching` gives `b(0.5)=1.6468` vs `exp(0.5)=1.6487` (~0.1%, the
 implicit-Euler time error).
 
+**But the element rows are *not* a flux-consistent gradient, and they are
+biased at wall-adjacent cells.** `update_ge()` builds the element rows by
+*averaging the face gradients*,
+`val(nf_tot + D*e + d, n) = Σ_f (e==f_e(f,0)?1:-1) * fs(f)/ve(e) * (xv(f,d)-xp(e,d)) * val(f,n)`,
+and in `calc_gradfve()` a **boundary face only receives a Dirichlet
+contribution** (`fcl(f_bord,0) == 3`). A *frozen* velocity field carries no
+hydrodynamic wall condition — the module associates it with the magnetic
+equation, whose walls are Neumann — so every wall face of the velocity is built
+from the element term alone, with no wall datum; that is consistent with the
+measured wall-cell bias, which then lands in the element (wall-cell) gradient
+through `update_ge()`.
+
+Measured by **isolating the source**: run with `eta = 0`, so
+`∂_t b_x = S_x = B0 ∂_y u_x` and the probe value at `t=1` *is* the discrete
+`∂u_x/∂y` the source sees (`b_x(1) = B0 * ∂_y u_x`).
+
+- with a **linear** velocity `u = 0.3 y` (exactly representable on faces, so any
+  consistent scheme is exact): the implied `∂u_x/∂y` is `0.14997` in the **two
+  wall-adjacent cells** and `0.29994…0.300` in the interior — a clean **factor
+  2**, independent of the mesh;
+- with the Hartmann profile (`Ha = 5`, 64 cells): implied `0.865` vs exact
+  `1.875` in the wall cell (`0.974` vs `1.988` at 256 cells) — i.e. ≈ half, and
+  mesh-independent, while the next cells in are already `O(1%)` or better.
+
+Consequence for a wall-driven case (see `MagneticStandalone/Hartmann1D`): the
+induced field departs from its analytic profile by an almost exactly **linear
+mode in `y`** (`b_x^sim − b_x^analytic ≈ 0.305 y`, i.e. it vanishes at the duct
+centre and is largest at the walls). It **converges, first order** (halves per
+mesh refinement: `9.3e-2 → 4.8e-2 → 2.4e-2` of the profile amplitude at the wall
+cells for 64/128/256 cells), and it is **odd**, so the mean and the odd symmetry
+of the profile survive exactly. Practical rules:
+
+- when comparing an induced field against an analytic profile, **keep the probes
+  out of the two cells adjacent to a wall** (this mirrors the existing rule for
+  post-treatment fields, §11) — the core then matches at the scheme's design
+  order;
+- the `Hartmann1D` forms compare tightly in the core and only **bound** the
+  layer deviation, as a regression guard.
+
+Candidate fixes (not attempted — would need a kernel/test-gate decision):
+give the frozen velocity a **Dirichlet CL at the walls** so `calc_gradfve()`
+sees it (the no-slip datum exists), or reconstruct `∇u` in the module itself by
+Green–Gauss from the face values (as `gradient_b_elements` already does for
+`b`), which is exact for a linear velocity and never touches the kernel.
+
 ---
 
 ## 10. Unit tests (baltik modules)
@@ -428,15 +473,125 @@ The u-dependent fields reuse the velocity infrastructure:
 The scripts: `syntax-check.sh` restores the MPI include dir when the recorded
 compiler is an mpich wrapper (mpi.h used to be missing) — keep that.
 
+## 11bis. Divergence of the magnetic field — Green-Gauss reconstruction and correction options
+
+### Green-Gauss reconstruction (baseline)
+The module reconstructs ∇b at element level by Green-Gauss (gradient_b_elements):
+- interior face value bhat_f = centred average of the two adjacent element
+  values → **exact for linear fields** on any mesh;
+- border face value = the element's own value (zero normal gradient) —
+  consistent with the homogeneous-Neumann CLs the module supports; probes
+  must target interior cells when comparing against an analytic field.
+
+The scalar model (nb_composantes 1) is **rejected** by creer_champ with a
+clean Process::exit — ∇·b is only meaningful for a full vector b; the
+kernel function mhd_tension_magnetique asserts nb_b == dim.
+
+### Path 1 — Lightweight Green-Gauss correction (current implementation)
+- Uses the existing gradient_b_elements — no new discretisation infrastructure
+- **Exact for linear fields at interior cells** (all faces have neighbours)
+- Boundary cells have O(h) accuracy due to the "zero normal gradient" approximation
+  (bf = b(e0) at walls); this is the same approximation pattern as the
+  thermalhydraulics velocity field (∇·u = 0 assumed, not enforced)
+- **Validation probes must target interior cells**
+- All 22 MagneticStandalone validation cases pass with this treatment
+- Documented in AGENTS.md §Divergence of the magnetic field` and
+  KERNEL_REUSE_NOTES.md §11bis
+
+### Path 2 — Pressure-correction approach (alternative, beyond M0/M1 scope)
+- Would achieve **machine-precision ∇·b = 0 globally** (to solver tolerance)
+- **Requires new solver infrastructure**: a PISO-like algorithm for the magnetic field,
+  similar to the thermalhydraulics Navier-Stokes fluide_incompressible block
+- **Beyond M0/M1 standalone scope**: would be Phase 1+ of the coupled MHD plan
+  (PLAN_mhd_coupled.md)
+- **Implementation steps** (beyond current scope):
+  1. Add divergence_free { } keyword to .data file
+  2. Add terme_divergence_free term to the equation
+  3. Solve a Poisson-type correction equation ∇·((1/μ₀)∇p_mag) = ∇·b
+  5. Correct the field: b_corrected = b − μ₀∇p_mag
+  5. Update nombre_d_equations() if adding coupled equations
+  6. Revalidate all 22 validation cases
+  7. Document in model.md, test_cases.md, AGENTS.md, KERNEL_REUSE_NOTES.md
+- **Acceptance criteria** (future work):
+  - ∇·b machine-precision globally
+  - All existing validation cases still pass
+  - Sanitizer pass (ASan/UBSan)
+  - Review checklist signed off
+
+**Note**: Path 2 is documented for completeness and future reference; it is
+not implemented in the current M0/M1 standalone scope. The baseline treatment
+(Path 1) is what is used in all existing validation cases and is consistent
+with the thermalhydraulics velocity-field assumption pattern.
+
 ## 12. Open items / gotchas found
 
 - `compile_commands.json` is stale (`c++17`); always force `-std=c++20`.
 - `TRUST_Deriv` (OWN_PTR) uses `operator bool` / `.valeur()` / `.non_nul()`?
-  → **`non_nul()` does not exist on OWN_PTR**; use `if (ptr)` and `ptr.valeur()`.
+  → **non_nul() does not exist on OWN_PTR**; use `if (ptr)` and `ptr.valeur()`.
   (`OBS_PTR` has `non_nul()`.)
 - `Paroi_adiabatique` app-domain compatibility is resolved through its
-  `complement()`-typed `Neumann_*` class; keep `domaine_application()` aligned
+  complement()-typed Neumann_* class; keep domaine_application() aligned
   with the thermal domain for reuse.
+- **grad_u's element rows are biased at wall-adjacent cells** (measured: the
+  implied gradient is exactly halved there for a linear velocity). Consumers:
+  the M1 source (§9) and `kinetic helicity` (via
+  `Convection_Diffusion_Magnetic_field::gradient_vitesse_elements`); the ∇b-based
+  post-treatment fields (tension, curl, divergence, current, Lorentz) go through
+  the equation's own Green–Gauss `gradient_b_elements` instead and are not
+  affected by this particular bias. Keep probe comparisons out of the two cells
+  next to a wall; details and candidate fixes in §9.
+
+---
+
+## 12bis. Coupling a momentum equation: `force_lorentz` (source on Navier-Stokes)
+
+Everything learned while wiring the low-Rm Lorentz coupling
+(`src/Terme_Source_Lorentz.{h,cpp}` + optional NS equation in `Pb_MHD`):
+
+- **Optional extra equations are free.** `Probleme_base::read_optional_
+  equations` picks up *any* `Equation_base` subtype keyword written in the
+  problem block after the main equations, discretises it and stores it in the
+  protected `eq_opt_` (the mechanism of `Pb_Hydraulique`'s optional turbulence
+  equations). A problem only has to expose it:
+  `nombre_d_equations() { return 1 + eq_opt_.size(); }` and `equation(int)`
+  mapping `i>0` to `eq_opt_[i-1]`. The NS equation keyword is
+  **`Navier_Stokes_standard`** (`Implemente_instanciable_sans_constructeur`
+  registers that name, not the class name `Navier_Stokes_std`).
+- **Source typing carries the unknown's suffix.** `Source::typer` calls
+  `Discretisation_base::get_name_of_type_for("Source", keyword, eqn)`; on the
+  PolyMAC_CDO discretisation this returns `keyword + suffix("Champ")` of the
+  *inconnue* class — for NS on `Polymac_p0` that is
+  `force_lorentz_Face_PolyMAC_MPFA`. Register the whole family:
+  `Implemente_instanciable(Terme_Source_Lorentz, "force_lorentz_Face_PolyMAC_
+  CDO", Source_base)` + `Add_synonym(...)` for MPFA/HFV/unsuffixed.
+  `Add_synonym` needs `#include <Synonyme_info.h>`.
+- **`Source_base` runtime gates.** Override `mettre_a_jour(double)` (TRUST
+  errors out at initialisation otherwise, even for a stateless source) and
+  `check_multiphase_compatibility()` (empty body is fine). `associer_pb` and
+  `associer_domaines` are pure virtual.
+- **Momentum sources are per unit mass.** The gravity/Boussinesq precedent
+  adds acceleration-like values; divide \f$\mathbf{J}\times\mathbf{b}\f$ by
+  \f$\rho\f$. The assembly template for a PolyMAC face-based velocity unknown
+  is `PolyMAC_family/Sources/Terme_Boussinesq_PolyMAC_CDO_Face.cpp`: face
+  block `secmem(f) += (F·n_f)/S_f * vfd(f,i) * poro_face(f)` over both
+  adjacent elements, plus for `Domaine_PolyMAC_MPFA` the auxiliary
+  element-velocity block `secmem(nf_tot + dim*e + d) += F(d)*poro_elem(e)*
+  V_e`, skipping faces with `fcl(f,0) >= 2` (Dirichlet velocity) in the face
+  block. The `fcl` table lives on `Champ_Face_base` (kernel).
+- **NS requires `solveur_pression`** in the equation block
+  (`Param::REQUIRED` non-standard keyword of `Navier_Stokes_std`). The
+  keyword is auto-prefixed: write `solveur_pression Cholesky { }` (resolves
+  to `Solv_Cholesky`). The plain Sparskit `Cholesky` **segfaults** here
+  (deprecated, no preconditioning of `Matrice_Morse_Sym`); use the
+  PETSc-wrapped direct solver `solveur_pression Petsc Cholesky { }` as in
+  `trust-code/tests/Reference/Cx/Cx.data`.
+- **The repo-root executable embeds the module statically.** `trust-lime_opt`
+  contains the module objects (no runtime dlopen of the module .so): after
+  adding source files run `./configure` (refresh the build-dir symlinks),
+  `make module_optim` (the `.so`), **and** `make exe` in
+  `build/src/exec_opt` (relink `trust-lime_opt`). `make module_semi_optim`
+  alone does NOT refresh the binary the `trust` script runs — the symptom is
+  a freshly compiled class reported as "not a recognized keyword".
 
 ---
 

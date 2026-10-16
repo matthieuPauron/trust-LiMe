@@ -123,7 +123,7 @@ The `/validate` command automates this. From the repository root:
 One validation form per test case (TRUST layout
 `Rapports_automatiques/<Category>/<FormName>/<FormName>.ipynb`): the folder
 holds `Invariance/`, `Diffusion/`, `DiffusionRefined/`, `Advection/`,
-`SteadyState/`, `VaryingVelocity/`, `SourceStretching/`
+`SteadyState/`, `VaryingVelocity/`, `SourceStretching/`, `Hartmann1D/`
 and the negative `Error_missing_eta` – `Error_bad_nbcomposantes` –
 `Error_bad_bc` forms; each form folder contains its notebook + `src/<case>.data`
 
@@ -141,6 +141,7 @@ so no `.med` file is required and the cases can be run from a clean checkout.
 | `steady_state.data` | equilibrium \f$b = y\f$ with **non-uniform** \f$\eta(x) = 1+x\f$ | Validation – separate effects | exact steady state | spurious source, mis-assembled diffusion, functional-\f$\eta\f$ reading path |
 | `varying_velocity.data` | **spatially varying** velocity \f$u = (-y, x)\f$, uniform \f$b\f$ | Verification | exact invariant | `Champ_Don → Champ_Inc` transfer onto faces, wrong velocity components |
 | `source_stretching.data` | M1 source \f$S = (b\cdot\nabla)u\f$, \f$u = (x, -y)\f$ (div-free) | Validation – separate effects | \f$b(t) = B_0 e^{t}\f$ | source magnitude, sign, gradient-index order |
+| `hartmann_1d.data` | induced field of the Hartmann profile (\f$\mathrm{Ha}=5\f$), insulating walls, \f$b=(b_x,B_0)\f$ (`nb_composantes 2`) | Validation – separate effects | mean-free \f$b_x(y) = -\tfrac{B_0}{\eta}\big[\int_{-h}^{y}u - \tfrac12\int_{-h}^{h}u\big]\f$ | multi-component transport, M1 source driving \f$b_x\f$ through the applied \f$b_y\f$, insulating walls, odd symmetry, \f$b_y\equiv B_0\f$ |
 | `error_missing_eta.data` | no `diffusivite_magnetique` | Verification | must fail cleanly | required-keyword diagnostics |
 | `error_bad_nbcomposantes.data` | `nb_composantes 7` in 2D (also invalid in 3D) | Verification | must fail cleanly | range validation |
 | `error_bad_bc.data` | unknown CL keyword | Verification | must fail cleanly | keyword error reporting |
@@ -158,12 +159,13 @@ Design choices worth knowing:
   `Mailler`. Meshes keep the 2D resolution only in the direction that matters
   (e.g. the diffusion mode direction) and stay coarse elsewhere, so the 3D runs
   are affordable.
-- **`nb_composantes 1`** in all cases — the natural reduction of
-  \f$\nabla\cdot b = 0\f$ for a purely transverse field keeps the datasets
-  simple. The multi-component (vector) unknown is a later phase (the
-  `discretiser()` currently rejects `nb_composantes != 1`); a former
-  `VectorComponents` form was removed when it became clear the scalar-only
-  module cannot run it.
+- **`nb_composantes`** — most standalone cases transport a single component
+  (`nb_composantes 1`), the natural reduction of \f$\nabla\cdot b = 0\f$ for a
+  purely transverse field. The multi-component (vector) unknown is exercised by
+  `hartmann_1d` (`nb_composantes 2`, so the M1 source can drive the induced
+  \f$b_x\f$ through the applied \f$b_y\f$) and by the `Postraitement_fields`
+  forms; the valid range is \f$[1, \mathrm{dimension}]\f$ (`error_bad_nbcomposantes`
+  pins the rejection of out-of-range values).
 - **Probes use `grav`** — they are snapped to the nearest cell centre. The
   diffusion check therefore compares the *amplitude ratio* \f$b(t)/b(0)\f$,
   which is independent of where the probe sits on the mesh.
@@ -174,6 +176,17 @@ Design choices worth knowing:
   functional fields, which is the realistic MHD situation (a Hartmann layer has
   a position-dependent \f$\eta_{\rm eff}\f$) and exercises a different reading
   path than a uniform `Champ_Uniforme`.
+- **`Hartmann1D` pins a known limitation.** The M1 source needs the cell gradient
+  of the frozen velocity; the kernel assembles it by *averaging face gradients*
+  (`grad_Champ_Face_PolyMAC_MPFA::update_ge()`), and a boundary face only
+  receives a Dirichlet contribution. The frozen velocity carries no hydrodynamic
+  wall condition here, so the two cells adjacent to a wall get a biased
+  \f$\nabla u\f$ (for a linear velocity its value is exactly halved there —
+  isolated by running the source alone with \f$\eta=0\f$). The induced field is
+  therefore compared **tightly in the duct core** and only against a
+  **documented bound** inside the Hartmann layer; the deviation is odd, converges
+  at first order, and that bound is a regression guard to be tightened once the
+  boundary treatment is fixed (see `KERNEL_REUSE_NOTES.md`).
 - **Negative cases are run directly** with the `trust` command rather than
   through `runCases()` (which would abort the notebook); each negative form
   (`Error*`) asserts a non-zero exit code and a non-empty diagnostic.
@@ -196,6 +209,11 @@ uniform (or exactly-linear) configuration:
 | `HeliciteCinetique` | `helicite_cinetique` | 3D, $u = (y, z, x)$ (exactly linear) | $-(x{+}y{+}z)$ at $(0.375)^3$ |
 | `NombreDeReynoldsMagnetique` | `nombre_de_reynolds_magnetique` | 10×10 mesh, $u = (3,0)$, $\eta = 2$ | $3\cdot 0.1/2 = 0.15$ |
 | `NombreDePrandtlMagnetique` | `nombre_de_prandtl_magnetique` | $\mu = 2$, $\rho = 4$, $\eta = 0.25$ | $\nu/\eta = 2$ |
+| `TensionMagnetique` | `tension_magnetique` | $b = (y, x)$ (exactly linear) | $F_t = (x, y)$ at $(0.45, 0.55)$ |
+| `DivergenceMagnetique` | `divergence_magnetique` | $b = (x, y)$ (exactly linear) | $\nabla\cdot b = 2$ at $(0.45, 0.55)$ |
+| `RotationnelMagnetique` | `rotationnel_magnetique` | $b = (-y, x)$ (exactly linear, 2D) | $w_z = 2$ at $(0.45, 0.55)$ |
+| `CourantMagnetique` | `courant_magnetique` | $b = (y, z, x)$ (exactly linear, 3D) | $J = (-1,-1,-1)$ at $(0.375, 0.375, 0.375)$ |
+| `ForceLorentz` | `force_lorentz` | $b = (-y, x)$ (exactly linear) | $F = (-0.9, -1.1)$ at $(0.45, 0.55)$ |
 
 Categories (ASN 28): *Validation – separate effects* — each form checks one
 physical convention (formula/sign/normalisation) against a closed-form value.
