@@ -28,11 +28,18 @@ Implemente_instanciable(Terme_Source_Induction_stretching,
 // XD_CONT convection-diffusion form for an incompressible fluid. The velocity u is the (given, frozen)
 // XD_CONT transporting velocity of the equation, so grad u is constant and the term is explicit in b.
 
+/*! @brief Writes the object identity (standard TRUST I/O). */
 Sortie& Terme_Source_Induction_stretching::printOn(Sortie& os) const
 {
   return os << que_suis_je() << finl;
 }
 
+/*! @brief Reads the source block, which carries no keyword of its own.
+ *
+ *  The velocity comes from the equation, but Sources::readOn expects every
+ *  source to consume its own braces before looking for the next ',' or '}'.
+ *  An empty block "induction_stretching { }" is therefore accepted.
+ */
 Entree& Terme_Source_Induction_stretching::readOn(Entree& is)
 {
   // The source carries no data of its own (the velocity comes from the
@@ -45,6 +52,7 @@ Entree& Terme_Source_Induction_stretching::readOn(Entree& is)
   return is;
 }
 
+/*! @brief Registers the source's keywords: none for now. */
 void Terme_Source_Induction_stretching::set_param(Param& param) const
 {
   // No data-file keyword for now; the velocity is read by the equation.
@@ -191,12 +199,14 @@ void Terme_Source_Induction_stretching::ajouter_source(DoubleTab& secmem) const
       secmem(e, i) += poro(e) * vol(e) * s(e, i);
 }
 
+/*! @brief Framework entry point: calls ajouter_source() and returns secmem. */
 DoubleTab& Terme_Source_Induction_stretching::ajouter(DoubleTab& secmem) const
 {
   ajouter_source(secmem);
   return secmem;
 }
 
+/*! @brief Framework entry point: zeroes secmem then adds the source. */
 DoubleTab& Terme_Source_Induction_stretching::calculer(DoubleTab& secmem) const
 {
   secmem = 0.;
@@ -211,6 +221,9 @@ void Terme_Source_Induction_stretching::dimensionner_blocs(matrices_t, const tab
   // Explicit source: contributes nothing to the Jacobian.
 }
 
+/*! @brief Bloc interface: adds S = (b.grad) u to the right-hand side
+ *         (same as ajouter(); no matrix contribution).
+ */
 void Terme_Source_Induction_stretching::ajouter_blocs(matrices_t, DoubleTab& secmem, const tabs_t&) const
 {
   ajouter_source(secmem);

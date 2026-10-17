@@ -15,11 +15,17 @@
 
 Implemente_instanciable(Champ_Fonc_MHD, "Champ_Fonc_MHD", Champ_Fonc_Elem_PolyMAC_CDO);
 
+/*! @brief Writes the object identity and name (standard TRUST I/O). */
 Sortie& Champ_Fonc_MHD::printOn(Sortie& s) const
 {
   return s << que_suis_je() << " " << le_nom();
 }
 
+/*! @brief Reads nothing: the field is built programmatically.
+ *
+ *  The field is never typed from the data file — it is created by the
+ *  equation's creer_champ() hook — so there is nothing to read here.
+ */
 Entree& Champ_Fonc_MHD::readOn(Entree& s)
 {
   // Programmatic construction only (see the equation's creer_champ()): the

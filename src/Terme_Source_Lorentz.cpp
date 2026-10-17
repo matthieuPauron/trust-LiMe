@@ -33,11 +33,13 @@ Add_synonym(Terme_Source_Lorentz, "force_lorentz");
 // XD_CONT Convection_Diffusion_Magnetic_field equation of the same Pb_MHD problem.
 // XD attr mu0 floattant mu0 OPT Magnetic permeability (default: the mu0 of the magnetic equation, itself 1 by default).
 
+/*! @brief Writes the object identity (standard TRUST I/O). */
 Sortie& Terme_Source_Lorentz::printOn(Sortie& os) const
 {
   return os << que_suis_je();
 }
 
+/*! @brief Reads the source block: a single optional `mu0` keyword. */
 Entree& Terme_Source_Lorentz::readOn(Entree& is)
 {
   Param param(que_suis_je());
@@ -47,11 +49,18 @@ Entree& Terme_Source_Lorentz::readOn(Entree& is)
   return is;
 }
 
+/*! @brief Registers the source's keywords (only the non-standard `mu0`). */
 void Terme_Source_Lorentz::set_param(Param& param) const
 {
   param.ajouter_non_std("mu0", this);
 }
 
+/*! @brief Reads the non-standard `mu0` keyword.
+ *
+ *  @param[in] mot  the keyword read from the data file.
+ *  @param[in,out] is the input stream (consumed when the keyword is ours).
+ *  @return 1 when the keyword was consumed, -1 to let the caller handle it.
+ */
 int Terme_Source_Lorentz::lire_motcle_non_standard(const Motcle& mot, Entree& is)
 {
   if (mot == "mu0")
@@ -64,6 +73,9 @@ int Terme_Source_Lorentz::lire_motcle_non_standard(const Motcle& mot, Entree& is
   return -1;  // not ours
 }
 
+/*! @brief Effective magnetic permeability: the local `mu0` keyword when
+ *         given, else the magnetic equation's own mu0.
+ */
 double Terme_Source_Lorentz::mu0() const
 {
   return mu0_ > 0 ? mu0_ : eq_magnetic_->mu0();
@@ -99,6 +111,9 @@ void Terme_Source_Lorentz::associer_pb(const Probleme_base& pb)
     }
 }
 
+/*! @brief Grabs the PolyMAC discretisation domains (cast to the CDO/family
+ *         types used by the assembly).
+ */
 void Terme_Source_Lorentz::associer_domaines(const Domaine_dis_base& domaine_dis,
                                              const Domaine_Cl_dis_base& domaine_Cl_dis)
 {

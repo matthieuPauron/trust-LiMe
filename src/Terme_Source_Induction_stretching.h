@@ -56,6 +56,9 @@ public:
   void dimensionner_blocs(matrices_t matrices, const tabs_t& semi_impl = {}) const override;
   void ajouter_blocs(matrices_t matrices, DoubleTab& secmem, const tabs_t& semi_impl = {}) const override;
 
+  /*! @brief Declares the bloc-matrix interface (Polymac uses the bloc
+   *         matrix path), even though the source is explicit.
+   */
   int has_interface_blocs() const override { return 1; }
 
 protected:

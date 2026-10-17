@@ -32,6 +32,7 @@ Implemente_instanciable(Convection_Diffusion_Magnetic_field,
 // XD_CONT pulsation_cyclotronique post-treatment field. Default: e/m_e = 1.75882001076e11 C/kg
 // XD_CONT (electron mass, positron charge).
 
+/*! @brief Writes the object identity (standard TRUST I/O). */
 Sortie& Convection_Diffusion_Magnetic_field::printOn(Sortie& os) const
 {
   return Convection_Diffusion_Temperature_base::printOn(os);
@@ -122,6 +123,12 @@ void Convection_Diffusion_Magnetic_field::discretiser()
   Cerr << "Convection_Diffusion_Magnetic_field::discretiser() ok" << finl;
 }
 
+/*! @brief The magnetic diffusivity eta (required keyword `diffusivite_magnetique`).
+ *
+ *  @return the diffusivity field; the process exits cleanly when the keyword
+ *          was omitted (it cannot be defaulted: it sets the physical decay
+ *          rate of the equation).
+ */
 const Champ_Don_base& Convection_Diffusion_Magnetic_field::diffusivite_pour_transport() const
 {
   if (!diffusivite_magnetique_)
@@ -130,11 +137,13 @@ const Champ_Don_base& Convection_Diffusion_Magnetic_field::diffusivite_pour_tran
   return diffusivite_magnetique_.valeur();
 }
 
+/*! @brief Diffusivity used by the time-step stability estimate: eta. */
 const Champ_base& Convection_Diffusion_Magnetic_field::diffusivite_pour_pas_de_temps() const
 {
   return diffusivite_pour_transport();
 }
 
+/*! @brief The transporting velocity u handed to the convection operator. */
 const Champ_base& Convection_Diffusion_Magnetic_field::vitesse_pour_transport() const
 {
   if (!la_vitesse_transportante_)
@@ -192,6 +201,7 @@ const OWN_PTR(Champ_Fonc_base)* Convection_Diffusion_Magnetic_field::champ_postr
   return nullptr;
 }
 
+/*! @brief Non-const overload (see the const one); used by creer_champ(). */
 OWN_PTR(Champ_Fonc_base)* Convection_Diffusion_Magnetic_field::champ_postraitable(const Motcle& nom)
 {
   // Owns and mutates the members, so this overload is used by creer_champ().
@@ -199,6 +209,11 @@ OWN_PTR(Champ_Fonc_base)* Convection_Diffusion_Magnetic_field::champ_postraitabl
   return const_cast<OWN_PTR(Champ_Fonc_base)*>(me.champ_postraitable(nom));
 }
 
+/*! @brief True when `nom` names one of the derived MHD fields.
+ *
+ *  @param[in] nom field name (base name or component name).
+ *  @return true if the name is a post-treatment field of this equation.
+ */
 bool Convection_Diffusion_Magnetic_field::est_champ_postraitable(const Motcle& nom) const
 {
   return champ_postraitable(nom) != nullptr;
@@ -224,6 +239,7 @@ bool Convection_Diffusion_Magnetic_field::has_champ(const Motcle& nom, OBS_PTR(C
   return Convection_Diffusion_Temperature_base::has_champ(nom, ref_champ);
 }
 
+/*! @brief Field-existence query for the derived MHD fields. */
 bool Convection_Diffusion_Magnetic_field::has_champ(const Motcle& nom) const
 {
   if (est_champ_postraitable(nom))

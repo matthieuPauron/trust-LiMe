@@ -67,19 +67,24 @@ class Terme_Source_Lorentz : public Source_base
 
 public:
 
-  // Explicit (lagged b) source: nothing in the Jacobian.
+  /*! @brief Declares the bloc-matrix interface: the source is explicit
+   *         (lagged b), so nothing enters the Jacobian.
+   */
   int has_interface_blocs() const override { return 1; }
+  /*! @brief Nothing to dimension: the source contributes no matrix block. */
   void dimensionner_blocs(matrices_t matrices, const tabs_t& semi_impl = {}) const override { }
   void ajouter_blocs(matrices_t matrices, DoubleTab& secmem, const tabs_t& semi_impl = {}) const override;
 
   // Locate the magnetic equation of the problem (by unknown name).
   void associer_pb(const Probleme_base&) override;
 
-  // Nothing time-dependent here (b is re-read in ajouter_blocs at every
-  // call); the override only satisfies the Source_base runtime check.
+  /*! @brief Nothing time-dependent here (b is re-read in ajouter_blocs at
+   *         every call); the override only satisfies the Source_base runtime
+   *         check.
+   */
   void mettre_a_jour(double temps) override { }
 
-  // Single-phase only in this phase; no multiphase check needed.
+  /*! @brief Single-phase only in this phase; no multiphase check needed. */
   void check_multiphase_compatibility() const override { }
 
   // Effective magnetic permeability: the mu0 keyword when given, else the

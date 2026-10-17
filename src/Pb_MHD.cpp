@@ -18,6 +18,7 @@ Implemente_instanciable(Pb_MHD, "Pb_MHD", Probleme_base);
 // XD attr Navier_Stokes_standard Navier_Stokes_standard Navier_Stokes_standard OPT Momentum equation (coupled low-Rm mode); pair with
 // XD_CONT the force_lorentz source to apply J x B.
 
+/*! @brief Writes the object identity (standard TRUST I/O). */
 Sortie& Pb_MHD::printOn(Sortie& os) const
 {
   return Probleme_base::printOn(os);
@@ -68,11 +69,26 @@ Entree& Pb_MHD::readOn(Entree& is)
   return is;
 }
 
+/*! @brief Number of equations of the problem.
+ *
+ *  1 (the magnetic induction equation) plus one per optional extra equation
+ *  read by the kernel (typically Navier_Stokes_standard in the coupled
+ *  low-Rm mode).
+ *
+ *  @return the equation count (>= 1)
+ */
 int Pb_MHD::nombre_d_equations() const
 {
   return 1 + eq_opt_.size();
 }
 
+/*! @brief Read-only access to equation @p i.
+ *
+ *  @param[in] i equation index: 0 is the magnetic induction equation, the
+ *             following indices address the optional extra equations in
+ *             reading order.
+ *  @return the equation.
+ */
 const Equation_base& Pb_MHD::equation(int i) const
 {
   if (i == 0)
@@ -85,6 +101,7 @@ const Equation_base& Pb_MHD::equation(int i) const
   return eq_magnetic_field;
 }
 
+/*! @brief Writable access to equation @p i (see the const overload). */
 Equation_base& Pb_MHD::equation(int i)
 {
   if (i == 0)

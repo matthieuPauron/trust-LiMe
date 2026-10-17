@@ -44,14 +44,17 @@ public:
   void discretiser() override;
 
   // --- Unknown ------------------------------------------------------------
+  /*! @brief The magnetic field unknown (cell-centred, multi-component). */
   inline const Champ_Inc_base& inconnue() const override { return the_magnetic_field_; }
   inline Champ_Inc_base& inconnue() override { return the_magnetic_field_; }
 
-  // Number of components of the magnetic field (1 <= nb <= space dimension).
+  /*! @brief Number of components of the magnetic field (1 <= nb <= space dimension). */
   inline int nb_composantes() const { return nb_composantes_; }
 
-  // Set the component count.  Must be called before discretiser(); Pb_MHD
-  // reads the problem-level `nb_composantes` keyword and forwards it here.
+  /*! @brief Set the component count.  Must be called before discretiser();
+   *         Pb_MHD reads the problem-level `nb_composantes` keyword and
+   *         forwards it here.
+   */
   inline void set_nb_composantes(int nb) { nb_composantes_ = nb; }
 
   // --- Physical closures used by the inherited operators ------------------
@@ -88,7 +91,11 @@ public:
   void get_noms_champs_postraitables(Noms& nom, Option opt = NONE) const override;
 
   // Constants used by the post-treatment fields.
+  /*! @brief Magnetic permeability mu0 (keyword `mu0`, default 1). */
   inline double mu0() const { return mu0_; }
+  /*! @brief Charge-to-mass ratio q/m (keyword `rapport_charge_masse`,
+   *         default e/m_e).
+   */
   inline double rapport_charge_masse() const { return rapport_charge_masse_; }
 
   // Velocity interpolated at the elements.  The field is face-centred; its
@@ -124,6 +131,10 @@ protected:
   int nb_composantes_ = -1;
 
   // Magnetic diffusivity eta, read from the `diffusivite_magnetique` keyword.
+  // Assumed molecular (no turbulent EDM ηₜ): the validation suite uses laminar or
+  // prescribed‑mean‑flow velocity fields.  A turbulent contribution
+  // (ηₜ from k‑ε → ∇×(u'×b'̄) ≈ −ηₜ∇×B̄) is deferred to END_GOAL.md Phase 3
+  // (dynamo threshold); see turbulence section of END_GOAL.md §2.2 and TRUST §3.1.
   OWN_PTR(Champ_Don_base) diffusivite_magnetique_;
 
   // Transporting velocity, read from the optional `vitesse_magnetique` keyword.
