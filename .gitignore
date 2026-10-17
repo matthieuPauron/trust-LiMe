@@ -82,7 +82,7 @@ README_BALTIK_ECLIPSE
 *.prm
 
 # Generated validation report (run-validation-pdf.sh output) — untracked
-/MagneticStandalone_validation.pdf
+/trust-lime_validation.pdf
 
 # Editor lock / autosave / swap files
 .#*
