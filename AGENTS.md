@@ -108,6 +108,34 @@ Build output is filtered by the `rtk` plugin, and global `tool_output` limits
 were raised so long compile errors are not clipped. Keep the primary loop:
 `syntax-check.sh` → `make module_semi_optim` → validate.
 
+## Parallel sessions (free-model budget)
+
+All sessions share one OpenCode account, so the free-model ceiling is a shared
+budget. Parallelism is fine for *planning* (one workstream per session, one
+commit per session — see `trust-lime-coding`), but **serialise the generation**:
+
+- Keep **one heavy session** (build/plan) actively generating, plus at most one
+  light one (`@quick`, `/syntax`, `/check-validation`). Stagger the rest.
+- **Different model per session**, not just different sessions: per-model limits
+  are independent. Heavy work → `big-pickle`; big-context analysis →
+  `space-bunny-free` (most expensive, reserve it); lookups →
+  `ling-3.1-flash-free`; alternate session → `deepseek-v4.1-flash-free`.
+- Every turn re-sends the session prefix (~100–150 k tokens, ~100 % cache-read).
+  N sessions turning in the same minute-window is N large prompts — the most
+  likely way to trip the ceiling. Interleaved idle sessions also lose the
+  prefix cache, so batching turns into one session beats round-robining.
+- Compaction is now less frequent (`keep.tokens: 15000`); each compaction is an
+  extra full-prompt request, so don't run several long sessions in parallel
+  expecting it to stay cheap.
+- All model traffic goes through the local Headroom proxy
+  (`127.0.0.1:8787`, `--mode cache`, 2 workers). It preserves the provider
+  prefix cache (100 % hit rate) — do **not** switch it to `--mode token`, which
+  rewrites prior turns and busts the cache. Measure with
+  `headroom perf --hours 1` during a parallel burst.
+- `warming` stays off: keep-alive requests count against the same budget.
+- The nightly Hermes arith job runs on Gemini, not Zen — keep it that way so
+  scheduled work never competes with interactive sessions.
+
 ## Hermes Agent (unattended / scheduled runs)
 
 Hermes Agent (`~/.hermes`, git install) drives OpenCode as a **delegated coding
@@ -124,8 +152,10 @@ Set up 2026-10-13, on the workstation only — the T430s has no Hermes install.
   Inspect with `hermes cron list` / `hermes cron runs <id>`.
 - **Pin a working model on every Hermes-driven run.** On 2026-10-13 the NVIDIA
   NIM endpoint hung on `/v1/chat/completions` for this account (while
-  `/v1/models` still answered), which also breaks the OpenCode default
-  (`nvidia/moonshotai/kimi-k3`). The cron job is therefore pinned with
+  `/v1/models` still answered), which also broke the OpenCode default
+  (`nvidia/moonshotai/kimi-k3`). On 2026-10-17 kimi-k3 was fully
+  discontinued from the NIM API, so the global default (and the build/plan
+  agent pins) moved to `opencode/big-pickle`. The cron job is pinned with
   `--provider gemini --model gemini-3.1-flash-lite`, and any `opencode run`
   should pass `--model google/gemini-3.1-flash-lite` while that persists.
 - `opencode` must resolve on the **gateway's** `PATH`, not just an interactive
