@@ -122,6 +122,12 @@ parallel_ok=(
   "$base/MagneticStandalone3D/VaryingVelocity/"
   # --- MagneticCoupled ---
   "$base/MagneticCoupled/ForceLorentzBalance/"
+  "$base/MagneticCoupled/MMS_Coupled/"
+  "$base/MagneticCoupled/MMS_CoupledRefined/"
+  "$base/MagneticCoupled/Coupled_Feedback/"
+  "$base/MagneticCoupled/Error_BadForceKeyword/"
+  "$base/MagneticCoupled/Error_MissingPressureSolver/"
+  "$base/MagneticCoupled3D/MMS_Coupled3D/"
   # --- Postraitement_fields ---
   "$base/Postraitement_fields/CourantMagnetique/"
   "$base/Postraitement_fields/DivergenceMagnetique/"

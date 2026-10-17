@@ -793,3 +793,37 @@ Traps (all hit for real during the 2026-10-16 parallel port):
   forms are listed in `parallel_ok[]` (path prefixes). Extend that list
   deliberately - never disable R2/R3. For allowlisted datasets the gate
   additionally requires the three marker regions to be present.
+
+## 16. Traps hit while adding the coupled-MHD validation forms (2026-10-17)
+
+Seven forms added (`MMS_Coupled`, `MMS_CoupledRefined`, `Coupled_Feedback`,
+`MMS_Coupled3D`, `Error_BadForceKeyword`, `Error_MissingPressureSolver`,
+plus the `ForceLorentzBalance` hardening). Findings:
+
+- **nbformat requires `outputs` and `execution_count` on code cells.** A
+  notebook built by a script (plain dicts with `cell_type`/`id`/`metadata`/
+  `source`) fails at `nbconvert --execute` with
+  `NotebookValidationError: 'outputs' is a required property` — jupyter
+  validates before running. Always emit `"outputs": []` and
+  `"execution_count": None` on every code cell.
+- **`Champ_Fonc_xyz dom N …` — N is the component count, not the dimension.**
+  With `nb_composantes 2` in a 3D problem, the field is
+  `Champ_Fonc_xyz dom 2 y -x` (two expressions); writing `dom 3 y -x 0`
+  segfaults TRUST at the initial-condition read.
+- **Boundary keywords: `droite`, never `droit`.** The Pave block registers
+  `Bord droite …`; a BC line `droit Neumann_Paroi_adiabatique` (missing 'e')
+  crashes with `rang_frontiere(): we have not found a boundary with name`.
+- **`TRUST_NB_PROCS` leaks from the shell environment** into the TRUST
+  binary and forces parallel mode — a sequential form then dies with
+  "Mailler keyword can't be used in parallel calculation!". The existing
+  `Error*` forms exploit this: they carry the parallel markers and their
+  notebooks run `trust CASE 2`, failing cleanly (rc=255) by convention.
+- **`make_PAR.data` Cholesky rewrite: never write a comment that says
+  "Cholesky" without "PETSc" on the same line** — even a NOTE explaining
+  the trap triggers it. Keep solver comments free of the word entirely.
+- **Point-probe convergence studies are unreliable in the coupled case**:
+  the discretisation error is spatially varying and non-monotonic, and probe
+  snapping (cell centres shift by h/2 under 2× refinement) contributes an
+  O(h²) offset comparable to the truncation error. `MMS_CoupledRefined`
+  therefore documents mesh independence (bounded error) rather than a
+  convergence order.
