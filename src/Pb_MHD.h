@@ -23,6 +23,26 @@
  *
  * nombre_d_equations() is 1 standalone, 1 + eq_opt_.size() otherwise.
  * The problem shell stays deliberately thin.
+ *
+ * ARCHITECTURE NOTE (2026-10-17) — Pb_MHD is ill-named and will be renamed.
+ * This class is the *magnetic induction* problem; embedding the momentum
+ * equation in it (the optional-equation trick above) is a stopgap for the
+ * low-Rm coupled mode.  The target architecture follows the kernel's
+ * Probleme_Couple pattern (cf. Pb_Couple_rayo_semi_transp, which couples a
+ * Pb_base with a radiation problem): a hydraulics problem (Pb_Hydraulique)
+ * solving Navier-Stokes on its own, a renamed magnetic problem (e.g.
+ * Pb_Magnetique / Pb_Induction) holding only the induction equation, and a
+ * dedicated coupled problem (a Probleme_Couple subclass — the future true
+ * Pb_MHD) associating the two.  When that lands:
+ *   - rename this class (data-file keyword Pb_MHD becomes the magnetic
+ *     problem's new name; the coupled problem takes the Pb_MHD name);
+ *   - the magnetic equation's NS locator (eq_navier_stokes(), which walks
+ *     probleme().equation(i)) becomes a coupled-problem lookup instead — it
+ *     is the single seam of the stopgap to revisit;
+ *   - the velocity binding machinery itself (the associer_vitesse rebind in
+ *     Convection_Diffusion_Magnetic_field::completer() and the
+ *     vitesse_transportante() consumers) is architecture-independent and
+ *     carries over unchanged.
  ****************************************************************************/
 
 #ifndef PB_MHD_H_

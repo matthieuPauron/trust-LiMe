@@ -13,6 +13,7 @@
 #include <Champ_Don_base.h>
 #include <Champ_Face_PolyMAC_MPFA.h>
 #include <Fluide_base.h>
+#include <Navier_Stokes_std.h>
 #include <Domaine_VF.h>
 #include <Domaine_Cl_dis_base.h>
 
@@ -31,6 +32,9 @@ Implemente_instanciable(Convection_Diffusion_Magnetic_field,
 // XD attr rapport_charge_masse floattant rapport_charge_masse OPT Charge-to-mass ratio q/m for the
 // XD_CONT pulsation_cyclotronique post-treatment field. Default: e/m_e = 1.75882001076e11 C/kg
 // XD_CONT (electron mass, positron charge).
+// XD attr vitesse_hydraulique rien vitesse_hydraulique OPT Two-way coupled mode: take the transporting
+// XD_CONT velocity u from the Navier_Stokes_standard equation of the same problem. Mutually exclusive
+// XD_CONT with vitesse_magnetique; requires Navier_Stokes_standard in the problem block.
 
 /*! @brief Writes the object identity (standard TRUST I/O). */
 Sortie& Convection_Diffusion_Magnetic_field::printOn(Sortie& os) const
@@ -54,6 +58,14 @@ Entree& Convection_Diffusion_Magnetic_field::readOn(Entree& is)
   // (a Champ_Inc) while the block was read; fill it now from the data field.
   if (vitesse_magnetique_)
     la_vitesse_transportante_->affecter(vitesse_magnetique_.valeur());
+
+  // Two-way mode: vitesse_hydraulique excludes the data velocity.  (The
+  // placeholder field stays zero: completer() rebinds the transport velocity
+  // to the Navier-Stokes unknown once every equation is known.)
+  if (vitesse_hydraulique_ && vitesse_magnetique_)
+    Process::exit("Convection_Diffusion_Magnetic_field: 'vitesse_hydraulique' (velocity "
+                  "taken from the Navier-Stokes equation) and 'vitesse_magnetique' "
+                  "(data velocity) are mutually exclusive; keep only one of them.");
 
   // The magnetic equation is a pure evolution equation: d b / d t.  Its time
   // term must therefore use the identity mass matrix, i.e. no coefficient
@@ -80,6 +92,13 @@ void Convection_Diffusion_Magnetic_field::set_param(Param& param) const
   // docs/content/model.md ("Post-treatment fields") for the conventions.
   param.ajouter("mu0", &mu0_);
   param.ajouter("rapport_charge_masse", &rapport_charge_masse_);
+  // Two-way coupled low-Rm mode: the transporting velocity is the velocity
+  // unknown of the Navier_Stokes_standard equation of the same problem.
+  // Bare flag keyword (Param::ajouter_flag, like the kernel's
+  // postraiter_gradient_pression_sans_masse).  The actual binding is deferred
+  // to completer(): the optional Navier-Stokes equation does not exist yet
+  // while this block is read (Probleme_base::read_optional_equations).
+  param.ajouter_flag("vitesse_hydraulique", &vitesse_hydraulique_);
   // NOTE: `nb_composantes` is NOT an equation keyword: it must be known before
   // the equations are discretised, so it is read at the *problem* level by
   // Pb_MHD::readOn() (ahead of the medium) and pushed here via
@@ -149,6 +168,86 @@ const Champ_base& Convection_Diffusion_Magnetic_field::vitesse_pour_transport() 
   if (!la_vitesse_transportante_)
     Process::exit("Convection_Diffusion_Magnetic_field: transporting velocity not discretized.");
   return la_vitesse_transportante_.valeur();
+}
+
+/*! @brief Finds the Navier-Stokes equation of the hosting problem, if any.
+ *
+ *  Same walk as Terme_Source_Lorentz::associer_pb(): scan the problem's
+ *  equations (index 0 is this magnetic equation, the optional equations
+ *  follow) and keep the first Navier_Stokes_std.  Only meaningful once
+ *  every equation has been read; the result is cached in eq_ns_.
+ *
+ *  @return the Navier-Stokes equation, or nullptr in standalone problems.
+ */
+const Navier_Stokes_std* Convection_Diffusion_Magnetic_field::eq_navier_stokes() const
+{
+  if (eq_ns_)
+    return &eq_ns_.valeur();
+  const int nb_eq = probleme().nombre_d_equations();
+  for (int i = 0; i < nb_eq; i++)
+    {
+      const Equation_base& eqn = probleme().equation(i);
+      if (sub_type(Navier_Stokes_std, eqn))
+        {
+          eq_ns_ = ref_cast(Navier_Stokes_std, eqn);
+          return &eq_ns_.valeur();
+        }
+    }
+  return nullptr;
+}
+
+/*! @brief Completes the equation, then binds the two-way transport velocity.
+ *
+ *  In the two-way mode (keyword `vitesse_hydraulique`), the (zero)
+ *  placeholder velocity that served the read-time association is replaced by
+ *  the velocity unknown of the Navier-Stokes equation of the same problem.
+ *
+ *  Why here and not at read time: the optional Navier-Stokes equation is
+ *  created, discretised and read *after* the magnetic block
+ *  (Probleme_base::read_optional_equations), so its velocity field does not
+ *  exist when the 'convection' keyword fires Convection_Diffusion_std::
+ *  lire_motcle_non_standard.  completer() runs once every equation is known.
+ *
+ *  Both the equation-level pointer (associer_vitesse, used by the
+ *  vitesse_transportante() consumers such as the induction_stretching
+ *  source) and the convection operator (terme_convectif) hold observers;
+ *  the PolyMAC evaluator re-references the velocity values array on every
+ *  flux evaluation (Eval_Conv_PolyMAC_CDO::mettre_a_jour), so the operator
+ *  always reads the current NS velocity slot.
+ */
+void Convection_Diffusion_Magnetic_field::completer()
+{
+  Convection_Diffusion_Temperature_base::completer();
+
+  if (!vitesse_hydraulique_)
+    return;
+
+  const Navier_Stokes_std* ns = eq_navier_stokes();
+  if (!ns)
+    {
+      Cerr << "Convection_Diffusion_Magnetic_field: the keyword 'vitesse_hydraulique'" << finl;
+      Cerr << "requires a Navier_Stokes_standard equation in the same Pb_MHD problem." << finl;
+      Process::exit();
+    }
+
+  // Rebind the equation-level pointer and the convection operator to the
+  // solved velocity.  With a 'convection negligeable' operator the second
+  // call is a no-op (Op_Conv_negligeable) but the equation-level pointer is
+  // still rebound, so the sources see the NS velocity.
+  associer_vitesse(ns->vitesse());
+  terme_convectif.associer_vitesse(ns->vitesse());
+
+  // Drop the one-time caches possibly built against the placeholder so that
+  // vitesse_aux_elements() / gradient_vitesse_elements() (and the
+  // u-dependent post-treatment fields: helicite_cinetique,
+  // nombre_de_reynolds_magnetique, ...) rebuild against the NS velocity.
+  // Defensive: in practice the first preparation happens after completer()
+  // (all consumers are lazy, post-read) — do not remove.
+  vitesse_aux_preparees_ = false;
+  gradient_vitesse_ = OWN_PTR(Champ_Fonc_base)();
+
+  Cerr << "Convection_Diffusion_Magnetic_field: two-way coupling enabled, transporting "
+       << "velocity taken from the " << ns->que_suis_je() << " equation." << finl;
 }
 
 /*! @brief Reuses the kernel scalar (thermal) boundary conditions.
@@ -355,15 +454,19 @@ void Convection_Diffusion_Magnetic_field::preparer_vitesse_aux_elems() const
 {
   if (vitesse_aux_preparees_)
     return;
-  if (sub_type(Champ_Face_PolyMAC_MPFA, la_vitesse_transportante_.valeur()))
+  // Act on the *effective* transport velocity: the base vitesse_transportante()
+  // is the data placeholder in standalone mode and the Navier-Stokes unknown
+  // once completer() has rebound it (two-way mode, vitesse_hydraulique).
+  const Champ_Inc_base& vit = vitesse_transportante();
+  if (sub_type(Champ_Face_PolyMAC_MPFA, vit))
     {
-      Champ_Face_PolyMAC_MPFA& vit =
-        ref_cast_non_const(Champ_Face_PolyMAC_MPFA, la_vitesse_transportante_.valeur());
-      vit.init_auxiliary_variables();
+      Champ_Face_PolyMAC_MPFA& vit_m =
+        ref_cast_non_const(Champ_Face_PolyMAC_MPFA, vit);
+      vit_m.init_auxiliary_variables();
       // update_ve() gates on the MD_Vector of the *current* temporal case only;
       // drive it over every case so that passe()/futur() are all populated.
-      for (int n = 0; n < vit.nb_valeurs_temporelles(); n++)
-        vit.update_ve(vit.futur(n));
+      for (int n = 0; n < vit_m.nb_valeurs_temporelles(); n++)
+        vit_m.update_ve(vit_m.futur(n));
     }
   vitesse_aux_preparees_ = true;
 }
@@ -393,7 +496,10 @@ void Convection_Diffusion_Magnetic_field::vitesse_aux_elements(DoubleTab& u_elem
   for (int e = 0; e < ne; e++)
     polys(e) = e;
   // dvf.xp(): centre de gravite des elements (positionnement des valeurs).
-  la_vitesse_transportante_->valeur_aux_elems(dvf.xp(), polys, u_elem);
+  // The effective transport velocity (base vitesse_transportante()): the
+  // data placeholder in standalone mode, the Navier-Stokes unknown in the
+  // two-way mode — never the raw placeholder member.
+  vitesse_transportante().valeur_aux_elems(dvf.xp(), polys, u_elem);
 }
 
 /*! @brief Re-extracts the element block of `gradient_vitesse` into

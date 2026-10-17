@@ -1,0 +1,113 @@
+# PARALLEL OK #
+
+# ============================================================================= #
+# Coupled MHD negative test: two-way velocity without Navier-Stokes equation    #
+# ============================================================================= #
+# The magnetic equation carries the 'vitesse_hydraulique' keyword (take the     #
+# transporting velocity from the Navier_Stokes_standard equation of the same   #
+# problem), but the problem block declares NO Navier_Stokes_standard           #
+# equation.  The data must be rejected cleanly: non-zero exit with a readable  #
+# message naming Navier_Stokes_standard.                                       #
+# ============================================================================= #
+dimension 2
+Pb_MHD pb
+Domaine dom
+
+# BEGIN MESH #
+Mailler dom
+{
+    Pave pave
+    {
+        Origine              0.  0.
+        Nombre_de_Noeuds     11  11
+        Longueurs            1.  1.
+    }
+    {
+        Bord gauche   X = 0.    0. <= Y <= 1.
+        Bord droite   X = 1.    0. <= Y <= 1.
+        Bord bas      Y = 0.    0. <= X <= 1.
+        Bord haut     Y = 1.    0. <= X <= 1.
+    }
+}
+# END MESH #
+
+# BEGIN PARTITION
+Partition dom
+{
+    Partition_tool metis { nb_parts 2 }
+    Larg_joint 2
+    zones_name DOM
+}
+End
+END PARTITION #
+
+# BEGIN SCATTER
+Scatter DOM.Zones dom
+END SCATTER #
+
+
+Polymac_p0 dis
+
+Associate pb dom
+
+Schema_Euler_Implicite sch
+Read sch
+{
+    tinit 0.
+    tmax 0.5
+    dt_max 0.05
+    facsec 1e6
+    facsec_max 1e6
+    solveur implicite { solveur petsc cli { } }
+}
+
+Associate pb sch
+Discretize pb dis
+
+Read pb
+{
+    # Full vector magnetic field (the two-way mode is vector-oriented). #
+    nb_composantes 2
+    fluide_incompressible
+    {
+        mu      Champ_Uniforme 1 1.0
+        rho     Champ_Uniforme 1 1.0
+        lambda  Champ_Uniforme 1 1.0
+        Cp      Champ_Uniforme 1 1.0
+        beta_th Champ_Uniforme 1 0.0
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        diffusivite_magnetique Champ_Uniforme 1 0.
+        # Two-way velocity: requires a Navier_Stokes_standard equation, #
+        # deliberately absent from this problem block.                  #
+        vitesse_hydraulique
+
+        diffusion  { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            gauche  Neumann_Paroi_adiabatique
+            droite  Neumann_Paroi_adiabatique
+            bas     Neumann_Paroi_adiabatique
+            haut    Neumann_Paroi_adiabatique
+        }
+        initial_conditions { magnetic_field Champ_Fonc_xyz dom 2 y -x }
+    }
+
+    # NOTE: no Navier_Stokes_standard block — the two-way keyword above  #
+    # must make the run exit cleanly.                                     #
+
+    Postraitement
+    {
+        Sondes
+        {
+            sonde_bx grav magnetic_field0 Periode 1e-6 Points 1 0.35 0.35
+        }
+    }
+
+}
+
+Solve pb

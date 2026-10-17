@@ -27,6 +27,8 @@
 
 #include <Convection_Diffusion_Temperature_base.h>
 
+class Navier_Stokes_std;
+
 /*! @brief Magnetic induction equation (standalone).
  *
  *  @sa Equation_base, Convection_Diffusion_Temperature_base, Champ_Fonc_MHD
@@ -57,6 +59,31 @@ public:
    */
   inline void set_nb_composantes(int nb) { nb_composantes_ = nb; }
 
+  // --- Two-way coupling (coupled low-Rm mode) -------------------------------
+  /*! @brief True when the transporting velocity is the velocity unknown of
+   *         the Navier-Stokes equation of the same problem (keyword
+   *         `vitesse_hydraulique`).  The binding itself is deferred to
+   *         completer(): the optional Navier-Stokes equation is created only
+   *         after this equation's block has been read
+   *         (Probleme_base::read_optional_equations).
+   */
+  inline bool vitesse_hydraulique() const { return vitesse_hydraulique_; }
+
+  /*! @brief The Navier-Stokes equation of the same Pb_MHD problem, if any
+   *         (nullptr in standalone problems).  The located equation is
+   *         cached; the walk is only meaningful once every equation of the
+   *         problem has been read (call from completer() or later).
+   */
+  const Navier_Stokes_std* eq_navier_stokes() const;
+
+  // --- Framework hook -------------------------------------------------------
+  /*! @brief Completes the equation (base class), then, in the two-way mode
+   *         (`vitesse_hydraulique`), rebinds the transporting velocity to
+   *         the Navier-Stokes velocity unknown — see the .cpp for the
+   *         read-ordering rationale.
+   */
+  void completer() override;
+
   // --- Physical closures used by the inherited operators ------------------
   // Magnetic diffusivity eta: used both as the diffusion coefficient
   // (div(eta grad b)) and for the time-step stability estimate.
@@ -67,7 +94,9 @@ public:
   // contract imposed by Convection_Diffusion_std::associer_vitesse(), which
   // ref_casts the returned field to Champ_Inc_base.  A zero field is created
   // at discretisation time; it is filled from the optional `vitesse_magnetique`
-  // data keyword.
+  // data keyword.  In the two-way mode (`vitesse_hydraulique`) the zero field
+  // only serves this read-time association: completer() rebinds the equation
+  // and the convection operator to the Navier-Stokes velocity unknown.
   const Champ_base& vitesse_pour_transport() const override;
 
   // Magnetic (and reused thermal) boundary conditions.  The domain reports
@@ -143,7 +172,19 @@ protected:
   bool turbulence_mhd_;
 
   // The Champ_Inc actually handed to the convection operator (face centred).
+  // In the two-way mode this placeholder stays zero: completer() rebinds the
+  // base vitesse_transportante() (and the convection operator) to the
+  // Navier-Stokes velocity unknown, so every velocity consumer must go
+  // through vitesse_transportante(), never through this member.
   OWN_PTR(Champ_Inc_base) la_vitesse_transportante_;
+
+  // Two-way coupled mode (keyword `vitesse_hydraulique`): the transporting
+  // velocity is the velocity unknown of the Navier-Stokes equation of the
+  // same problem, bound in completer().  eq_ns_ caches the located equation
+  // (mutable: filled from the const serving path, like
+  // vitesse_aux_preparees_ below).
+  bool vitesse_hydraulique_ = false;
+  mutable OBS_PTR(Navier_Stokes_std) eq_ns_;
 
   // --- Post-treatment fields (created lazily by creer_champ()) ------------
   double mu0_ = 1.;                          // magnetic permeability mu0 keyword
