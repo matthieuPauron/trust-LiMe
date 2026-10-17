@@ -405,32 +405,62 @@ void Convection_Diffusion_Magnetic_field::gradient_vitesse_elements(DoubleTab& g
 }
 
 
+/*! @brief Green-Gauss element gradient of the magnetic unknown.
+ *
+ *  Two passes:
+ *  - Pass 1 fills the standard Green-Gauss gradient for every element (local
+ *    and ghost), taking the element's own value at boundary faces (zero
+ *    normal gradient, consistent with the module's Neumann-like wall CLs);
+ *  - Pass 2 replaces the gradient of wall-adjacent cells by that of a nearby
+ *    interior cell found by BFS (the B2 correction), which is exact for
+ *    linear fields and O(h) otherwise — Pass 1 alone is O(h) wrong at
+ *    boundary cells.
+ *
+ *  @param[out] gb the gradient table, resized to
+ *                 (nb_elem_tot, nb_composantes * dimension), row-major
+ *                 gb(e, c*dim + d) = d b_c / d x_d.  Covers ALL elements so
+ *                 parallel consumers may index up to nb_elem_tot().
+ */
 void Convection_Diffusion_Magnetic_field::gradient_b_elements(DoubleTab& gb) const
 {
   const Domaine_VF& dvf = ref_cast(Domaine_VF, domaine_dis());
   const DoubleTab& b = inconnue().valeurs();
-  const int ne = dvf.nb_elem(), nb_b = nb_composantes(), dim = Objet_U::dimension;
-  gb.resize(ne, nb_b * dim);
+  // gb covers ALL elements, local and ghost: parallel consumers (the Lorentz
+  // source) evaluate per-element data on ghost elements through joint faces,
+  // so ghost rows must be filled with valid data, never read out of bounds.
+  const int ne_tot = dvf.nb_elem_tot(), ne = dvf.nb_elem();
+  const int nb_b = nb_composantes(), dim = Objet_U::dimension;
+  gb.resize(ne_tot, nb_b * dim);
   gb = 0.;
 
   const IntTab& face_voisins = dvf.face_voisins();
+  const IntTab& elem_faces = dvf.elem_faces();
   const DoubleTab& face_normales = dvf.face_normales();
   const DoubleVect& volumes = dvf.volumes();
-  const int nb_faces = dvf.nb_faces();
+  const int nfe = elem_faces.dimension(1);
 
-  // Pass 1 — standard Green-Gauss (interior exact for linear fields).
-  for (int f = 0; f < nb_faces; f++)
+  // Pass 1 — standard Green-Gauss (interior exact for linear fields), built
+  // element-wise from elem_faces(): valid for every element up to ne_tot in
+  // parallel, the same pattern as the kernel PolyMAC field operators.
+  // Boundary faces take the element's own value (zero normal gradient).
+  for (int e = 0; e < ne_tot; e++)
     {
-      const int e0 = face_voisins(f, 0), e1 = face_voisins(f, 1);
-      for (int c = 0; c < nb_b; c++)
+      const double inv_ve = 1. / volumes(e);
+      for (int j = 0; j < nfe; j++)
         {
-          const double bf = (e1 < 0) ? b(e0, c) : 0.5 * (b(e0, c) + b(e1, c));
-          if (e0 >= 0 && e0 < ne)
-            for (int d = 0; d < dim; d++)
-              gb(e0, c * dim + d) += bf * face_normales(f, d) / volumes(e0);
-          if (e1 >= 0 && e1 < ne)
-            for (int d = 0; d < dim; d++)
-              gb(e1, c * dim + d) -= bf * face_normales(f, d) / volumes(e1);
+          const int f = elem_faces(e, j);
+          if (f < 0)
+            continue;
+          // Orientation: the face normal points out of face_voisins(f, 0).
+          const bool is_e0 = (face_voisins(f, 0) == e);
+          const int e_other = is_e0 ? face_voisins(f, 1) : face_voisins(f, 0);
+          const double sgn = is_e0 ? 1. : -1.;
+          for (int c = 0; c < nb_b; c++)
+            {
+              const double bf = (e_other < 0) ? b(e, c) : 0.5 * (b(e, c) + b(e_other, c));
+              for (int d = 0; d < dim; d++)
+                gb(e, c * dim + d) += sgn * bf * face_normales(f, d) * inv_ve;
+            }
         }
     }
 
@@ -439,7 +469,10 @@ void Convection_Diffusion_Magnetic_field::gradient_b_elements(DoubleTab& gb) con
   // linear field is exact and O(h) for general nonlinear fields.  This gives
   // exact (linear-field) divergence at the two wall-adjacent cells, where
   // Pass 1 would have O(h) error.
-  // Determine boundary/inertior status based on cell adjacency to wall faces.
+  // Determine boundary/interior status based on cell adjacency to wall faces.
+  // Local faces only: ghost elements are never wall-adjacent, and keeping the
+  // neighbour search inside this rank's local cells makes it deterministic.
+  const int nb_faces = dvf.nb_faces();
   std::vector<int> is_boundary(ne, 0);
   for (int f = 0; f < nb_faces; f++)
     {

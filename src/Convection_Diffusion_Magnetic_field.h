@@ -102,7 +102,9 @@ public:
 
   // Per-element gradient of the magnetic unknown, reconstructed by
   // Green-Gauss: gb(e, i*dim + j) = d b_i / d x_j.  (Used by
-  // tension_magnetique.)  Interior face values are centred averages of the
+  // tension_magnetique and the Lorentz source.)  The table covers ALL
+  // elements — local and ghost — so parallel consumers may index it up to
+  // nb_elem_tot().  Interior face values are centred averages of the
   // two adjacent elements (exact for linear fields on any mesh); boundary
   // faces take the element's own value (zero normal gradient), which is
   // consistent with the module's only supported wall BCs (Neumann-like).
