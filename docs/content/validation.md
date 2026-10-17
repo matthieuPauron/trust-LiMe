@@ -62,8 +62,9 @@ dataset into `build/<dataset name>/` where the results (`.son` probes, `.dt_ev`,
 ### PDF report
 
 Each form can be exported to PDF and the per-form PDFs concatenated into a
-single report at the repository root (`MagneticStandalone_validation.pdf`,
-22 forms: the 11 2D then the 11 3D), via
+single report at the repository root (`trust-lime_validation.pdf`,
+44 forms: the 16 2D and 15 3D standalone twins, then the coupled-MHD and
+post-treatment categories), via
 `.opencode/scripts/run-validation-pdf.sh` (execute → `--to pdf` →
 `pdfunite`). The report is a generated artifact and stays untracked; the rule
 lives in the `trust-lime-notebooks` skill ("PDF export & the repository

@@ -182,33 +182,33 @@ and **all cases run sequentially** — `.data` files must never contain TRUST
 parallelism machinery (`Decouper`/`Partitionneur`/`Scatter`/`Larg_joint`/
 `Nom_Zones`/…), and notebooks must not call `partition()` or set `nbProcs>1`.
 **Parallel exception.** A form may run on `N` cores only if its path is listed in
-`parallel_ok[]` in `check-validation.sh`. The dataset must then carry the three
+`parallel_ok[]` in `check-validation.sh` (the script is the source of truth — do
+not duplicate the list here). The dataset must then carry the three
 comment-marker regions (`# BEGIN MESH #`, `# BEGIN PARTITION`, `# BEGIN SCATTER`)
-that `trust -partition` toggles. Currently the allowlisted forms are:
-MagneticStandalone/Invariance/ (2D + 3D), MagneticStandalone/Diffusion/,
-MagneticStandalone/DiffusionRefined/, MagneticStandalone/Advection/,
-MagneticStandalone/Shercliff2D/, MagneticStandalone/SourceStretching/,
-MagneticStandalone/SteadyState/, MagneticStandalone/VaryingVelocity/,
-MagneticStandalone3D/Invariance/ (2D + 3D), MagneticStandalone3D/Diffusion/,
-MagneticStandalone3D/DiffusionRefined/, MagneticStandalone3D/Advection/,
-MagneticStandalone3D/Shercliff2D/, MagneticStandalone3D/SourceStretching/,
-MagneticStandalone3D/SteadyState/, MagneticStandalone3D/VaryingVelocity/,
-Postraitement_fields/CourantMagnetique/, Postraitement_fields/DivergenceMagnetique/,
-Postraitement_fields/EnergieMagnetique/, Postraitement_fields/ForceLorentz/,
-Postraitement_fields/HeliciteCinetique/, Postraitement_fields/HeliciteCroisee/,
-Postraitement_fields/NombreDePrandtlMagnetique/, Postraitement_fields/NombreDeReynoldsMagnetique/,
-Postraitement_fields/PulsationCyclotronique/, Postraitement_fields/RotationnelMagnetique/,
-Postraitement_fields/TensionMagnetique/, Postraitement_fields/VecteurPoynting/.
-All other forms are sequential-only. Run the check before `/validate`.
+that `trust -partition` toggles, and the notebook runs
+`nbProcs=2` + `case.partition()`. All other forms are sequential-only. Run the
+check before `/validate`.
 
 ## Known gaps / open items
 
-- **`ForceLorentzBalance`** (MagneticCoupled): runs sequentially pending a parallel-safe pressure solver. The kernel's SSOR preconditioner does not support the Matrice_Morse type used by the coupled system; PETSc `hypre` alternative converges the magnetic solve but the Navier–Stokes solve later diverges (`KSP_DIVERGED_NANORINF`). Decision needed: keep sequential or debug the parallel divergence (lagged `b` Lorentz source / aux-element velocity dofs under partitioning).
-- **`MMS_Poly_2D`**: dataset only, no notebook, non-standard `# PARALLEL OK 1 #` header, unused near-duplicate of `MMS_Trig2D`. Delete or complete as a form.
-- **`MMS_Diff3D`**: ported, allowlisted `.data` but no notebook; 2D/3D twin rule (R5) is broken — add the 3D notebook or drop from allowlist.
-- **`Stretching`**: legacy reference run with assertion-free notebook, allowlisted and marked but excluded from the PDF runner. `SourceStretching` is the validated replacement.
-- **MMS/Stretching notebooks**: three MMS notebooks + `Stretching` have no `assert` in their source; they are smoke/convergence data producers, not validation forms as advertised.
+- **`ForceLorentzBalance` parallel pressure-solver mangling (solved)**: `make_PAR.data` rewrites
+  `Cholesky` -> `GCP { precond ssor }` whenever any line contains "Cholesky" without "PETSc" —
+  its detection was tripped by a `# … #` comment line, mangling
+  `solveur_pression Petsc Cholesky { }` into `Petsc GCP { … }`, which diverged
+  (`KSP_DIVERGED_NANORINF`). The comment now mentions PETSc on every line. See
+  `KERNEL_REUSE_NOTES.md` §15 (make_PAR.data text-processing traps).
+- **MMS forms (2D + 3D twins, all parallel-ported and passing)**: the MMS notebooks now carry
+  asserts — Diff2D/Trig2D and Poly_3D/Trig3D pin the invariance of the uniform (0, 1) field
+  (the datasets as written are invariance cases, not decaying modes), Diff2D…3D pin the
+  eta·pi² decay of the sin(pi y) eigenmode, ExpTrig2D/3D the local-rate decay of
+  sin(pi x)exp(-y), Poly_2D/3D are zero-field smoke tests (no sondes: their probe block is a
+  guarded no-op). MMS_Diff3D needed a mesh refinement (5³ -> 21³ nodes): at 4 cells the P0
+  projection excites higher discrete modes and a single-mode analytic check cannot hold.
+- **2D/3D twin gaps (R5)**: `Shercliff2D`, `MMS_Poly_2D` have no 3D twin;
+  `Hartmann1D` 2D/3D differ in probe sets by design. Fine for now, worth a sweep once the
+  form set stabilises.
 - **`force_lorentz` coupling is one-way**: the NS velocity does not feed the magnetic convection; low-Rm limit (Rm ≪ 1) validated against Tassone et al. breeding blanket parameter ranges.
+- **Turbulent magnetic diffusivity**: the induction equation currently uses molecular magnetic diffusivity η only (constant `Champ_Uniforme`). A turbulent EDM ηₜ modeled from k‑ε would add `∇×(u'×b'̄) ≈ −ηₜ∇×B̄`. This is deferred to END_GOAL.md Phase 3 (dynamo threshold), as the present validation suite assumes laminar or prescribed‑mean‑flow velocity fields. See turbulence section of END_GOAL.md §2.2 and TRUST §3.1 for the theoretical framework.
 
 Authoring/running rules, trustutils API, dataset syntax, and the headless
 nbconvert recipe: **`trust-lime-notebooks` skill**. The gate for adding new
@@ -256,9 +256,10 @@ append new findings there.
 - Kernel and module **are built** (`trust-lime`, `trust-lime_semi_opt`,
   `trust-lime_opt` exist at the repo root) — the historical `libparaconf`
   configure blocker is resolved.
-- **All 22 MagneticStandalone validation notebooks pass in 2D and 3D**
-  (checked 2026-10-15; `Hartmann1D` added last) and are concatenated into a
-  single `MagneticStandalone_validation.pdf` at the repo root by
+- **All 50 validation notebooks pass in 2-rank parallel** (checked
+  2026-10-17; 2D + 3D standalone, coupled MHD 2D + 3D, post-treatment — all
+  `nbProcs=2` + `case.partition()`) and are concatenated into a single
+  `trust-lime_validation.pdf` at the repo root by
   `.opencode/scripts/run-validation-pdf.sh` (rc=0). Multi-component
   `nb_composantes` works and is exercised by the post-treatment forms
   (`vecteur_poynting`, `helicite_croisee`) and by `Hartmann1D`
@@ -296,9 +297,12 @@ append new findings there.
   problem, and the `force_lorentz` source (`src/Terme_Source_Lorentz.{h,cpp}`,
   J×B per unit mass, lagged b, Boussinesq-PolyMAC face/element assembly)
   couples b → momentum. One-way only: the NS velocity does not feed the
-  magnetic convection yet. Validation form:
-  `share/Validation/Rapports_automatiques/MagneticCoupled/ForceLorentzBalance/`
-  (Lorentz hydrostatic balance: Δp = −0.1886 vs analytic −0.18, |u| → 0).
+  magnetic convection yet. Seven validation forms cover the coupled path:
+  `ForceLorentzBalance` (hydrostatic Δp, b=(y,0)), `MMS_Coupled` (MMS with
+  both force components, b=(y,-x), Δp=−0.60 ± 5 %), `MMS_CoupledRefined`
+  (mesh-independence), `Coupled_Feedback` (one-way limit: b frozen with
+  u₀≠0), `MMS_Coupled3D` (3D twin, coarse-mesh regression), and the
+  `Error_BadForceKeyword`/`Error_MissingPressureSolver` negative forms.
   Recipe and traps (source-typing suffix, `solveur_pression`, the static
   `trust-lime_opt` rebuild) in `KERNEL_REUSE_NOTES.md` §12bis.
 - **Unit tests** live in `tests/UnitTests/` (GoogleTest, kernel conventions).

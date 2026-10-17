@@ -132,8 +132,18 @@ target the magnetic induction equation solved in standalone form.
 ### MagneticCoupled (low-Rm with Lorentz force)
 
 The `force_lorentz` keyword activates a one-way coupled momentum equation
-via `J × B`. See `MagneticCoupled/ForceLorentzBalance/` for the validation
-form (hydrostatic balance: Δp = −0.1886 vs analytic −0.18, |u| → 0).
+via `J × B`. Seven forms cover the coupled path:
+
+| Form | What it validates |
+|---|---|
+| `ForceLorentzBalance/` | hydrostatic balance with \f$b=(y,0)\f$: \f$\Delta p = -0.18 \pm 10\%\f$, \f$u \to 0\f$ |
+| `MMS_Coupled/` | MMS with \f$b=(y,-x)\f$ — **both force components**: \f$\Delta p = -0.60 \pm 5\%\f$ |
+| `MMS_CoupledRefined/` | same at \f$h=0.05\f$ (mesh-independence regression) |
+| `Coupled_Feedback/` | documents the one-way limit: \f$b\f$ frozen to machine precision with \f$u_0 \neq 0\f$ |
+| `MMS_Coupled3D/` (in `MagneticCoupled3D/`) | 3D twin (coarse-mesh regression, ~50 % bound) |
+| `Error_BadForceKeyword/` | invalid keyword in `force_lorentz` rejected cleanly |
+| `Error_MissingPressureSolver/` | missing `solveur_pression` rejected cleanly |
+
 Further coupled benchmarks (Shercliff 3D duct, Ha/Re parameter scan) are
 tracked as open targets.
 (see @ref TrustLiMe_model "Problems, equations and boundary conditions"). Every
@@ -210,16 +220,16 @@ uniform (or exactly-linear) configuration:
 
 | Form | Field | Configuration | Checked value |
 |---|---|---|---|
-| `EnergieMagnetique` | `energie_magnetique` | $b_0 = 2.5$, $\mu_0 = 2$ | $6.25/4 = 1.5625$ |
-| `PulsationCyclotronique` | `pulsation_cyclotronique` | $b_0 = 2.5$, $q/m = 2$ (keyword) | $5$ |
-| `VecteurPoynting` | `vecteur_poynting` | $b = (1,2)$, $u = (3,4)$, $\mu_0 = 1$ | $S = (4, -2)$ |
-| `HeliciteCroisee` | `helicite_croisee` | $b = (1,2)$, $u = (3,4)$ | $u\cdot b = 11$ |
-| `HeliciteCinetique` | `helicite_cinetique` | 3D, $u = (y, z, x)$ (exactly linear) | $-(x{+}y{+}z)$ at $(0.375)^3$ |
-| `NombreDeReynoldsMagnetique` | `nombre_de_reynolds_magnetique` | 10×10 mesh, $u = (3,0)$, $\eta = 2$ | $3\cdot 0.1/2 = 0.15$ |
-| `NombreDePrandtlMagnetique` | `nombre_de_prandtl_magnetique` | $\mu = 2$, $\rho = 4$, $\eta = 0.25$ | $\nu/\eta = 2$ |
-| `TensionMagnetique` | `tension_magnetique` | $b = (y, x)$ (exactly linear) | $F_t = (x, y)$ at $(0.45, 0.55)$ |
-| `DivergenceMagnetique` | `divergence_magnetique` | $b = (x, y)$ (exactly linear) | $\nabla\cdot b = 2$ at $(0.45, 0.55)$ |
-| `RotationnelMagnetique` | `rotationnel_magnetique` | $b = (-y, x)$ (exactly linear, 2D) | $w_z = 2$ at $(0.45, 0.55)$ |
+| `EnergieMagnetique` | `energie_magnetique` | \f$ b_0 = 2.5 \f$, \f$ \mu_0 = 2 \f$ | \f$ 6.25/4 = 1.5625 \f$ |
+| `PulsationCyclotronique` | `pulsation_cyclotronique` | \f$ b_0 = 2.5 \f$, \f$ q/m = 2 \f$ (keyword) | \f$ 5 \f$ |
+| `VecteurPoynting` | `vecteur_poynting` | \f$ b = (1,2) \f$, \f$ u = (3,4) \f$, \f$ \mu_0 = 1 \f$ | \f$ S = (4, -2) \f$ |
+| `HeliciteCroisee` | `helicite_croisee` | \f$ b = (1,2) \f$, \f$ u = (3,4) \f$ | \f$ u\cdot b = 11 \f$ |
+| `HeliciteCinetique` | `helicite_cinetique` | 3D, \f$ u = (y, z, x) \f$ (exactly linear) | \f$ -(x{+}y{+}z) \f$ at \f$ (0.375)^3 \f$ |
+| `NombreDeReynoldsMagnetique` | `nombre_de_reynolds_magnetique` | 10×10 mesh, \f$ u = (3,0) \f$, \f$ \eta = 2 \f$ | \f$ 3\cdot 0.1/2 = 0.15 \f$ |
+| `NombreDePrandtlMagnetique` | `nombre_de_prandtl_magnetique` | \f$ \mu = 2 \f$, \f$ \rho = 4 \f$, \f$ \eta = 0.25 \f$ | \f$ \nu/\eta = 2 \f$ |
+| `TensionMagnetique` | `tension_magnetique` | \f$ b = (y, x) \f$ (exactly linear) | \f$ F_t = (x, y) \f$ at \f$ (0.45, 0.55) \f$ |
+| `DivergenceMagnetique` | `divergence_magnetique` | \f$ b = (x, y) \f$ (exactly linear) | \f$ \nabla\cdot b = 2 \f$ at \f$ (0.45, 0.55) \f$ |
+| `RotationnelMagnetique` | `rotationnel_magnetique` | \f$ b = (-y, x) \f$ (exactly linear, 2D) | \f$ w_z = 2 \f$ at \f$ (0.45, 0.55) \f$ |
 | `CourantMagnetique` | `courant_magnetique` | $b = (y, z, x)$ (exactly linear, 3D) | $J = (-1,-1,-1)$ at $(0.375, 0.375, 0.375)$ |
 | `ForceLorentz` | `force_lorentz` | $b = (-y, x)$ (exactly linear) | $F = (-0.9, -1.1)$ at $(0.45, 0.55)$ |
 
