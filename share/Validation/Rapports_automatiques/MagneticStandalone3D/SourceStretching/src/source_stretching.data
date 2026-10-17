@@ -1,3 +1,5 @@
+# PARALLEL OK #
+
 # ============================================================================= #
 # Case G (3D) : induction source term S = (b.grad) u  (TRUST-LiMe standalone) #
 # ============================================================================= #
@@ -12,6 +14,9 @@ dimension 3
 Pb_MHD pb
 Domaine dom
 
+# PolyMAC_MPFA works on polyhedra: convert the Pave hexahedra (3D only) #
+
+# BEGIN MESH #
 Mailler dom
 {
     Pave cube
@@ -30,8 +35,23 @@ Mailler dom
     }
 }
 
-# PolyMAC_MPFA works on polyhedra: convert the Pave hexahedra (3D only) #
 Polyedriser dom
+# END MESH #
+
+# BEGIN PARTITION
+Partition dom
+{
+    Partition_tool metis { nb_parts 2 }
+    Larg_joint 2
+    zones_name DOM
+}
+End
+END PARTITION #
+
+# BEGIN SCATTER
+Scatter DOM.Zones dom
+END SCATTER #
+
 
 Polymac_p0 dis
 

@@ -1,3 +1,5 @@
+# PARALLEL OK #
+
 # ============================================================================= #
 # Case A : invariance of a uniform magnetic field  (TRUST-LiMe standalone MHD) #
 # ============================================================================= #
@@ -17,6 +19,9 @@ Pb_MHD pb
 Domaine dom
 
 # --------------------------------- mesh ------------------------------------ #
+# ------------------------------- discretisation ------------------------------ #
+
+# BEGIN MESH #
 Mailler dom
 {
     Pave pavé
@@ -32,6 +37,22 @@ Mailler dom
         Bord haut     Y = 1.    0. <= X <= 1.
     }
 }
+# END MESH #
+
+# BEGIN PARTITION
+Partition dom
+{
+    Partition_tool metis { nb_parts 2 }
+    Larg_joint 2
+    zones_name DOM
+}
+End
+END PARTITION #
+
+# BEGIN SCATTER
+Scatter DOM.Zones dom
+END SCATTER #
+
 
 # ------------------------------- discretisation ------------------------------ #
 Polymac_p0 dis
@@ -77,7 +98,8 @@ Read pb
 
         boundary_conditions
         {
-            Bord gauche  condition_qui_nexiste_pas # DELIBERATELY INVALID keyword -> must fail cleanly #
+            # DELIBERATELY INVALID keyword -> must fail cleanly #
+            Bord gauche  condition_qui_nexiste_pas
             Bord droite  Neumann_Paroi_adiabatique
             Bord bas     Neumann_Paroi_adiabatique
             Bord haut    Neumann_Paroi_adiabatique

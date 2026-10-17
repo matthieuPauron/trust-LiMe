@@ -1,3 +1,5 @@
+# PARALLEL OK #
+
 # ============================================================================= #
 # Case H : Hartmann 1D - induced field of the Hartmann flow                 #
 # ============================================================================= #
@@ -30,6 +32,8 @@ Pb_MHD pb
 Domaine dom
 
 # plates at y = +/- 0.5 : walls are the two bords normal to Y #
+
+# BEGIN MESH #
 Mailler dom
 {
     Pave pave
@@ -45,6 +49,22 @@ Mailler dom
         Bord haut     Y = 0.5   0. <= X <= 1.
     }
 }
+# END MESH #
+
+# BEGIN PARTITION
+Partition dom
+{
+    Partition_tool metis { nb_parts 2 }
+    Larg_joint 2
+    zones_name DOM
+}
+End
+END PARTITION #
+
+# BEGIN SCATTER
+Scatter DOM.Zones dom
+END SCATTER #
+
 
 Polymac_p0 dis
 

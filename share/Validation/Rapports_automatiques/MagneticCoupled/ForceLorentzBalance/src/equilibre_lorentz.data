@@ -1,3 +1,5 @@
+# PARALLEL OK #
+
 # ============================================================================= #
 # Coupled low-Rm MHD : Lorentz-force hydrostatic balance  (TRUST-LiMe)          #
 # ============================================================================= #
@@ -23,6 +25,7 @@ dimension 2
 Pb_MHD pb
 Domaine dom
 
+# BEGIN MESH #
 Mailler dom
 {
     Pave pave
@@ -38,6 +41,22 @@ Mailler dom
         Bord haut     Y = 1.    0. <= X <= 1.
     }
 }
+# END MESH #
+
+# BEGIN PARTITION
+Partition dom
+{
+    Partition_tool metis { nb_parts 2 }
+    Larg_joint 2
+    zones_name DOM
+}
+End
+END PARTITION #
+
+# BEGIN SCATTER
+Scatter DOM.Zones dom
+END SCATTER #
+
 
 Polymac_p0 dis
 
@@ -92,8 +111,9 @@ Read pb
     # Optional momentum equation: presence => coupled low-Rm mode. #
     Navier_Stokes_standard
     {
-        # Pressure solver: direct Cholesky through PETSc (the Sparskit-based #
-        # direct Cholesky is deprecated and unstable here).                 #
+        # Pressure solver: Petsc-wrapped direct solver (the Sparskit-based #
+        # direct solver is deprecated and unstable here).                   #
+        # WARNING: make_PAR.data may rewrite this solver — do not edit.     #
         solveur_pression Petsc Cholesky { }
         diffusion  { }
         convection { amont }
@@ -119,11 +139,11 @@ Read pb
     {
         Sondes
         {
-            # interior cell centres: u must stay 0 (curl-free force) #
-            sonde_u grav vitesse Periode 1e-6 Points 2 0.45 0.45  0.45 0.75
+            # interior cell centres, off the partition joint (x=0.5): u must stay 0 #
+            sonde_u grav vitesse Periode 1e-6 Points 2 0.35 0.45  0.35 0.75
             # pressure difference checks the Lorentz hydrostatic balance #
-            sonde_p1 grav pression Periode 1e-6 Points 1 0.45 0.45
-            sonde_p2 grav pression Periode 1e-6 Points 1 0.45 0.75
+            sonde_p1 grav pression Periode 1e-6 Points 1 0.35 0.45
+            sonde_p2 grav pression Periode 1e-6 Points 1 0.35 0.75
         }
     }
 

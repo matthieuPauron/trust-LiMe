@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# run-all MagneticStandalone validation notebooks, export each to PDF, and
-# concatenate the PDFs into a single report at the trust-LiMe repository root.
+# Run every trust-LiMe validation notebook, export each to PDF, and concatenate
+# the PDFs into a single report at the trust-LiMe repository root.
 repo=/home/matthieu/Development/trust-LiMe
-# 2D first, then 3D: forms are visited in category order.
-cats="MagneticStandalone MagneticStandalone3D"
+# Report order: 2D standalone, 3D standalone, coupled MHD (2D + 3D), post-treatment.
+cats="MagneticStandalone MagneticStandalone3D MagneticCoupled MagneticCoupled3D Postraitement_fields"
 work=/tmp/opencode/lime_pdf
 outdir=$work/notebooks
 pdfdir=$work/pdf
@@ -63,11 +63,11 @@ done
 
 log "--- concatenating ${#pdfs[@]} PDFs"
 if [ "${#pdfs[@]}" -gt 0 ]; then
-  pdfunite "${pdfs[@]}" "$repo/MagneticStandalone_validation.pdf" 2>>"$runlog"
+  pdfunite "${pdfs[@]}" "$repo/trust-lime_validation.pdf" 2>>"$runlog"
   r=$?
   if [ $r -eq 0 ]; then
-    log "joined -> $repo/MagneticStandalone_validation.pdf"
-    ls -la "$repo/MagneticStandalone_validation.pdf" >> "$runlog"
+    log "joined -> $repo/trust-lime_validation.pdf"
+    ls -la "$repo/trust-lime_validation.pdf" >> "$runlog"
   else
     log "FAILED (pdfunite rc=$r)"
     rc_total=1

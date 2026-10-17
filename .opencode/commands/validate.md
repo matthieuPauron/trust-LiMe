@@ -2,7 +2,7 @@
 description: Build and run a TRUST validation notebook end to end
 ---
 Load the `trust-lime-notebooks` skill for the full recipe (env, hard rules,
-sequential-only constraint).
+sequential-by-default execution with the `parallel_ok[]` exception).
 
 First run the formatting gate — abort if it fails:
 

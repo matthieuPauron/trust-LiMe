@@ -10,14 +10,16 @@
 #       (or <Case>/<Case>.ipynb when the case folder is itself the form),
 #       never in src/ (nor in any deeper directory).
 #
-#   R2  sequential-only datasets
+#   R2  sequential-only datasets (default)
 #       No .data may contain TRUST parallelism machinery:
 #       Decouper, Partitionneur, Partition, Partition_tool, Scatter,
 #       Larg_joint, Nom_Zones, zones_name — this also covers the
 #       "# BEGIN PARTITION #" / "# BEGIN SCATTER #" section markers.
+#       Exception: paths listed in parallel_ok[] below.
 #
-#   R3  sequential-only notebooks
+#   R3  sequential-only notebooks (default)
 #       No case.partition(), no nbProcs > 1, no `trust -partition` CLI flag.
+#       Exception: paths listed in parallel_ok[] below.
 #
 #   R4  one notebook, one test case
 #       A notebook runs one and only one test case: it must not issue more
@@ -48,7 +50,9 @@ Rules:
       or …/<Case>/<Case>.ipynb), never in src/ or deeper
   R2  no .data contains TRUST parallelism machinery (Decouper, Partitionneur,
       Partition, Partition_tool, Scatter, Larg_joint, Nom_Zones, zones_name)
+      — except paths listed in parallel_ok[] (see SKILL.md)
   R3  no notebook calls partition(), uses nbProcs>1 or `trust -partition`
+      — except paths listed in parallel_ok[] (see SKILL.md)
   R4  a notebook runs one and only one test case (at most one addCase call)
 
 Exit status: 0 clean, 1 violations, 2 usage error.
@@ -77,6 +81,63 @@ if [ ! -d "$base" ]; then
   echo "check-validation: no $base directory (run from the trust-LiMe checkout)" >&2
   exit 2
 fi
+
+# Cases explicitly allowed to run on several processors (R2/R3 exception).
+# Every proper validation form (2-level layout) is ported to 2 ranks; add a new
+# form here when it is ported — never disable R2/R3 globally. Each entry is a
+# directory prefix under $base, with a trailing slash.
+parallel_ok=(
+  # --- MagneticStandalone (2D) ---
+  "$base/MagneticStandalone/Advection/"
+  "$base/MagneticStandalone/Diffusion/"
+  "$base/MagneticStandalone/DiffusionRefined/"
+  "$base/MagneticStandalone/ErrorBadBc/"
+  "$base/MagneticStandalone/ErrorBadNbcomposantes/"
+  "$base/MagneticStandalone/ErrorMissingEta/"
+  "$base/MagneticStandalone/Hartmann1D/"
+  "$base/MagneticStandalone/Invariance/"
+  "$base/MagneticStandalone/Shercliff2D/"
+  "$base/MagneticStandalone/SourceStretching/"
+  "$base/MagneticStandalone/SteadyState/"
+  "$base/MagneticStandalone/VaryingVelocity/"
+  # --- MagneticStandalone3D (3D twins) ---
+  "$base/MagneticStandalone3D/Advection/"
+  "$base/MagneticStandalone3D/Diffusion/"
+  "$base/MagneticStandalone3D/DiffusionRefined/"
+  "$base/MagneticStandalone3D/ErrorBadBc/"
+  "$base/MagneticStandalone3D/ErrorBadNbcomposantes/"
+  "$base/MagneticStandalone3D/ErrorMissingEta/"
+  "$base/MagneticStandalone3D/Hartmann1D/"
+  "$base/MagneticStandalone3D/Invariance/"
+  "$base/MagneticStandalone3D/SourceStretching/"
+  "$base/MagneticStandalone3D/SteadyState/"
+  "$base/MagneticStandalone3D/VaryingVelocity/"
+  # --- MagneticCoupled ---
+  "$base/MagneticCoupled/ForceLorentzBalance/"
+  # --- Postraitement_fields ---
+  "$base/Postraitement_fields/CourantMagnetique/"
+  "$base/Postraitement_fields/DivergenceMagnetique/"
+  "$base/Postraitement_fields/EnergieMagnetique/"
+  "$base/Postraitement_fields/ForceLorentz/"
+  "$base/Postraitement_fields/HeliciteCinetique/"
+  "$base/Postraitement_fields/HeliciteCroisee/"
+  "$base/Postraitement_fields/NombreDePrandtlMagnetique/"
+  "$base/Postraitement_fields/NombreDeReynoldsMagnetique/"
+  "$base/Postraitement_fields/PulsationCyclotronique/"
+  "$base/Postraitement_fields/RotationnelMagnetique/"
+  "$base/Postraitement_fields/TensionMagnetique/"
+  "$base/Postraitement_fields/VecteurPoynting/"
+)
+
+is_parallel_ok() {
+  local f="$1" p
+  for p in "${parallel_ok[@]}"; do
+    case "$f" in
+      "$p"*) return 0 ;;
+    esac
+  done
+  return 1
+}
 
 files=()
 if [ "$scan_all" -eq 1 ]; then
@@ -131,16 +192,27 @@ for f in "${files[@]}"; do
   [ -f "$f" ] || continue   # tracked but deleted in the working tree
   case "$f" in
     *.data)
+      if is_parallel_ok "$f"; then
+        # Allowlisted parallel case: the three marker regions must be present
+        # so that `trust -partition` can build the PAR_ variant.
+        for marker in '# BEGIN MESH #' '# BEGIN PARTITION' '# BEGIN SCATTER'; do
+          grep -qF -- "$marker" "$f" || report "$f" "-" \
+            "R2 allowlisted parallel dataset missing '$marker' marker"
+        done
+        continue
+      fi
       while IFS=: read -r line _; do
         [ -n "${line:-}" ] || continue
         report "$f" "$line" "R2 forbidden parallelism keyword (datasets must be sequential-only)"
       done < <(grep -nEi -- "$kw_re" "$f" || true)
       ;;
     *.ipynb)
-      while IFS=: read -r line _; do
-        [ -n "${line:-}" ] || continue
-        report "$f" "$line" "R3 forbidden parallelism in notebook (must run sequentially)"
-      done < <(grep -nEi -- "$nb_re" "$f" || true)
+      if ! is_parallel_ok "$f"; then
+        while IFS=: read -r line _; do
+          [ -n "${line:-}" ] || continue
+          report "$f" "$line" "R3 forbidden parallelism in notebook (must run sequentially)"
+        done < <(grep -nEi -- "$nb_re" "$f" || true)
+      fi
       ncases=$(grep -Eo -- "$addcase_re" "$f" | wc -l || true)
       if [ "${ncases:-0}" -gt 1 ]; then
         report "$f" "-" \
@@ -160,7 +232,8 @@ if [ "$violations" -ne 0 ]; then
 Fix: datasets must be sequential — strip Decouper/Scatter and every partition
 keyword; notebooks must live at the case root, never call partition() or pass
 -partition, and must run one and only one test case (one addCase per notebook).
-See the trust-lime-notebooks skill.
+The only exception is a path listed in parallel_ok[] (see the trust-lime-notebooks
+skill) — add it there deliberately, never by disabling R2/R3.
 EOF
   exit 1
 fi

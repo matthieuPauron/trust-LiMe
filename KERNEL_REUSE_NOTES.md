@@ -723,3 +723,73 @@ conditions**. Both are deferred (see `docs/content/model.md` §6).
 Useful technique: give two components or two runs **different** analytic
 behaviour (different eigen-rates, coarse vs refined mesh) so a plumbing bug
 cannot hide behind symmetry.
+
+## 15. Running a validation case in parallel (`trust -partition`)
+
+Upstream mechanism (kernel `Validation/Outils/trustutils/jupyter/run.py` +
+`bin/KSH/make_PAR.data`), used by every ported trust-LiMe form:
+
+- `run.addCase(".", "case.data", nbProcs=2)` + `case.partition()` +
+  `run.runCases()`. `TRUSTCase.partition()` renames the dataset to
+  `PAR_<case>` and shells out to `trust -partition <case> 2`; the generated
+  exec script runs `trust PAR_<case> 2` (-> `mpirun -np 2`). In trustutils'
+  default *sequential-suite* mode this still works: `nbProcs` sets the number
+  of **ranks per case**, not suite concurrency.
+- `make_PAR.data` builds `SEQ_`/`DEC_`/`PAR_` variants by toggling the
+  comment markers: nominal = mesh active + partition/scatter commented;
+  `DEC_` = partition un-commented (runs `trust DEC_<case>` -> writes
+  `<zones>_000%.Zones`); `PAR_` = mesh commented + `Scatter` active. It also
+  rewrites `Nb_parts`/`Tranches` to the requested count, so the notebook's
+  `nbProcs` is authoritative.
+- Dataset requirements: `# BEGIN MESH # ... # END MESH #` around the mesh
+  generation, a `# BEGIN PARTITION ... END PARTITION #` block
+  (`Partition_tool metis { nb_parts 2 } Larg_joint 2 zones_name DOM`), and a
+  `# BEGIN SCATTER ... END SCATTER #` block (`Scatter DOM.Zones dom`).
+  Upstream examples: `Verification/SampleFormJupyter/src/Couette/Couette_cylindrique.data`,
+  `Verification/HowTo/Post_treatment_performance/src/Obstacle.data`, and for
+  3D PolyMAC_MPFA `Verification/PolyMAC_MPFA/grad_rot/src/grad_rot.data`.
+
+Traps (all hit for real during the 2026-10-16 parallel port):
+
+- After `partition()`, the dataset and **every** output file are named
+  `PAR_<case>` - read probes as `read_son(case.dataFileName_, ...)`. TRUST
+  also upper-cases sonde ids in probe file names: sonde `sonde_Bx` writes
+  `..._SONDE_BX.son` - the `read_son` argument must be upper case.
+- `#` is a **token-level open/close pair** in the data-file lexer
+  (`src/Kernel/Utilitaires/LecFicDiffuse_JDD.cpp`), not a line comment. A
+  `# ... #` line inside a region that `make_PAR.data` turns into a
+  skip-region (the MESH / PARTITION blocks) closes the skip early and
+  desynchronises the whole file - use `/* ... */` there instead (as upstream
+  `Obstacle.data` does).
+- In 3D, `Polyedriser dom` goes **inside** `# BEGIN MESH # ... # END MESH #`:
+  the polyhedra must come from the pre-partitioned `.Zones`, not be
+  re-derived in the PAR run.
+- **`make_PAR.data` rewrites solver lines by grepping the whole file.** Its
+  "Cholesky is not parallelized" rewrite fires when *any* line contains
+  `Cholesky` without `PETSc` - **including `# ... #` comment lines**. It hit
+  `ForceLorentzBalance`: the comment `# direct Cholesky is deprecated ... #`
+  triggered the sed, mangling `solveur_pression Petsc Cholesky { }` into
+  `Petsc GCP { precond ssor ... }`, which diverged with
+  `KSP_DIVERGED_NANORINF`. Rule: every comment line that mentions Cholesky
+  must also mention PETSc on the same line (upstream's own check comment:
+  *"Cholesky par Petsc est parallele"*).
+- **The repo-root executable embeds the module statically** (see 12bis):
+  after touching module sources, `make module_semi_optim` / `module_optim`
+  rebuild only the `.so` - **relink the exec** (`cd build/src/exec_opt &&
+  make exe`, or the semi_opt twin) or every run keeps using the old code.
+  The gradient fix below was silently inert until the relink was done.
+- `Convection_Diffusion_Magnetic_field::gradient_b_elements()` fills `gb`
+  for **all elements, local and ghost** (`nb_elem_tot()`): parallel consumers
+  (the Lorentz source) evaluate per-element data on ghost elements through
+  joint faces, so ghost rows must be in-bounds and filled (the pre-fix code
+  sized `gb` to `nb_elem()` - an out-of-bounds read on every ghost element,
+  benign sequentially where the two are equal). Ghost elements at the edge of
+  the ghost window have degraded gradients (their outward faces point
+  outside the window, `face_voisins = -1`, treated as one-sided) - harmless,
+  because joint faces only involve first-layer ghosts, whose gradients are
+  exact (verified: local max error 8e-15; parallel `dp` identical to
+  sequential to all digits on ForceLorentzBalance).
+- Gate: `check-validation.sh` R2/R3 forbid parallelism by default; the ported
+  forms are listed in `parallel_ok[]` (path prefixes). Extend that list
+  deliberately - never disable R2/R3. For allowlisted datasets the gate
+  additionally requires the three marker regions to be present.

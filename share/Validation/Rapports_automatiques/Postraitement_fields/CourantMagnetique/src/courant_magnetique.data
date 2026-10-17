@@ -1,3 +1,5 @@
+# PARALLEL OK #
+
 # ============================================================================= #
 # Post-treatment field : courant_magnetique  (TRUST-LiMe standalone MHD) #
 # ============================================================================= #
@@ -11,6 +13,9 @@ dimension 3
 Pb_MHD pb
 Domaine dom
 
+# PolyMAC_MPFA works on polyhedra: convert the Pave hexahedra (3D only) #
+
+# BEGIN MESH #
 Mailler dom
 {
     Pave pave
@@ -28,8 +33,23 @@ Mailler dom
         Bord derriere Z = 1.    0. <= X <= 1.  0. <= Y <= 1.
     }
 }
-# PolyMAC_MPFA works on polyhedra: convert the Pave hexahedra (3D only) #
 Polyedriser dom
+# END MESH #
+
+# BEGIN PARTITION
+Partition dom
+{
+    Partition_tool metis { nb_parts 2 }
+    Larg_joint 2
+    zones_name DOM
+}
+End
+END PARTITION #
+
+# BEGIN SCATTER
+Scatter DOM.Zones dom
+END SCATTER #
+
 
 Polymac_p0 dis
 

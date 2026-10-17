@@ -1,3 +1,5 @@
+# PARALLEL OK #
+
 # ============================================================================= #
 # Case A (3D, negative) : unknown boundary-condition keyword must fail       #
 # ============================================================================= #
@@ -10,11 +12,13 @@ Pb_MHD pb
 Domaine dom
 
 # --------------------------------- mesh ------------------------------------ #
+
+# BEGIN MESH #
 Mailler dom
 {
     Pave cube
     {
-        # fail-fast case: a coarse mesh is enough #
+        /* fail-fast case: a coarse mesh is enough */
         Origine              0.  0.  0.
         Nombre_de_Noeuds     9  9  9
         Longueurs            1.  1.  1.
@@ -30,6 +34,22 @@ Mailler dom
 }
 
 Polyedriser dom
+# END MESH #
+
+# BEGIN PARTITION
+Partition dom
+{
+    Partition_tool metis { nb_parts 2 }
+    Larg_joint 2
+    zones_name DOM
+}
+End
+END PARTITION #
+
+# BEGIN SCATTER
+Scatter DOM.Zones dom
+END SCATTER #
+
 
 # ------------------------------- discretisation ------------------------------ #
 Polymac_p0 dis
@@ -73,7 +93,8 @@ Read pb
 
         boundary_conditions
         {
-            Bord gauche   condition_qui_nexiste_pas # DELIBERATELY INVALID keyword -> must fail cleanly #
+            # DELIBERATELY INVALID keyword -> must fail cleanly #
+            Bord gauche   condition_qui_nexiste_pas
             Bord droite   Neumann_Paroi_adiabatique
             Bord bas      Neumann_Paroi_adiabatique
             Bord haut     Neumann_Paroi_adiabatique

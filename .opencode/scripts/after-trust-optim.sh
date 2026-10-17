@@ -14,9 +14,9 @@
 #                            kernel archive name from the mode, so a
 #                            module_semi_optim cannot link against an _opt kernel
 #   3. unit-tests.sh        - the suites that need the standard kernel
-#   4. validation notebooks     - MagneticStandalone{,3D}/*/<FormName>.ipynb
-#                            (one per case, 2D then 3D), exported to PDF and
-#                            concatenated into MagneticStandalone_validation.pdf
+#   4. validation notebooks     - <Category>/*/<FormName>.ipynb (one per case,
+#                            all four categories), exported to PDF and
+#                            concatenated into trust-lime_validation.pdf
 #                            at the repo root
 #
 # Usage: bash .opencode/scripts/after-trust-optim.sh [--once] [--mode=optim|semi_optim]
@@ -145,7 +145,7 @@ say "notebooks+pdf rc=$rc  (log: /tmp/opencode/notebook_pdf.log)"
 if [[ $rc -ne 0 ]]; then
   say "at least one notebook failed (see above)"
 else
-  say "notebooks executed + concatenated into $repo/MagneticStandalone_validation.pdf"
+  say "notebooks executed + concatenated into $repo/trust-lime_validation.pdf"
 fi
 
 say "ALL STEPS DONE (configure=$?, module=ok, unit_tests=$rc, notebook=$rc)"
