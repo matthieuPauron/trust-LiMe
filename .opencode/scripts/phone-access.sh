@@ -1,35 +1,32 @@
 #!/usr/bin/env bash
-# phone-access.sh — temporary LAN + web access to the OpenCode server, for a phone.
+# phone-access.sh — temporary LAN access to the OpenCode server, for a phone.
 #
-#   phone-access.sh open  [--pair] [--idle 30m] [--max 4h]
-#                         [--ip A.B.C.D] [--iface IFACE] [--subnet A.B.C.0/24]
+#   phone-access.sh open  [--no-pair] [--idle 30m] [--max 4h] [--ip A.B.C.D] [--kdeconnect-device ID]
 #                         [--dry-run]
 #   phone-access.sh close
 #   phone-access.sh status
-#   phone-access.sh _tick      (internal: called by the systemd user watchdog)
+#   phone-access.sh reset-bind   (one-time: return the server to localhost only)
+#   phone-access.sh _tick        (internal: called by the systemd user watchdog)
 #
 # What it does
-#  - binds the shared OpenCode server to this machine's LAN address so a phone on
-#    the same Wi-Fi can reach the web UI at http://<ip>:49374,
-#  - opens a *tagged* ufw rule for that LAN subnet only (never the internet),
-#  - optionally runs `opencode pair` for the one-time phone sign-in,
-#  - arms a systemd user watchdog that closes everything after the idle timeout.
+#  - the OpenCode server is never rebound, so opening or closing phone access
+#    can never restart the server or interrupt your sessions,
+#  - `open` starts a socat listener on this machine's LAN address that forwards
+#    to 127.0.0.1:49374, so a phone on the same Wi-Fi reaches the web UI at
+#    http://<ip>:49374,
+#  - `open` sends the one-time sign-in link via KDE Connect (no QR shown);
+#    if sending fails, it prints the link instead. Pass --no-pair to skip pairing,
+#  - `close` (or the idle watchdog) stops that listener; the LAN port is then
+#    gone. Nothing is firewalled and nothing needs root.
+#  - the listener runs as a transient systemd --user unit, so stopping it also
+#    reaps its per-connection children.
 #
-# How closing works
-#  - the part that actually shuts the port is rebinding the service to localhost,
-#    which needs no root; the tagged ufw rule is removed afterwards (root).
-#  - the watchdog timer stays enabled at all times (a cheap 60 s tick) so that it
-#    can also clean up a leftover tagged rule after a reboot or a crashed run.
-#  - if the watchdog cannot use sudo non-interactively, it still closes the port
-#    and marks the rule as pending; the next interactive `close`/`status`/`open`
-#    removes it.
-#
-# Requires: iproute2 (ip, ss), curl, flock, ufw (active), systemd --user.
+# Requires: socat, systemd-run, iproute2 (ip, ss), curl, flock, systemd --user.
 set -euo pipefail
 
 SELF="$(readlink -f "${BASH_SOURCE[0]}")"
 PORT=49374
-TAG="opencode-phone"
+PROXY_UNIT="opencode-phone-proxy"
 UNIT="opencode-phone-watchdog"
 IDLE_DEFAULT="30m"
 TICK=60
@@ -42,13 +39,12 @@ UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 
 # --- options (filled by parse_args) -----------------------------------------
 CMD=""
-OPT_PAIR=0
+OPT_PAIR=1
 OPT_DRY=0
 OPT_IDLE="$IDLE_DEFAULT"
 OPT_MAX="0"
 OPT_IP=""
-OPT_IFACE=""
-OPT_SUBNET=""
+OPT_KDE_DEVICE=""
 POSITIONALS=()
 
 # --- small helpers ----------------------------------------------------------
@@ -76,6 +72,34 @@ parse_duration() {
   fi
 }
 
+
+# --- KDE Connect helpers -----------------------------------------------------
+
+kdeconnect_available() {
+  command -v kdeconnect-cli >/dev/null 2>&1
+}
+
+find_kdeconnect_device() {
+  local line id name
+  [[ -n "${OPT_KDE_DEVICE:-}" ]] && { printf '%s' "$OPT_KDE_DEVICE"; return 0; }
+  while IFS= read -r line; do
+    id="$(printf '%s' "$line" | sed -nE 's/.*: ([a-f0-9]{32}).*/\1/p')"
+    [[ -n "$id" ]] || continue
+    # Prefer reachable devices; if not reachable, still return if it's the only one found
+    printf '%s' "$id"
+    return 0
+  done < <(kdeconnect-cli -l 2>/dev/null || true)
+  return 1
+}
+
+send_link_via_kdeconnect() {
+  local url="$1"
+  kdeconnect_available || return 1
+  local dev
+  dev="$(find_kdeconnect_device)" || return 1
+  local msg="$url"
+  kdeconnect-cli -d "$dev" --share-text "$msg" >/dev/null 2>&1
+}
 fmt_duration() {
   local s="$1"
   if (( s <= 0 )); then printf 'none'; return; fi
@@ -88,9 +112,8 @@ now_epoch() { date +%s; }
 
 # --- state file -------------------------------------------------------------
 #
-# key=value, rewritten atomically. Keys written by `open`, updated by `_tick`:
-#   STATUS OPENED_AT LAST_ACTIVITY IDLE MAX IP IFACE SUBNET PREFIX
-#   PEERS BYTES PREV_HOSTNAME UFW_RULE UFW_PENDING
+# key=value, rewritten atomically. Written by `open`, updated by `_tick`:
+#   STATUS OPENED_AT LAST_ACTIVITY IDLE MAX IP PREFIX PEERS BYTES
 
 state_init() { mkdir -p "$STATE_DIR"; [[ -f "$STATE" ]] || : >"$STATE"; }
 
@@ -103,112 +126,51 @@ state_get() {
 # state_set KEY VALUE... (atomic: rewrite through a temp file)
 state_set() {
   local key="$1"; shift
+  [[ "$OPT_DRY" == "1" ]] && return 0
   local tmp="$STATE.tmp.$$"
   state_init
   { grep -v "^${key}=" "$STATE" 2>/dev/null || true; printf '%s=%s\n' "$key" "$*"; } >"$tmp"
   mv "$tmp" "$STATE"
 }
 
-state_clear() { : >"$STATE"; }
+state_clear() { [[ "$OPT_DRY" == "1" ]] && return 0; : >"$STATE"; }
 
 log_line() {
+  [[ "$OPT_DRY" == "1" ]] && return 0
   state_init
   printf '%s %s\n' "$(date -Is)" "$*" >>"$LOG"
   tail -n 500 "$LOG" >"$LOG.cut" 2>/dev/null && mv "$LOG.cut" "$LOG" || true
 }
 
-# --- helpers: LAN address, ufw, opencode service ----------------------------
+# --- helpers: LAN address, opencode bind, the proxy -------------------------
 
 detect_ip() {
   local ip=""
-  if [[ -n "$OPT_IFACE" ]]; then
-    ip="$(ip -4 -o addr show "$OPT_IFACE" scope global 2>/dev/null \
-          | awk 'NR==1{split($4,a,"/"); print a[1]}')"
-    [[ -n "$ip" ]] || die "no IPv4 address on interface $OPT_IFACE"
+  if [[ -n "$OPT_IP" ]]; then
+    ip="$OPT_IP"
   else
     ip="$(ip -4 route get 1.1.1.1 2>/dev/null \
           | awk '{for (i = 1; i <= NF; i++) if ($i == "src") print $(i + 1)}')"
     if [[ -z "$ip" ]]; then
       ip="$(ip -4 -o addr show scope global 2>/dev/null \
             | awk '{split($4,a,"/"); print a[1]}' \
-            | grep -v '^172\.1[6-9]\.' | head -1)"
+            | grep -vE '^(127\.|172\.1[6-9]\.)' | head -1)"
     fi
   fi
   [[ -n "$ip" ]] || die "cannot determine LAN address (pass --ip)"
+  [[ "$ip" == *.*.*.* ]] || die "not an IPv4 LAN address: $ip"
   printf '%s' "$ip"
 }
 
-# Subnet prefix used to tell phone traffic from local (loopback) traffic.
-ip_prefix() { local ip="$1"; printf '%s' "${ip%.*}."; }
-subnet_of() { local ip="$1"; printf '%s' "${ip%.*}.0/24"; }
+ip_prefix() { printf '%s' "${1%.*}."; }
 
-iface_of() {
-  local ip="$1"
-  ip -4 -o addr show scope global 2>/dev/null \
-    | awk -v ip="$ip" '{split($4,a,"/"); if (a[1] == ip) {print $2; exit}}' \
-    | sed 's/@.*//'
-}
-
-sudo_ok() { sudo -n true 2>/dev/null; }
-
-# Is ufw running? Prefer the live status when sudo is already usable, otherwise
-# fall back to the persisted ENABLED= setting and finally the service state, so
-# we never prompt in a watchdog.
-ufw_active() {
-  if sudo_ok; then
-    if sudo -n ufw status 2>/dev/null | head -1 | grep -qi 'inactive'; then return 1; fi
-    if sudo -n ufw status 2>/dev/null | head -1 | grep -qi 'active'; then return 0; fi
-  fi
-  grep -qi '^ENABLED=yes' /etc/ufw/ufw.conf 2>/dev/null && return 0
-  systemctl is-active --quiet ufw 2>/dev/null && return 0
-  return 1
-}
-
-# auto="1" never prompts (watchdog); auto="0" may prompt for sudo.
-ufw_has_tag() {
-  local auto="$1" numbered
-  if [[ "$auto" == "1" ]]; then
-    sudo -n true 2>/dev/null || return 1
-    numbered="$(sudo -n ufw status numbered 2>/dev/null || true)"
-  else
-    numbered="$(sudo ufw status numbered 2>/dev/null || true)"
-  fi
-  printf '%s\n' "$numbered" | grep -qF "$TAG"
-}
-
-ufw_add() {
-  local ip="$1" iface="$2"
-  local spec="allow in on $iface from ${ip%.*}.0/24 to any port $PORT proto tcp"
-  run sudo ufw "$spec" comment "$TAG"
-}
-
-# Remove every rule tagged with our comment (handles duplicates/leftovers).
-ufw_remove_tagged() {
-  local auto="$1" numbered nums n
-  if [[ "$auto" == "1" ]]; then
-    sudo -n true 2>/dev/null || return 1
-    numbered="$(sudo -n ufw status numbered 2>/dev/null || true)"
-  else
-    numbered="$(sudo ufw status numbered 2>/dev/null || true)"
-  fi
-  nums="$(printf '%s\n' "$numbered" | grep -F "$TAG" \
-          | sed -E 's/^\[ *([0-9]+)\].*/\1/' | sort -rn || true)"
-  [[ -z "$nums" ]] && return 0
-  for n in $nums; do
-    if [[ "$auto" == "1" ]]; then sudo -n ufw --force delete "$n" >/dev/null 2>&1 || true
-    else sudo ufw --force delete "$n" >/dev/null 2>&1 || true; fi
-  done
-  return 0
-}
-
+# Address the OpenCode service is bound to ("" means its default, localhost).
 svc_hostname() { opencode service get hostname 2>/dev/null || true; }
-svc_set_hostname() { run opencode service set hostname "$1"; }
-svc_unset_hostname() { run opencode service unset hostname; }
-svc_start() { run opencode service start; }
 
-# Is the server answering on this address/port? (any HTTP status counts)
-probe() {
-  curl -s -o /dev/null --max-time 4 "http://$1:$PORT/api/info"
+# The proxy only makes sense while the server stays on loopback.
+bind_is_private() {
+  local h; h="$(svc_hostname)"
+  [[ -z "$h" || "$h" == "127.0.0.1" || "$h" == "localhost" ]]
 }
 
 # --- dry-run aware command execution ---------------------------------------
@@ -218,7 +180,7 @@ run() {
   "$@"
 }
 
-# --- systemd user watchdog --------------------------------------------------
+# --- systemd user units (watchdog) ------------------------------------------
 
 install_units() {
   [[ "$OPT_DRY" == "1" ]] && { note "  [dry-run] install $UNIT.{service,timer}"; return 0; }
@@ -251,6 +213,39 @@ EOF
 
 watchdog_state() {
   systemctl --user is-active "$UNIT.timer" 2>/dev/null || true
+}
+
+# --- the LAN listener (socat, transient user unit) --------------------------
+
+proxy_state() {
+  systemctl --user is-active "$PROXY_UNIT" 2>/dev/null || true
+}
+
+proxy_start() {
+  local ip="$1"
+  if [[ "$OPT_DRY" == "1" ]]; then
+    note "  [dry-run] systemd-run --user --unit=$PROXY_UNIT socat TCP-LISTEN:$PORT,bind=$ip,reuseaddr,fork TCP:127.0.0.1:$PORT"
+    return 0
+  fi
+  systemctl --user stop "$PROXY_UNIT" >/dev/null 2>&1 || true
+  systemctl --user reset-failed "$PROXY_UNIT" >/dev/null 2>&1 || true
+  systemd-run --user --unit="$PROXY_UNIT" --collect \
+    --description="OpenCode phone proxy on $ip:$PORT" \
+    socat "TCP-LISTEN:$PORT,bind=$ip,reuseaddr,fork" "TCP:127.0.0.1:$PORT" >/dev/null
+}
+
+proxy_stop() {
+  run systemctl --user stop "$PROXY_UNIT" 2>/dev/null || true
+}
+
+# Is anything listening on the given address/port already?
+listening_on() {
+  ss -tlnH "sport = :$PORT" 2>/dev/null | awk '{print $4}' | grep -qx "$1:$PORT"
+}
+
+# Is the server answering? (any HTTP status counts)
+probe() {
+  curl -s -o /dev/null --max-time 4 "http://$1:$PORT/api/info"
 }
 
 # --- activity measurement ---------------------------------------------------
@@ -296,37 +291,174 @@ lan_traffic() {
 print_connect_help() {
   local ip="$1" url="http://$ip:$PORT"
   note ""
-  note "Connect the phone (same Wi-Fi), either way:"
-  note "  a) scan this QR code with the phone camera:"
-  if command -v qrencode >/dev/null 2>&1 && [[ "$OPT_DRY" != "1" ]]; then
-    qrencode -t ANSIUTF8 -m 1 "$url" | sed 's/^/     /'
-  elif [[ "$OPT_DRY" == "1" ]]; then
-    note "     [dry-run] would render a QR for $url"
-  else
-    note "     (qrencode not available)"
-  fi
-  note "  b) or open in the phone browser: $url"
-  note "     username: opencode   password: \$(opencode service get password)"
-  note "     then use 'Add to Home Screen' for an app-like icon."
+  note "Connect the phone (same Wi-Fi):"
+
   if [[ "$OPT_PAIR" == "1" ]]; then
+    local pair_out link
+    pair_out=$(opencode pair --url "$url" 2>&1 || true)
+    link=$(printf '%s\n' "$pair_out" | grep -Eo 'https?://[^[:space:]]+' | head -1)
+    if send_link_via_kdeconnect "${link:-$url}"; then
+      note ""
+      note "  1) Sent one-time sign-in link to phone via KDE Connect"
+    else
+      note ""
+      note "  1) One-time sign-in link (KDE Connect unavailable):"
+      if [[ -n "$link" ]]; then
+        note "     $link"
+      else
+        note "     $url"
+      fi
+    fi
+    note "     (valid 5 min, single use; never forward the link to a chat app)"
     note ""
-    note "One-time pairing link + QR (valid 5 min, single use):"
-    run opencode pair --url "$url" || warn "opencode pair failed (continuing)"
+    note "  2) or sign in with the password:"
   else
-    note "  (add --pair on the first run to get a one-time sign-in link)"
+    note ""
+    note "  1) open in the phone browser and sign in:"
+  fi
+
+  note "     $url"
+  note "     username: opencode"
+  note "     password: \$(opencode service get password)"
+  print_password_hint
+  note ""
+  note "     then use 'Add to Home Screen' for an app-like icon."
+  if [[ "$OPT_PAIR" != "1" ]]; then
+    note ""
+    note "  (drop --no-pair to get a one-time sign-in link via KDE Connect)"
   fi
 }
 
+
+# --- KDE Connect helpers -----------------------------------------------------
+
+kdeconnect_available() {
+  command -v kdeconnect-cli >/dev/null 2>&1
+}
+
+find_kdeconnect_device() {
+  local line id name
+  [[ -n "${OPT_KDE_DEVICE:-}" ]] && { printf '%s' "$OPT_KDE_DEVICE"; return 0; }
+  while IFS= read -r line; do
+    id="$(printf '%s' "$line" | sed -nE 's/.*: ([a-f0-9]{32}).*/\1/p')"
+    [[ -n "$id" ]] || continue
+    # Prefer reachable devices; if not reachable, still return if it's the only one found
+    printf '%s' "$id"
+    return 0
+  done < <(kdeconnect-cli -l 2>/dev/null || true)
+  return 1
+}
+
+send_link_via_kdeconnect() {
+  local url="$1"
+  kdeconnect_available || return 1
+  local dev
+  dev="$(find_kdeconnect_device)" || return 1
+  local msg="$url"
+  kdeconnect-cli -d "$dev" --share-text "$msg" >/dev/null 2>&1
+}
+# --- getting the password onto the phone without typing it ------------------
+
+# The clipboard tool that works in this session, or empty.
+clipboard_tool() {
+  if [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v wl-copy >/dev/null 2>&1; then
+    printf 'wl-copy'
+  elif command -v xclip >/dev/null 2>&1; then
+    printf 'xclip -selection clipboard'
+  elif command -v xsel >/dev/null 2>&1; then
+    printf 'xsel -b'
+  fi
+}
+
+
+# --- KDE Connect helpers -----------------------------------------------------
+
+kdeconnect_available() {
+  command -v kdeconnect-cli >/dev/null 2>&1
+}
+
+find_kdeconnect_device() {
+  local line id name
+  [[ -n "${OPT_KDE_DEVICE:-}" ]] && { printf '%s' "$OPT_KDE_DEVICE"; return 0; }
+  while IFS= read -r line; do
+    id="$(printf '%s' "$line" | sed -nE 's/.*: ([a-f0-9]{32}).*/\1/p')"
+    [[ -n "$id" ]] || continue
+    # Prefer reachable devices; if not reachable, still return if it's the only one found
+    printf '%s' "$id"
+    return 0
+  done < <(kdeconnect-cli -l 2>/dev/null || true)
+  return 1
+}
+
+send_link_via_kdeconnect() {
+  local url="$1"
+  kdeconnect_available || return 1
+  local dev
+  dev="$(find_kdeconnect_device)" || return 1
+  local msg="$url"
+  kdeconnect-cli -d "$dev" --share-text "$msg" >/dev/null 2>&1
+}
+print_password_hint() {
+  local clip; clip="$(clipboard_tool)"
+  note ""
+  note "  Easier than typing that password — push it to the phone:"
+  if [[ -z "$clip" ]]; then
+    note "     (no clipboard tool found: install wl-clipboard, xclip or xsel)"
+    return 0
+  fi
+  note "     opencode service get password | $clip"
+  if ! command -v kdeconnect-cli >/dev/null 2>&1; then
+    return 0
+  fi
+  local line id name found=0
+  while IFS= read -r line; do
+    id="$(printf '%s' "$line" | sed -nE 's/.*: ([a-f0-9]{32}).*/\1/p')"
+    [[ -n "$id" ]] || continue
+    name="$(printf '%s' "$line" | sed -nE 's/^- *(.*): [a-f0-9]{32}.*/\1/p')"
+    [[ "$line" == *reachable* ]] || name="$name (not reachable)"
+    note "     kdeconnect-cli -d $id --send-clipboard    # $name"
+    found=1
+  done < <(kdeconnect-cli -l 2>/dev/null || true)
+  if [[ "$found" == "0" ]]; then
+    note "     kdeconnect-cli -d <device-id> --send-clipboard   # kdeconnect-cli -l"
+  fi
+}
+
+
+# --- KDE Connect helpers -----------------------------------------------------
+
+kdeconnect_available() {
+  command -v kdeconnect-cli >/dev/null 2>&1
+}
+
+find_kdeconnect_device() {
+  local line id name
+  [[ -n "${OPT_KDE_DEVICE:-}" ]] && { printf '%s' "$OPT_KDE_DEVICE"; return 0; }
+  while IFS= read -r line; do
+    id="$(printf '%s' "$line" | sed -nE 's/.*: ([a-f0-9]{32}).*/\1/p')"
+    [[ -n "$id" ]] || continue
+    # Prefer reachable devices; if not reachable, still return if it's the only one found
+    printf '%s' "$id"
+    return 0
+  done < <(kdeconnect-cli -l 2>/dev/null || true)
+  return 1
+}
+
+send_link_via_kdeconnect() {
+  local url="$1"
+  kdeconnect_available || return 1
+  local dev
+  dev="$(find_kdeconnect_device)" || return 1
+  local msg="$url"
+  kdeconnect-cli -d "$dev" --share-text "$msg" >/dev/null 2>&1
+}
 cmd_open() {
-  need opencode; need ip; need ss; need curl; need flock
-  local ip iface subnet prefix prev_hostname idle_s max_s
+  need socat; need systemd-run; need ip; need ss; need curl; need flock
+  local ip prefix idle_s max_s
   ip="${OPT_IP:-$(detect_ip)}"
-  iface="${OPT_IFACE:-$(iface_of "$ip")}"
-  subnet="${OPT_SUBNET:-$(subnet_of "$ip")}"
   prefix="$(ip_prefix "$ip")"
   idle_s="$(parse_duration "$OPT_IDLE")"
   max_s="$(parse_duration "$OPT_MAX")"
-  [[ -n "$iface" ]] || die "cannot determine interface for $ip (pass --iface)"
 
   mkdir -p "$STATE_DIR"
   exec 9>"$LOCK"; flock -w 5 9 || die "another phone-access command is running"
@@ -349,52 +481,45 @@ cmd_open() {
     return
   fi
   if [[ "$status" == "open" ]]; then
-    note "phone access was open on $prev_ip — reopening on $ip"
-    do_close "reopen" "0" || true
+    note "phone access was open on $prev_ip — moving to $ip"
+    do_close "reopen" || true
   fi
 
-  prev_hostname="$(svc_hostname)"
   note "== opencode phone access =="
-  note "listen        : $ip:$PORT (interface $iface, subnet $subnet)"
+  note "phone URL     : http://$ip:$PORT"
 
-  # 1. bind the shared service to the LAN address.
-  svc_set_hostname "$ip" || true
-  svc_start || true
+  # The barriere is the listener itself: the server stays on localhost and this
+  # script never rebounds it, so your sessions are never interrupted.
+  if ! bind_is_private; then
+    warn "the OpenCode service is bound to $(svc_hostname), not localhost"
+    warn "phone access will work, but the port stays reachable from the LAN even"
+    warn "after 'close'. Run '$(basename "$SELF") reset-bind' once to fix that"
+    warn "(it restarts the server one last time)."
+  fi
+
+  if [[ "$OPT_DRY" == "1" ]]; then
+    note "  [dry-run] skipping the server reachability probe on 127.0.0.1:$PORT"
+  elif ! probe 127.0.0.1; then
+    if ! bind_is_private; then
+      die "the server is bound to $(svc_hostname), so nothing listens on 127.0.0.1:$PORT — run '$(basename "$SELF") reset-bind' (one restart)"
+    fi
+    die "the OpenCode server is not answering on 127.0.0.1:$PORT — start it with 'opencode service start'"
+  fi
+  if listening_on "$ip" && ! [[ "$OPT_DRY" == "1" ]]; then
+    die "$ip:$PORT is already taken (is the service bound to the LAN? see 'reset-bind')"
+  fi
+
+  # 1. start the LAN listener. This is the only moving part.
+  proxy_start "$ip"
   if [[ "$OPT_DRY" == "1" ]]; then
     note "  (dry-run: skipping the reachability probe)"
   elif ! probe "$ip"; then
-    warn "server did not answer on $ip — falling back to 0.0.0.0 (ufw still restricts to $subnet)"
-    svc_set_hostname "0.0.0.0" || true
-    svc_start || true
-    probe "$ip" || { svc_unset_hostname || true; svc_start || true; die "server is not reachable on $ip:$PORT"; }
+    proxy_stop
+    die "the proxy did not come up on $ip:$PORT"
   fi
-  note "listen        : answering on http://$ip:$PORT"
+  note "listener      : $ip:$PORT -> 127.0.0.1:$PORT ($(proxy_state))"
 
-  # 2. firewall: LAN subnet only, and only on this interface. Never abort the
-  #    open because of a firewall hiccup -- by now the service is already bound,
-  #    so a warning has to be loud instead.
-  local ufw_rule=0
-  if [[ "$OPT_DRY" == "1" ]]; then
-    note "  [dry-run] add ufw rule: allow in on $iface from $subnet to any port $PORT proto tcp (tag $TAG)"
-    ufw_rule=1
-  elif command -v ufw >/dev/null 2>&1; then
-    if ufw_add "$ip" "$iface"; then
-      if ufw_has_tag 0; then
-        ufw_rule=1
-        note "firewall      : ufw rule added ($subnet -> tcp/$PORT in on $iface)"
-      else
-        warn "ufw accepted the rule but it is not visible in 'ufw status' — check manually"
-      fi
-    else
-      warn "could not add the ufw rule (is ufw enabled?) — if the port is reachable now,"
-      warn "anyone on $subnet can reach it; see 'sudo ufw status'"
-      if ufw_active; then ufw_rule=1; fi
-    fi
-  else
-    note "firewall      : ufw not installed, no rule added"
-  fi
-
-  # 3. state + watchdog.
+  # 2. state + watchdog.
   state_clear
   state_set STATUS open
   state_set OPENED_AT "$(now_epoch)"
@@ -402,23 +527,18 @@ cmd_open() {
   state_set IDLE "$idle_s"
   state_set MAX "$max_s"
   state_set IP "$ip"
-  state_set IFACE "$iface"
-  state_set SUBNET "$subnet"
   state_set PREFIX "$prefix"
   state_set PEERS ""
   state_set BYTES 0
-  state_set PREV_HOSTNAME "$prev_hostname"
-  state_set UFW_RULE "$ufw_rule"
-  state_set UFW_PENDING 0
   install_units
   note "watchdog      : idle timeout $(fmt_duration "$idle_s")$(
     [[ "$max_s" != "0" ]] && printf ', hard stop after %s' "$(fmt_duration "$max_s")"
   ) (timer $(watchdog_state))"
-  log_line "OPEN ip=$ip idle=${idle_s}s max=${max_s}s ufw_rule=$ufw_rule"
+  log_line "OPEN ip=$ip idle=${idle_s}s max=${max_s}s"
 
   print_connect_help "$ip"
   note ""
-  note "Ctrl+C now, or just stop using the phone — either way everything closes."
+  note "Ctrl+C now, or just stop using the phone — either way access closes."
   exec 9>&-            # release the lock: the watchdog must be able to tick
   if [[ "$OPT_DRY" == "1" ]]; then note "(dry-run: not waiting for the watchdog)"; return; fi
   wait_until_closed
@@ -427,7 +547,7 @@ cmd_open() {
 # Stay in the foreground while the session is open, then report.
 wait_until_closed() {
   local cleared=0
-  trap 'cleared=1; do_close "interrupt" "0" || true; exit 0' INT TERM
+  trap 'cleared=1; do_close "interrupt" || true; exit 0' INT TERM
   while [[ "$(state_get STATUS)" == "open" ]]; do
     sleep 5
   done
@@ -438,78 +558,39 @@ wait_until_closed() {
 # --- close ------------------------------------------------------------------
 
 print_close_summary() {
-  local pending
-  pending="$(state_get UFW_PENDING)"
-  note "phone session closed"
-  note "listen        : 127.0.0.1:$PORT (localhost only)"
-  if [[ "$pending" == "1" ]]; then
-    warn "ufw rule still present — run 'close' with sudo available to remove it"
-  else
-    note "firewall      : ufw rule removed (or none present)"
-  fi
-  note "watchdog      : timer $(watchdog_state) (keeps self-healing after reboot)"
+  note "phone access closed"
+  note "listener     : stopped (server stays on 127.0.0.1:$PORT)"
+  note "watchdog     : timer $(watchdog_state) (self-heals after reboot)"
   note ""
   note "The session itself keeps running here; press on with the TUI, or"
   note "run 'phone-access.sh open' again to work from the phone."
 }
 
-# auto: "1" when triggered by the watchdog (no interactive sudo); "0" otherwise.
 do_close() {
-  local reason="$1" auto="$2" prev_hostname status
+  local reason="$1" prev_ip
   mkdir -p "$STATE_DIR"
   exec 9>"$LOCK"; flock -w 5 9 || { warn "close: lock busy"; return 1; }
 
-  status="$(state_get STATUS)"
-  prev_hostname="$(state_get PREV_HOSTNAME)"
+  prev_ip="$(state_get IP)"
+  proxy_stop
 
-  # Nothing open and nothing to clean up? Then do not restart the service just
-  # to "close" it -- that would blip the TUI for no reason.
-  if [[ "$status" != "open" && "$OPT_DRY" != "1" ]]; then
-    local has_tag=0 cur
-    if ufw_has_tag "$auto"; then has_tag=1; fi
-    cur="$(svc_hostname)"
-    if [[ "$has_tag" == "0" && ( "$cur" == "127.0.0.1" || -z "$cur" ) ]]; then
-      log_line "CLOSE no-op (already closed)"
-      return 0
-    fi
-  fi
-
-  # 1. rebind to localhost (this is what actually closes the port; no root).
-  if [[ -n "$prev_hostname" ]]; then
-    svc_set_hostname "$prev_hostname" || true
-  else
-    svc_unset_hostname || true
-  fi
-  svc_start || true
-
-  # 2. drop our tagged ufw rule.
-  local pending=0 want_rule
-  want_rule="$(state_get UFW_RULE)"
-  if [[ "$OPT_DRY" == "1" ]]; then
-    note "  [dry-run] remove ufw rules tagged $TAG"
-  elif [[ "$auto" == "1" ]] && ! sudo -n true 2>/dev/null; then
-    # The watchdog cannot escalate; if a rule was added, it must be cleaned up
-    # later by an interactive `close`/`status`/`open` (or with a sudoers rule).
-    if [[ "$want_rule" == "1" ]]; then pending=1; fi
-  else
-    if ufw_has_tag "$auto"; then
-      ufw_remove_tagged "$auto" || pending=1
-    fi
-    if [[ "$pending" == "0" ]] && ufw_has_tag "$auto"; then pending=1; fi
+  # Nothing was open and no listener lingers? Then there is nothing to do.
+  if [[ "$(state_get STATUS)" != "open" && "$(proxy_state)" != "active" && "$OPT_DRY" != "1" ]]; then
+    log_line "CLOSE no-op (already closed)"
+    return 0
   fi
 
   state_set STATUS closed
   state_set PEERS ""
   state_set BYTES 0
-  state_set UFW_PENDING "$pending"
   state_set LAST_ACTIVITY "$(now_epoch)"
-  log_line "CLOSE reason=$reason (was=$status) ufw_pending=$pending"
+  log_line "CLOSE reason=$reason ip=$prev_ip"
   return 0
 }
 
 cmd_close() {
-  need opencode; need flock
-  do_close "manual" "0"
+  need flock
+  do_close "manual"
   print_close_summary
 }
 
@@ -523,16 +604,19 @@ cmd_tick() {
   local status
   status="$(state_get STATUS)"
 
-  # Not open: only job is to heal a leftover tagged rule.
+  # Not open: the only job is to drop a listener left behind by a crash.
   if [[ "$status" != "open" ]]; then
-    if ufw_has_tag 1; then
-      if ufw_remove_tagged 1; then
-        log_line "HEAL removed leftover ufw rule"
-      else
-        state_set UFW_PENDING 1
-        log_line "HEAL deferred: ufw rule needs interactive sudo"
-      fi
+    if [[ "$(proxy_state)" == "active" ]]; then
+      proxy_stop
+      log_line "HEAL stopped stray listener"
     fi
+    exit 0
+  fi
+
+  # Open but the listener died: treat the session as closed.
+  if [[ "$(proxy_state)" != "active" ]]; then
+    log_line "AUTO-CLOSE listener gone"
+    do_close "listener-gone" || true
     exit 0
   fi
 
@@ -566,12 +650,12 @@ cmd_tick() {
 
   if (( now - last_act > idle )); then
     log_line "AUTO-CLOSE idle for $((now - last_act))s (limit ${idle}s)"
-    do_close "idle" "1" || true
+    do_close "idle" || true
     exit 0
   fi
   if [[ -n "$max" && "$max" != "0" ]] && (( now - ${opened:-$now} > max )); then
     log_line "AUTO-CLOSE hard stop after $((now - ${opened:-$now}))s (limit ${max}s)"
-    do_close "max-lifetime" "1" || true
+    do_close "max-lifetime" || true
     exit 0
   fi
   exit 0
@@ -580,62 +664,134 @@ cmd_tick() {
 # --- status -----------------------------------------------------------------
 
 cmd_status() {
-  need opencode
-  local status ip idle last_act peers bytes opened max pend
+  need flock
+  local status ip idle last_act peers bytes opened max now idle_for
   status="$(state_get STATUS)"
   ip="$(state_get IP)"
 
   if [[ "$status" != "open" ]]; then
-    local cur
-    cur="$(svc_hostname)"
-    note "phone access : CLOSED (listening on ${cur:-127.0.0.1}:$PORT)"
-    if state_is_set; then
+    note "phone access : CLOSED (listener $(proxy_state))"
+    if [[ -s "$STATE" ]]; then
       note "last change  : $(date -d "@$(state_get LAST_ACTIVITY)" '+%H:%M' 2>/dev/null || echo '?')"
     fi
-    note "ufw rule     : $(ufw_status_note)"
+    bind_note
     note "watchdog     : timer $(watchdog_state)"
     return 0
   fi
 
   idle="$(state_get IDLE)"; last_act="$(state_get LAST_ACTIVITY)"
   peers="$(state_get PEERS)"; opened="$(state_get OPENED_AT)"; max="$(state_get MAX)"
-  pend="$(state_get UFW_PENDING)"
-  local now idle_for
   now="$(now_epoch)"; idle_for=$(( now - last_act ))
 
   note "phone access : OPEN since $(date -d "@$opened" '+%H:%M' 2>/dev/null || echo "$opened")"
-  note "listen       : $(svc_hostname):$PORT   (phone: http://$ip:$PORT)"
-  note "interface    : $(state_get IFACE)  subnet $(state_get SUBNET)"
+  note "phone URL    : http://$ip:$PORT   (listener $(proxy_state))"
   note "phone peers  : ${peers:-none}   ($(state_get BYTES) bytes seen)"
   note "last activity: $(( now - last_act ))s ago"
   note "auto-close   : in $(fmt_duration $(( idle - idle_for ))) of idle$(
     [[ -n "$max" && "$max" != "0" ]] && printf ' (hard stop in %s)' "$(fmt_duration $(( max - (now - opened) )))"
   )"
-  note "ufw rule     : $(ufw_status_note)"
-  [[ "$pend" == "1" ]] && warn "a leftover ufw rule is pending removal"
+  bind_note
   note "watchdog     : timer $(watchdog_state)"
   note "log          : $LOG"
 }
 
-state_is_set() { [[ -s "$STATE" ]]; }
-
-ufw_status_note() {
-  if ! ufw_active; then printf 'ufw inactive\n'; return; fi
-  if sudo_ok; then
-    if sudo -n ufw status numbered 2>/dev/null | grep -qF "$TAG"; then
-      printf 'present (tagged %s)\n' "$TAG"
-    else
-      printf 'none\n'
-    fi
+# Warn when the server itself is on the LAN: 'close' cannot hide it then.
+bind_note() {
+  if bind_is_private; then
+    note "server bind  : private (127.0.0.1 only)"
   else
-    printf 'unknown (needs sudo)\n'
+    warn "server bind  : $(svc_hostname) — reachable from the LAN even when closed"
+    warn "               run 'phone-access.sh reset-bind' once to restore localhost"
   fi
 }
 
+
+# --- KDE Connect helpers -----------------------------------------------------
+
+kdeconnect_available() {
+  command -v kdeconnect-cli >/dev/null 2>&1
+}
+
+find_kdeconnect_device() {
+  local line id name
+  [[ -n "${OPT_KDE_DEVICE:-}" ]] && { printf '%s' "$OPT_KDE_DEVICE"; return 0; }
+  while IFS= read -r line; do
+    id="$(printf '%s' "$line" | sed -nE 's/.*: ([a-f0-9]{32}).*/\1/p')"
+    [[ -n "$id" ]] || continue
+    # Prefer reachable devices; if not reachable, still return if it's the only one found
+    printf '%s' "$id"
+    return 0
+  done < <(kdeconnect-cli -l 2>/dev/null || true)
+  return 1
+}
+
+send_link_via_kdeconnect() {
+  local url="$1"
+  kdeconnect_available || return 1
+  local dev
+  dev="$(find_kdeconnect_device)" || return 1
+  local msg="$url"
+  kdeconnect-cli -d "$dev" --share-text "$msg" >/dev/null 2>&1
+}
+# --- one-time: put the server back on localhost -----------------------------
+
+cmd_reset_bind() {
+  need opencode
+  local cur; cur="$(svc_hostname)"
+  if bind_is_private; then
+    note "the server is already private (${cur:-default}); nothing to do"
+    return 0
+  fi
+  note "moving the OpenCode service from $cur back to its default (localhost)."
+  note "This restarts the server once — your TUI will reconnect."
+  run opencode service unset hostname || true
+  run opencode service start || true
+  if [[ "$OPT_DRY" == "1" ]]; then
+    note "(dry-run: nothing changed)"
+    return 0
+  fi
+  note "done: bind is now '$(svc_hostname)' (empty = localhost)"
+  sleep 1
+  local l
+  l="$(ss -tlnH "sport = :$PORT" 2>/dev/null | awk '{print $4}' | tr '\n' ' ')"
+  note "listening    : ${l:-none}"
+  if [[ "$l" != *"127.0.0.1:$PORT"* ]]; then
+    warn "the server does not appear to listen on 127.0.0.1:$PORT — check 'opencode service status'"
+  fi
+}
+
+
+# --- KDE Connect helpers -----------------------------------------------------
+
+kdeconnect_available() {
+  command -v kdeconnect-cli >/dev/null 2>&1
+}
+
+find_kdeconnect_device() {
+  local line id name
+  [[ -n "${OPT_KDE_DEVICE:-}" ]] && { printf '%s' "$OPT_KDE_DEVICE"; return 0; }
+  while IFS= read -r line; do
+    id="$(printf '%s' "$line" | sed -nE 's/.*: ([a-f0-9]{32}).*/\1/p')"
+    [[ -n "$id" ]] || continue
+    # Prefer reachable devices; if not reachable, still return if it's the only one found
+    printf '%s' "$id"
+    return 0
+  done < <(kdeconnect-cli -l 2>/dev/null || true)
+  return 1
+}
+
+send_link_via_kdeconnect() {
+  local url="$1"
+  kdeconnect_available || return 1
+  local dev
+  dev="$(find_kdeconnect_device)" || return 1
+  local msg="$url"
+  kdeconnect-cli -d "$dev" --share-text "$msg" >/dev/null 2>&1
+}
 # --- wiring -----------------------------------------------------------------
 
 usage() {
-  sed -n '2,27p' "$SELF" | sed 's/^# \{0,1\}//'
+  awk 'NR == 1 { next } /^[^#]/ { exit } { sub(/^# ?/, ""); print }' "$SELF"
   exit "${1:-2}"
 }
 
@@ -643,19 +799,19 @@ parse_args() {
   [[ $# -gt 0 ]] || usage
   CMD="$1"; shift
   case "$CMD" in
-    open|close|status|_tick|_lan_traffic) ;;
+    open|close|status|reset-bind|_tick|_lan_traffic) ;;
     -h|--help|help) usage 0 ;;
     *) die "unknown command: $CMD" ;;
   esac
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --pair) OPT_PAIR=1 ;;
+      --no-pair) OPT_PAIR=0 ;;
       --dry-run) OPT_DRY=1 ;;
       --idle) OPT_IDLE="${2:?--idle needs a value}"; shift ;;
       --max) OPT_MAX="${2:?--max needs a value}"; shift ;;
       --ip) OPT_IP="${2:?--ip needs a value}"; shift ;;
-      --iface) OPT_IFACE="${2:?--iface needs a value}"; shift ;;
-      --subnet) OPT_SUBNET="${2:?--subnet needs a value}"; shift ;;
+      --kdeconnect-device) OPT_KDE_DEVICE="${2:?--kdeconnect-device needs a value}"; shift ;;
       -h|--help) usage 0 ;;
       --*) die "unknown option: $1" ;;
       *) POSITIONALS+=("$1") ;;
@@ -670,6 +826,7 @@ main() {
     open) cmd_open ;;
     close) cmd_close ;;
     status) cmd_status ;;
+    reset-bind) cmd_reset_bind ;;
     _tick) cmd_tick ;;
     _lan_traffic) lan_traffic "${POSITIONALS[0]:-192.168.}"; echo ;;
   esac
