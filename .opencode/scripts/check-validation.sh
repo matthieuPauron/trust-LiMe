@@ -21,10 +21,15 @@
 #       No case.partition(), no nbProcs > 1, no `trust -partition` CLI flag.
 #       Exception: paths listed in parallel_ok[] below.
 #
-#   R4  one notebook, one test case
-#       A notebook runs one and only one test case: it must not issue more
-#       than one run.addCase()/addCaseFromTemplate() call. Shared helpers may
-#       be duplicated, but a notebook never loops over several datasets.
+#   R4  one form per notebook
+#       A notebook holds the cases of a single validation form (its own
+#       folder): the baseline dataset plus any additional runs of that same
+#       form — e.g. its mesh-convergence scan levels, generated from a
+#       template in the form's src/ (one notebook may issue several
+#       addCase()/addCaseFromTemplate() calls). Never bundle datasets of
+#       different forms in one notebook: every addCase'd dataset must come
+#       from the form's own src/ (directory "."), and template target
+#       directories must stay inside build/.
 #
 # Usage:
 #   check-validation.sh [--all] [--quiet]
@@ -53,7 +58,9 @@ Rules:
       — except paths listed in parallel_ok[] (see SKILL.md)
   R3  no notebook calls partition(), uses nbProcs>1 or `trust -partition`
       — except paths listed in parallel_ok[] (see SKILL.md)
-  R4  a notebook runs one and only one test case (at most one addCase call)
+  R4  one form per notebook: several cases of that form are allowed
+      (baseline + mesh-scan levels), but all datasets must be local to the
+      form's own src/ (addCase ".") and template targets stay in build/
 
 Exit status: 0 clean, 1 violations, 2 usage error.
 EOF
@@ -129,7 +136,6 @@ parallel_ok=(
   "$base/MagneticCoupled/Error_MissingPressureSolver/"
   "$base/MagneticCoupled/Error_TwoWayNoNS/"
   "$base/MagneticCoupled/Error_TwoWayBothVelocities/"
-  "$base/MagneticCoupled/TwoWayFeedback/"
   "$base/MagneticCoupled3D/MMS_Coupled3D/"
   # --- Postraitement_fields ---
   "$base/Postraitement_fields/CourantMagnetique/"
@@ -200,10 +206,9 @@ for f in "${files[@]}"; do
   esac
 done
 
-# --- R2 / R3 / R4: sequential-only and one-case-per-notebook checks ----------
+# --- R2 / R3 / R4: sequential-only and form-local checks ---------------------
 kw_re='\b(Decouper|Partitionneur|Partition|Partition_tool|Scatter|Larg_joint|Nom_Zones|zones_name)\b'
 nb_re='(\.partition[[:space:]]*\(|nbProcs[[:space:]]*=[[:space:]]*([2-9]|[1-9][0-9])|-partition)'
-addcase_re='(\.addCase[[:space:]]*\(|\.addCaseFromTemplate[[:space:]]*\()'
 
 for f in "${files[@]}"; do
   [ -f "$f" ] || continue   # tracked but deleted in the working tree
@@ -230,11 +235,23 @@ for f in "${files[@]}"; do
           report "$f" "$line" "R3 forbidden parallelism in notebook (must run sequentially)"
         done < <(grep -nEi -- "$nb_re" "$f" || true)
       fi
-      ncases=$(grep -Eo -- "$addcase_re" "$f" | wc -l || true)
-      if [ "${ncases:-0}" -gt 1 ]; then
-        report "$f" "-" \
-          "R4 notebook runs $ncases test cases (one and only one addCase per notebook)"
-      fi
+      # R4: one form per notebook. Several cases are allowed (baseline +
+      # mesh-scan levels of the same form), but every addCase'd dataset must
+      # be local: directory "." (the form's own src/), and template target
+      # directories must stay inside build/.
+      while IFS= read -r first; do
+        [ -n "${first:-}" ] || continue
+        case "$first" in
+          "."|"./") ;;
+          *) report "$f" "-" \
+               "R4 addCase directory must be \".\" (the form's own src/), got \"$first\"" ;;
+        esac
+      done < <(grep -Eo -- '\.addCase[[:space:]]*\([[:space:]]*"[^"]*"' "$f" \
+                 | sed -E 's/.*"([^"]*)".*/\1/' || true)
+      while IFS=: read -r line _; do
+        [ -n "${line:-}" ] || continue
+        report "$f" "$line" "R4 template targetDirectory must stay inside build/ (no \"..\")"
+      done < <(grep -nEi -- 'targetDirectory[[:space:]]*=[[:space:]]*"[^"]*\.\.' "$f" || true)
       ;;
   esac
 done
@@ -248,7 +265,9 @@ if [ "$violations" -ne 0 ]; then
   cat <<'EOF'
 Fix: datasets must be sequential — strip Decouper/Scatter and every partition
 keyword; notebooks must live at the case root, never call partition() or pass
--partition, and must run one and only one test case (one addCase per notebook).
+-partition (unless allowlisted in parallel_ok[]), and must only run the cases
+of their own form (addCase "." — baseline + mesh-scan levels of that form;
+never datasets of another form).
 The only exception is a path listed in parallel_ok[] (see the trust-lime-notebooks
 skill) — add it there deliberately, never by disabling R2/R3.
 EOF

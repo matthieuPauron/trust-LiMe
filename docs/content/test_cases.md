@@ -56,7 +56,9 @@ one category, following the official English translation of **ASN Guide n° 28**
 | **Validation – separate effects** | § 3.3 | one isolated physical phenomenon reproduced against an *analytical solution* |
 | **Validation – integral** | § 3.3 | all phenomena and their interactions (reserved: none yet in the standalone phase) |
 
-A notebook runs **one and only one test case** and contains tests of **one
+A notebook covers **one validation form** — it may run several cases of
+that form (the baseline dataset plus its mesh-convergence levels, generated
+from a `src/<case>.tpl.data` template) — and contains tests of **one
 single category**. Following the TRUST validation-form layout
 (`Rapports_automatiques/<Category>/<FormName>/<FormName>.ipynb`), the standalone
 magnetic folder ships one *form folder* per dataset, each containing
@@ -67,10 +69,9 @@ Each form exists **in 2D and in 3D**: `MagneticStandalone3D/<FormName>/` is the
 the dataset gains `dimension 3`, three-component vectors, and `Polyedriser dom`
 after `Mailler` — PolyMAC_MPFA needs polyhedral cells in 3D). The
 `.data` files are **computations**, not tests — a dataset such as `diffusion`
-feeds both a Validation test (decay against the analytic solution, in
-`Diffusion/Diffusion.ipynb`) and, together with `diffusion_refined`, a
-Verification test (mesh convergence, whose per-case bounds are asserted in
-`Diffusion/Diffusion.ipynb` and `DiffusionRefined/DiffusionRefined.ipynb`).
+feeds its validation form (`Diffusion/Diffusion.ipynb`), which carries the
+mesh-convergence scan itself (baseline + ×2/×4 levels instantiated from
+`src/diffusion.tpl.data`).
 
 New tests are written in a **fixed sequence** — a test of a later stage may
 only be added once all earlier stages are green for that case:

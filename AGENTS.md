@@ -177,9 +177,11 @@ in 3D). Example: `MagneticStandalone/Diffusion/Diffusion.ipynb`. Use
 **Formatting rules — enforced by `.opencode/scripts/check-validation.sh`
 (`/check-validation`):** the `.ipynb` lives at the form root only
 (`Rapports_automatiques/<Category>/<FormName>/<FormName>.ipynb`, never in
-`src/`), each notebook runs **one and only one test case** (one `addCase`),
-and **all cases run sequentially** — `.data` files must never contain TRUST
-parallelism machinery (`Decouper`/`Partitionneur`/`Scatter`/`Larg_joint`/
+`src/`), each notebook covers **one validation form** and may run several
+cases of that form (the baseline dataset plus its mesh-convergence scan
+levels, generated from `src/<case>.tpl.data` — see the `trust-lime-notebooks`
+skill), and **all cases run sequentially** — `.data` files must never contain
+TRUST parallelism machinery (`Decouper`/`Partitionneur`/`Scatter`/`Larg_joint`/
 `Nom_Zones`/…), and notebooks must not call `partition()` or set `nbProcs>1`.
 **Parallel exception.** A form may run on `N` cores only if its path is listed in
 `parallel_ok[]` in `check-validation.sh` (the script is the source of truth — do

@@ -89,3 +89,6 @@ README_BALTIK_ECLIPSE
 \#*#
 *.swp
 *.swo
+
+# Python bytecode caches (opencode helper scripts)
+__pycache__/

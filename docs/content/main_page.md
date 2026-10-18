@@ -19,6 +19,7 @@ time integration, data-file parsing, and boundary/source machinery for free.
 - @subpage TrustLiMe_model
 - @subpage TrustLiMe_testcases
 - @subpage TrustLiMe_validation
+- @subpage TrustLiMe_plans
 - @subpage TrustLiMe_api
 - @subpage TrustLiMe_docsys
 - @subpage TrustLiMe_hermes
@@ -53,6 +54,7 @@ The HTML output is written to `docs/build/html/index.html`.
   @ref TrustLiMe_model "Problems, equations and boundary conditions".
 - Want to run it? See @ref TrustLiMe_testcases "Test cases" and
   @ref TrustLiMe_validation "Validation cases".
+- Planning ahead? See @ref TrustLiMe_plans "Roadmap and next steps".
 - Extending the code? Browse the @ref TrustLiMe_api "C++ API reference".
 - Writing documentation? See @ref TrustLiMe_docsys "Documentation system".
 - Automating checks or running the agent unattended? See
