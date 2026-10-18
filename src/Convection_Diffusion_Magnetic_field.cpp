@@ -210,9 +210,9 @@ const Navier_Stokes_std* Convection_Diffusion_Magnetic_field::eq_navier_stokes()
  *
  *  Both the equation-level pointer (associer_vitesse, used by the
  *  vitesse_transportante() consumers such as the induction_stretching
- *  source) and the convection operator (terme_convectif) hold observers;
- *  the PolyMAC evaluator re-references the velocity values array on every
- *  flux evaluation (Eval_Conv_PolyMAC_CDO::mettre_a_jour), so the operator
+ *  source) and the convection operator are re-bound below; the PolyMAC
+ *  evaluator re-references the velocity values array on every flux
+ *  evaluation (Eval_Conv_PolyMAC_CDO::mettre_a_jour), so the operator
  *  always reads the current NS velocity slot.
  */
 void Convection_Diffusion_Magnetic_field::completer()
@@ -231,11 +231,20 @@ void Convection_Diffusion_Magnetic_field::completer()
     }
 
   // Rebind the equation-level pointer and the convection operator to the
-  // solved velocity.  With a 'convection negligeable' operator the second
-  // call is a no-op (Op_Conv_negligeable) but the equation-level pointer is
-  // still rebound, so the sources see the NS velocity.
+  // solved velocity.  TRAP (found by the TwoWayFeedback calibration): the
+  // Operateur_Conv *wrapper*'s associer_vitesse() only stores its own
+  // la_vitesse observer; the forward to the underlying operator happens
+  // once, in Operateur_Conv::typer() (read time, with the placeholder).
+  // After typer(), the operator must be re-bound through
+  // Operateur_Conv_base::associer_vitesse(), i.e. terme_convectif.valeur(),
+  // or it keeps evaluating with the placeholder velocity.  The wrapper call
+  // is kept for its record: vitesse() is re-read if the operator is ever
+  // re-typed.  With a 'convection negligeable' operator both calls are
+  // no-ops, but the equation-level pointer is still rebound, so the sources
+  // see the NS velocity.
   associer_vitesse(ns->vitesse());
   terme_convectif.associer_vitesse(ns->vitesse());
+  terme_convectif.valeur().associer_vitesse(ns->vitesse());
 
   // Drop the one-time caches possibly built against the placeholder so that
   // vitesse_aux_elements() / gradient_vitesse_elements() (and the

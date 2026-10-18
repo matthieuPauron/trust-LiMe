@@ -129,6 +129,7 @@ parallel_ok=(
   "$base/MagneticCoupled/Error_MissingPressureSolver/"
   "$base/MagneticCoupled/Error_TwoWayNoNS/"
   "$base/MagneticCoupled/Error_TwoWayBothVelocities/"
+  "$base/MagneticCoupled/TwoWayFeedback/"
   "$base/MagneticCoupled3D/MMS_Coupled3D/"
   # --- Postraitement_fields ---
   "$base/Postraitement_fields/CourantMagnetique/"

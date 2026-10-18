@@ -78,6 +78,9 @@ void Terme_Source_Induction_stretching::associer_pb(const Probleme_base& pb)
     }
   dim_ = Objet_U::dimension;
   nb_compos_b_ = equation_mag_->nb_composantes();
+  // Two-way mode (equation keyword vitesse_hydraulique): the velocity is the
+  // Navier-Stokes unknown and grad(u) must follow it every step.
+  vitesse_depend_du_temps_ = equation_mag_->vitesse_hydraulique();
 }
 
 /*! @brief Stores the discretised domain (unused here, kept for the framework).
@@ -126,10 +129,50 @@ int Terme_Source_Induction_stretching::initialiser(double temps)
   dim_ = Objet_U::dimension;
   nb_compos_b_ = eqn.nb_composantes();
 
+  // In the two-way mode the velocity changes every step: record the velocity
+  // time this build corresponds to, so that maj_grad_u() only rebuilds when
+  // the velocity has actually moved on (frozen mode: never).
+  temps_grad_u_ = eqn.vitesse_transportante().temps();
+
   Cerr << "Initialisation of the (b.grad)u induction source term"
        << " (grad u: " << dim_ * dim_ << " components," << nb_compos_b_ << " magnetic components)"
        << finl;
   return 1;
+}
+
+/*! @brief Refreshes grad(u) when the transporting velocity is the NS unknown.
+ *
+ *  The velocity's time changes only at the wheel rotation (once per step),
+ *  so the guard makes this one rebuild per time step, even though the source
+ *  is evaluated at every implicit iteration.  The rebuild happens at
+ *  assembly time (from ajouter_source()), NOT in mettre_a_jour():
+ *  Probleme_base::mettre_a_jour updates this equation's sources *before*
+ *  the NS inconnue wheel rotates (index order), so a rebuild there would
+ *  read a velocity one step older than the convection term, which reads
+ *  the live present slot (the PolyMAC evaluator re-references the velocity
+ *  values on every flux evaluation).
+ */
+void Terme_Source_Induction_stretching::maj_grad_u() const
+{
+  if (!vitesse_depend_du_temps_ || !gradient_vitesse_)
+    return;
+  const Convection_Diffusion_Magnetic_field& eqn = equation_mag_.valeur();
+  const Champ_Inc_base& vit = eqn.vitesse_transportante();
+  if (vit.temps() == temps_grad_u_)
+    return;
+
+  // Refresh the velocity's element values (auxiliary rows of the face field)
+  // so the gradient operator reads the current u.  Idempotent, same recipe
+  // as initialiser() -- see KERNEL_REUSE_NOTES.md "Getting a velocity
+  // gradient for free".
+  if (sub_type(Champ_Face_PolyMAC_MPFA, vit))
+    {
+      Champ_Face_PolyMAC_MPFA& vit_m = ref_cast_non_const(Champ_Face_PolyMAC_MPFA, vit);
+      for (int n = 0; n < vit_m.nb_valeurs_temporelles(); n++)
+        vit_m.update_ve(vit_m.futur(n));
+    }
+  gradient_vitesse_->mettre_a_jour(vit.temps());
+  temps_grad_u_ = vit.temps();
 }
 
 /*! @brief Advances the cached grad(u) field's time.
@@ -141,7 +184,11 @@ int Terme_Source_Induction_stretching::initialiser(double temps)
  */
 void Terme_Source_Induction_stretching::mettre_a_jour(double temps)
 {
-  if (gradient_vitesse_)
+  // Frozen data velocity: keep the historical behaviour (constant field,
+  // only its time advances).  Two-way mode: nothing to do here; grad(u) is
+  // refreshed lazily at assembly time by maj_grad_u(), so that the convection
+  // term and the stretching term always use the same velocity time level.
+  if (gradient_vitesse_ && !vitesse_depend_du_temps_)
     gradient_vitesse_->mettre_a_jour(temps);
 }
 
@@ -165,6 +212,10 @@ void Terme_Source_Induction_stretching::resetTime(double temps)
  */
 void Terme_Source_Induction_stretching::ajouter_source(DoubleTab& secmem) const
 {
+  // Two-way mode: refresh grad(u) first, in case the velocity has moved on
+  // since the last assembly (no-op for a frozen data velocity).
+  maj_grad_u();
+
   const DoubleTab& b = equation_mag_.valeur().inconnue().valeurs();  // (nb_elem, nb_compos_b)
   const DoubleTab& gu = gradient_vitesse_->valeurs();               // (nf_tot + ne*dim, comp)
 
