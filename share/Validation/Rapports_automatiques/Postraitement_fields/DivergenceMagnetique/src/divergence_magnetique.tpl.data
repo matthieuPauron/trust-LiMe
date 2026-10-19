@@ -1,0 +1,111 @@
+# PARALLEL OK #
+
+# ============================================================================= #
+# Post-treatment field : divergence_magnetique  (TRUST-LiMe standalone MHD) #
+# ============================================================================= #
+# div b = trace(grad b) = d b_x/dx + d b_y/dy. Vector model with the exactly #
+# linear field b = (x, y): grad b = [[1, 0], [0, 1]] everywhere, so         #
+# div b = 2 exactly (Green-Gauss is exact for linear fields). The gradient   #
+# is reconstructed module-internally (no kernel element-gradient factory).  #
+# ============================================================================= #
+dimension 2
+Pb_MHD pb
+Domaine dom
+
+# BEGIN MESH #
+Mailler dom
+{
+    Pave pave
+    {
+        Origine              0.  0.
+        Nombre_de_Noeuds     $nx $ny
+        Longueurs            1.  1.
+    }
+    {
+        Bord gauche   X = 0.    0. <= Y <= 1.
+        Bord droite   X = 1.    0. <= Y <= 1.
+        Bord bas      Y = 0.    0. <= X <= 1.
+        Bord haut     Y = 1.    0. <= X <= 1.
+    }
+}
+# END MESH #
+
+# BEGIN PARTITION
+Partition dom
+{
+    Partition_tool metis { nb_parts 2 }
+    Larg_joint 2
+    zones_name DOM
+}
+End
+END PARTITION #
+
+# BEGIN SCATTER
+Scatter DOM.Zones dom
+END SCATTER #
+
+
+Polymac_p0 dis
+
+Associate pb dom
+
+Schema_Euler_Implicite sch
+Read sch
+{
+    tinit 0.
+    tmax 0.05
+    dt_max 0.02
+    facsec 1e6
+    facsec_max 1e6
+    solveur implicite { solveur petsc cli { } }
+}
+
+Associate pb sch
+Discretize pb dis
+
+Read pb
+{
+    # Vector model: differential fields require the full vector b. #
+    nb_composantes 2
+    fluide_incompressible
+    {
+        mu      Champ_Uniforme 1 1.0
+        rho     Champ_Uniforme 1 1.0
+        lambda  Champ_Uniforme 1 1.0
+        Cp      Champ_Uniforme 1 1.0
+        beta_th Champ_Uniforme 1 0.0
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        # eta = 0 and no velocity: the linear field is an exact equilibrium. #
+        diffusivite_magnetique Champ_Uniforme 1 0.
+
+        diffusion  { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            gauche  Neumann_Paroi_adiabatique
+            droite  Neumann_Paroi_adiabatique
+            bas     Neumann_Paroi_adiabatique
+            haut    Neumann_Paroi_adiabatique
+        }
+        # exactly linear vector field b = (x, y) #
+        initial_conditions { magnetic_field Champ_Fonc_xyz dom 2 x y }
+  }
+
+  Postraitement
+  {
+    Sondes
+    {
+      # probe snapped to the cell centre (0.45, 0.55): div b = 2 #
+      sonde_div grav divergence_magnetique Periode 1e-6 Points 1 0.45 0.55
+      # wall cell check (B2 one-sided correction) #
+      sonde_div_bd grav divergence_magnetique Periode 1e-6 Points 1 0.05 0.55
+    }
+  }
+
+}
+
+Solve pb

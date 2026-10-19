@@ -1,0 +1,115 @@
+# PARALLEL OK #
+
+# ============================================================================= #
+# Post-treatment field : helicite_cinetique  (TRUST-LiMe standalone MHD) #
+# ============================================================================= #
+# Kinetic helicity density h_k = u . (curl u), from the element gradient of #
+# the frozen velocity field (kernel gradient_vitesse).                       #
+# Linear 3D velocity u = (y, z, x)  =>  curl u = (-1, -1, -1) exactly,       #
+# so h_k = -(x + y + z). At the probed cell centre (0.375, 0.375, 0.375):    #
+# h_k = -1.125. The magnetic field plays no role here (any b works).         #
+# ============================================================================= #
+dimension 3
+Pb_MHD pb
+Domaine dom
+
+# PolyMAC_MPFA works on polyhedra: convert the Pave hexahedra (3D only) #
+
+# BEGIN MESH #
+Mailler dom
+{
+    Pave pave
+    {
+        Origine              0.  0.  0.
+        Nombre_de_Noeuds     $nx $ny $nz
+        Longueurs            1.  1.  1.
+    }
+    {
+        Bord gauche   X = 0.    0. <= Y <= 1.  0. <= Z <= 1.
+        Bord droite   X = 1.    0. <= Y <= 1.  0. <= Z <= 1.
+        Bord bas      Y = 0.    0. <= X <= 1.  0. <= Z <= 1.
+        Bord haut     Y = 1.    0. <= X <= 1.  0. <= Z <= 1.
+        Bord devant   Z = 0.    0. <= X <= 1.  0. <= Y <= 1.
+        Bord derriere Z = 1.    0. <= X <= 1.  0. <= Y <= 1.
+    }
+}
+Polyedriser dom
+# END MESH #
+
+# BEGIN PARTITION
+Partition dom
+{
+    Partition_tool metis { nb_parts 2 }
+    Larg_joint 2
+    zones_name DOM
+}
+End
+END PARTITION #
+
+# BEGIN SCATTER
+Scatter DOM.Zones dom
+END SCATTER #
+
+
+Polymac_p0 dis
+
+Associate pb dom
+
+Schema_Euler_Implicite sch
+Read sch
+{
+    tinit 0.
+    tmax 0.05
+    dt_max 0.02
+    facsec 1e6
+    facsec_max 1e6
+    solveur implicite { solveur petsc cli { } }
+}
+
+Associate pb sch
+Discretize pb dis
+
+Read pb
+{
+    nb_composantes 1
+    fluide_incompressible
+    {
+        mu      Champ_Uniforme 1 1.0
+        rho     Champ_Uniforme 1 1.0
+        lambda  Champ_Uniforme 1 1.0
+        Cp      Champ_Uniforme 1 1.0
+        beta_th Champ_Uniforme 1 0.0
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        diffusivite_magnetique Champ_Uniforme 1 1.0
+        # u = (y, z, x), exactly-linear field #
+        vitesse_magnetique     Champ_Fonc_xyz dom 3 y z x
+
+        diffusion  { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            gauche   Neumann_Paroi_adiabatique
+            droite   Neumann_Paroi_adiabatique
+            bas      Neumann_Paroi_adiabatique
+            haut     Neumann_Paroi_adiabatique
+            devant   Neumann_Paroi_adiabatique
+            derriere Neumann_Paroi_adiabatique
+        }
+        initial_conditions { magnetic_field Champ_Uniforme 1 1.0 }
+  }
+
+  Postraitement
+  {
+    Sondes
+    {
+      sonde_hk grav helicite_cinetique Periode 1e-6 Points 1 0.375 0.375 0.375
+    }
+  }
+
+}
+
+Solve pb
