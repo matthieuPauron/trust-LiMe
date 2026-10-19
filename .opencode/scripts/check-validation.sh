@@ -128,7 +128,6 @@ parallel_ok=(
   # --- MagneticCoupled ---
   "$base/MagneticCoupled/ForceLorentzBalance/"
   "$base/MagneticCoupled/MMS_Coupled/"
-  "$base/MagneticCoupled/MMS_CoupledRefined/"
   "$base/MagneticCoupled/Coupled_Feedback/"
   "$base/MagneticCoupled/Error_BadForceKeyword/"
   "$base/MagneticCoupled/Error_MissingPressureSolver/"
