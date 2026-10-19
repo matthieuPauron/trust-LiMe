@@ -53,7 +53,13 @@ def outputs_of(cell):
                 images.append(_flat(png))
         elif t == "error":
             errors.append("\n".join(o.get("traceback", [])))
-    return "\n".join(streams), images, errors
+    text = "\n".join(streams)
+    # Volatile output, like the tablePerf timings: the trustutils run
+    # summary line carries the wall-clock time ("... run in 1.4s"), which
+    # legitimately varies run to run and is not a computational result.
+    text = "\n".join(ln for ln in text.split("\n")
+                    if not ln.strip().startswith("=> A total of"))
+    return text, images, errors
 
 
 def load_nb(path):
