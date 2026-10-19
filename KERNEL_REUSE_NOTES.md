@@ -796,6 +796,11 @@ Traps (all hit for real during the 2026-10-16 parallel port):
 
 ## 16. Traps hit while adding the coupled-MHD validation forms (2026-10-17)
 
+*(Status 2026-10-19: `MMS_CoupledRefined` was absorbed into
+`MMS_Coupled`'s mesh-convergence scan at merge M2, `TwoWayFeedback` was
+folded into `Coupled_Feedback` at merge M3 — the contracts they carried
+are unchanged.)*
+
 Seven forms added (`MMS_Coupled`, `MMS_CoupledRefined`, `Coupled_Feedback`,
 `MMS_Coupled3D`, `Error_BadForceKeyword`, `Error_MissingPressureSolver`,
 plus the `ForceLorentzBalance` hardening). Findings:
@@ -826,4 +831,79 @@ plus the `ForceLorentzBalance` hardening). Findings:
   snapping (cell centres shift by h/2 under 2× refinement) contributes an
   O(h²) offset comparable to the truncation error. `MMS_CoupledRefined`
   therefore documents mesh independence (bounded error) rather than a
-  convergence order.
+  convergence order. (Absorbed into `MMS_Coupled`'s scan at merge M2 —
+  the scan asserts the baseline's 5 pct bound at every level.)
+
+---
+
+## 17. Two-way coupling + mesh-convergence scans + notebook merging (2026-10-17→19)
+
+Lessons from the two-way rollout (`vitesse_hydraulique`) and the
+mesh-convergence/notebook-merging session. The geometry: Pb_MHD holds the
+magnetic equation as equation 0; the optional `Navier_Stokes_standard` is
+created, discretised and read *after* the magnetic block
+(`Probleme_base::read_optional_equations`).
+
+- **`Operateur_Conv` is a two-hop velocity binding.** The wrapper's
+  `associer_vitesse()` only stores its own `la_vitesse` observer
+  (`Operateur_Conv.h:75-78`); the forward to the underlying operator
+  happens **once, in `Operateur_Conv::typer()`** (`Operateur_Conv.cpp:80`,
+  read time, with whatever velocity `vitesse_pour_transport()` returns
+  then — the zero placeholder). Any post-read rebind of the convection
+  operator must go through `terme_convectif.valeur().associer_vitesse(...)`
+  (`Operateur_Conv_base` pure virtual) — a wrapper-only call is a silent
+  no-op for the evaluator (this is what kept `b` frozen in the first
+  two-way draft until the TwoWayFeedback calibration caught it).
+- **Late binding point**: `completer()` — runs once every equation is known
+  (`Probleme_base::readOn` step 4); the magnetic equation's own
+  `completer()` rebinds the equation-level pointer AND the operator.
+  Anything consuming velocity must use the base
+  `vitesse_transportante()`, never the module's placeholder member
+  `la_vitesse_transportante_` — they diverge after the rebind
+  (post-treatment serving zeros otherwise).
+- **Time-slot semantics** (why the scheme is fully lagged):
+  `Schema_Euler_Implicite::faire_un_pas_de_temps_eqn_base` restores
+  `present = passe` at each equation's step (so during the NS step the
+  magnetic `valeurs()` is still bˢ), and the wheel rotates only at
+  `validateTimeStep` (`Probleme_base::mettre_a_jour`, index order).
+  Sources are updated *before* the NS inconnue rotates, so a source-level
+  rebuild lags one step behind the convection term — rebuild lazily at
+  assembly time instead (keyed on the velocity's own time: one rebuild
+  per step).
+- **`lire_sources` uses a process-global `static bool already_read`**
+  (`Equation_base.cpp:327-342`) with `Process::exit()` commented out: a
+  *second* `sources` block prints a cosmetic `Error: ... should only appear
+  once per equation` and continues. Cosmetic-only, but do not "fix" the
+  data file.
+- **`Equation_base::lire_sources` is per-equation**, so merged multi-case
+  notebooks are fine.
+
+### Mesh-convergence scan convention (validated 2026-10-19)
+
+- **Template**: `src/<case>.tpl.data` = byte-copy of the baseline with
+  `$nx $ny [$nz]` placeholders in the `Nombre_de_Noeuds` line (partition
+  markers kept — allowlisted datasets stay parallel-portable).
+- **Ladder**: L1 = cells ×2 (`2N−1` nodes), L2 = cells ×4 (`4N−3`), only
+  in the ACTIVE directions (freeze passive ones: Hartmann/Shercliff refine
+  y only; MMS_Diff3D y only — a single-mode eigenmode is 1D).
+- **Per-level build dirs** `build/scan/<case>/<lvl>/` — partitioned
+  `DOM_000*.Zones` of one level must never overwrite another's.
+- **Probe reading after `partition()`**: a case's sondes are named
+  `PAR_<case>_SONDE_*`; read via `case.dataFileName_` (the case object),
+  never a literal name.
+- **Identity-scan contract**: machine-precision bounds asserted at every
+  level; for position-dependent analytics, evaluate the analytic at the
+  probe's EFFECTIVE cell-centre position from the `.son` header
+  (`# Temps x= ... y= [z= ...]`, tokens after normalising `=` — note the
+  token after `x` is `=`, the value is at +2). `NombreDeReynoldsMagnetique`
+  L_e is the CELL size — level-dependent expected value.
+- **Volatile outputs in the RULE harness**: nb-compare skips `tablePerf`
+  cells and must also strip the trustutils timing line
+  (`=> A total of N cases ... run in X.Xs`) — run cells whose source
+  didn't change are otherwise output-compared (fixed 2026-10-19).
+- **Scan metrics**: exact-implicit-Euler-cancelled decay
+  (temporal error is common to every mesh, so the residual is the spatial
+  one); wall-profile core errors (wall-adjacent Green–Gauss bias
+  documented and excluded); steady identities (drift + per-level P0
+  projection bound); temporal-floor cases (SourceStreching,
+  hydrostatic Δp): fixed bound at every level, no monotone order.

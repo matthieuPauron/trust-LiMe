@@ -8,7 +8,7 @@ this page follows them.
 
 @note Status snapshot: October 2026. Every item marked *done* below is backed
 by a green run — see @ref TrustLiMe_validation "Validation cases" for the
-50-form suite that guards it, and @ref TrustLiMe_testcases "Test cases" for
+43-form suite that guards it (every positive form with its mesh-convergence scan), and @ref TrustLiMe_testcases "Test cases" for
 the unit-test layer underneath.
 
 ---
@@ -22,7 +22,7 @@ the unit-test layer underneath.
 | Coupled low-Rm mode — `force_lorentz` on an optional `Navier_Stokes_standard` | **done** (one-way \f$b \to\f$ momentum) |
 | Post-treatment fields (`Champ_Fonc_MHD`) and their 12 forms | **done** |
 | Coupled validation forms (7) | **done** |
-| Full validation suite — 2D, 3D twins, coupled, post-treatment | **done** — 52/52 notebooks pass at `nbProcs=2` (checked 2026-10-18) |
+| Full validation suite — 2D, 3D twins, coupled, post-treatment | **done** — 43/43 forms pass at `nbProcs=2` (checked 2026-10-19), every positive form carrying its mesh-convergence scan (suite fused to 43 forms: DiffusionRefined/MMS_CoupledRefined absorbed, TwoWayFeedback folded into Coupled_Feedback, the MMS families fused into `MMS_2D`/`MMS_3D`) |
 | Unit tests (GoogleTest, arithmetic suite) | **done** — green via `--arith-only` |
 | Two-way coupling — NS velocity feeds the magnetic convection (`vitesse_hydraulique`) | **done** (lagged staggered scheme; commits `9e5b13b`, `d484fbd`) |
 | \f$\nabla\cdot b = 0\f$ enforcement, turbulence, dynamo | **open** — sections 3–5 |

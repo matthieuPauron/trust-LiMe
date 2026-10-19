@@ -206,10 +206,16 @@ check before `/validate`.
   sin(pi x)exp(-y), Poly_2D/3D are zero-field smoke tests (no sondes: their probe block is a
   guarded no-op). MMS_Diff3D needed a mesh refinement (5³ -> 21³ nodes): at 4 cells the P0
   projection excites higher discrete modes and a single-mode analytic check cannot hold.
-- **2D/3D twin gaps (R5)**: `Shercliff2D`, `MMS_Poly_2D` have no 3D twin;
-  `Hartmann1D` 2D/3D differ in probe sets by design. Fine for now, worth a sweep once the
+- **2D/3D twin gaps (R5)**: `Shercliff2D` has no 3D twin;
+  `Hartmann1D` 2D/3D differ in probe sets by design. (The `MMS_Poly_2D`
+  gap closed itself: the four 2D MMS forms are merged into `MMS_2D`, the
+  four 3D twins into `MMS_3D`.) Fine for now, worth a sweep once the
   form set stabilises.
-- **`force_lorentz` coupling is one-way**: the NS velocity does not feed the magnetic convection; low-Rm limit (Rm ≪ 1) validated against Tassone et al. breeding blanket parameter ranges.
+- **`force_lorentz` coupling is one-way in the `force_lorentz` source
+  itself**: the full two-way coupling is available with the magnetic
+  equation's `vitesse_hydraulique` keyword (the solved NS velocity becomes
+  the magnetic transport velocity, bound in `completer()`); low-Rm limit
+  (Rm ≪ 1) validated against Tassone et al. breeding blanket parameter ranges.
 - **Turbulent magnetic diffusivity**: the induction equation currently uses molecular magnetic diffusivity η only (constant `Champ_Uniforme`). A turbulent EDM ηₜ modeled from k‑ε would add `∇×(u'×b'̄) ≈ −ηₜ∇×B̄`. This is deferred to END_GOAL.md Phase 3 (dynamo threshold), as the present validation suite assumes laminar or prescribed‑mean‑flow velocity fields. See turbulence section of END_GOAL.md §2.2 and TRUST §3.1 for the theoretical framework.
 
 Authoring/running rules, trustutils API, dataset syntax, and the headless
@@ -258,11 +264,18 @@ append new findings there.
 - Kernel and module **are built** (`trust-lime`, `trust-lime_semi_opt`,
   `trust-lime_opt` exist at the repo root) — the historical `libparaconf`
   configure blocker is resolved.
-- **All 50 validation notebooks pass in 2-rank parallel** (checked
-  2026-10-17; 2D + 3D standalone, coupled MHD 2D + 3D, post-treatment — all
+- **All 43 validation forms pass in 2-rank parallel** (checked 2026-10-19;
+  2D + 3D standalone, coupled MHD 2D + 3D, post-treatment — all
   `nbProcs=2` + `case.partition()`) and are concatenated into a single
   `trust-lime_validation.pdf` at the repo root by
-  `.opencode/scripts/run-validation-pdf.sh` (rc=0). Multi-component
+  `.opencode/scripts/run-validation-pdf.sh` (rc=0). Every positive form
+  also carries an in-notebook **mesh-convergence scan** (shared ladder:
+  L1 = cells ×2, L2 = ×4 in the active directions, instantiated from
+  `src/<case>.tpl.data` templates into per-level `build/scan/<lvl>/`
+  directories); error forms are excluded by design. Notebook operations
+  are gated by the **RULE harness** (`notebook-baseline.sh execute|compare`
+  + `nb-compare.py`): unchanged cells must print identically and the
+  baseline probes must be reproduced exactly. Multi-component
   `nb_composantes` works and is exercised by the post-treatment forms
   (`vecteur_poynting`, `helicite_croisee`) and by `Hartmann1D`
   (`nb_composantes 2`); the old `VectorComponents` form remains removed.
@@ -298,15 +311,23 @@ append new findings there.
   `Navier_Stokes_standard` to the problem block gives a two-equation coupled
   problem, and the `force_lorentz` source (`src/Terme_Source_Lorentz.{h,cpp}`,
   J×B per unit mass, lagged b, Boussinesq-PolyMAC face/element assembly)
-  couples b → momentum. One-way only: the NS velocity does not feed the
-  magnetic convection yet. Seven validation forms cover the coupled path:
-  `ForceLorentzBalance` (hydrostatic Δp, b=(y,0)), `MMS_Coupled` (MMS with
-  both force components, b=(y,-x), Δp=−0.60 ± 5 %), `MMS_CoupledRefined`
-  (mesh-independence), `Coupled_Feedback` (one-way limit: b frozen with
-  u₀≠0), `MMS_Coupled3D` (3D twin, coarse-mesh regression), and the
-  `Error_BadForceKeyword`/`Error_MissingPressureSolver` negative forms.
+  couples b → momentum. **Two-way coupling is implemented**: with the
+  magnetic equation's `vitesse_hydraulique` keyword the solved NS velocity
+  becomes the magnetic transport velocity (rebound in `completer()`, once
+  every equation is known) and `induction_stretching` rebuilds grad(u)
+  per step — a fully-lagged staggered scheme, bˢ⁺¹=F(bˢ,uˢ), uˢ⁺¹=G(uˢ,bˢ).
+  Eight validation forms cover the coupled path: `ForceLorentzBalance`
+  (hydrostatic Δp, b=(y,0)), `MMS_Coupled` (MMS with both force
+  components, b=(y,-x), Δp=−0.60 ± 5 %; its scan's L1 *is* the historical
+  `MMS_CoupledRefined` twin, absorbed), `Coupled_Feedback` (one-way
+  control + the merged two-way case `twoway_feedback.data`:
+  `vitesse_hydraulique`, b must deviate from the frozen field),
+  `MMS_Coupled3D` (3D twin, coarse-mesh regression), and the
+  `Error_BadForceKeyword`/`Error_MissingPressureSolver`/
+  `Error_TwoWayNoNS`/`Error_TwoWayBothVelocities` negative forms.
   Recipe and traps (source-typing suffix, `solveur_pression`, the static
-  `trust-lime_opt` rebuild) in `KERNEL_REUSE_NOTES.md` §12bis.
+  `trust-lime_opt` rebuild, the `Operateur_Conv` wrapper two-hop binding)
+  in `KERNEL_REUSE_NOTES.md` §12bis/§12ter.
 - **Unit tests** live in `tests/UnitTests/` (GoogleTest, kernel conventions).
   The arithmetic suite (`--arith-only`) **runs and passes** today; the rest
   needs the full kernel.

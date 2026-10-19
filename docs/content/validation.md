@@ -13,12 +13,18 @@ share/Validation/Rapports_automatiques/
 │   ├── Invariance/                 # one validation form per test case
 │   │   ├── Invariance.ipynb        # notebook named after its form folder
 │   │   └── src/invariance.data
-│   ├── Diffusion/  DiffusionRefined/  Advection/
+│   ├── Diffusion/  Advection/
 │   ├── SteadyState/  VaryingVelocity/  SourceStretching/
 │   ├── Hartmann1D/                 # Hartmann induced field (1D physics)
+│   ├── MMS_2D/                     # the four historical MMS cases fused
 │   └── ErrorMissingEta/  ErrorBadNbcomposantes/  ErrorBadBc/
 ├── MagneticStandalone3D/           # the same 11 forms, one-to-one, in 3D
+│   └── <FormName>/…                # (Polyedriser dom after Mailler — see below)└── Postraitement_fields/           # one form per post-treatment field
+├── MagneticStandalone3D/           # the same forms, one-to-one, in 3D
 │   └── <FormName>/…                # (Polyedriser dom after Mailler — see below)
+├── MagneticCoupled/                # coupled low-Rm MHD (2D, incl. the merged
+│   └── <FormName>/…                #   one-way + two-way feedback form)
+├── MagneticCoupled3D/              # the 3D coupled twin
 └── Postraitement_fields/           # one form per post-treatment field
     └── <FormName>/…                # (∇b / |b|² / u·b based — see the table below)
 ```
@@ -33,8 +39,10 @@ Four formatting rules are enforced by `.opencode/scripts/check-validation.sh`
 (`/check-validation`): the notebook lives at the form root only —
 `Rapports_automatiques/<Category>/<FormName>/<FormName>.ipynb`, never in
 `src/`; datasets are **sequential-only** (no `Decouper`/`Scatter` partition
-machinery in a `.data`, no `partition()` / `nbProcs>1` in a notebook); and a
-notebook runs **one and only one test case** (one `addCase` per notebook —
+machinery in a `.data`, no `partition()` / `nbProcs>1` in a notebook); the R4 rule
+is **one form per notebook** (see the `trust-lime-notebooks` skill) — a form may run
+the baseline dataset plus its mesh-convergence scan levels from
+`src/<case>.tpl.data`, and the `MMS_2D`/`MMS_3D` forms run four datasets each.
 see the `trust-lime-notebooks` skill).
 
 ---
@@ -52,7 +60,7 @@ source ~/Development/venv_trust/bin/activate
 
 jupyter nbconvert --to notebook --execute \
   --output-dir /tmp/opencode/trust-lime-notebooks \
-  share/Validation/Rapports_automatiques/HartmannFlow/HartmannFlow.ipynb
+  share/Validation/Rapports_automatiques/MagneticStandalone/Hartmann1D/Hartmann1D.ipynb
 ```
 
 Inside a case folder, the datasets live in `src/`; `run.addCase` copies each
@@ -63,8 +71,9 @@ dataset into `build/<dataset name>/` where the results (`.son` probes, `.dt_ev`,
 
 Each form can be exported to PDF and the per-form PDFs concatenated into a
 single report at the repository root (`trust-lime_validation.pdf`,
-44 forms: the 16 2D and 15 3D standalone twins, then the coupled-MHD and
-post-treatment categories), via
+43 forms: the 2D and 3D standalone families (the 3D MMS cases fused as
+`MMS_3D`), the coupled-MHD forms and the post-treatment fields — every
+positive form now also carrying its mesh-convergence scan), via
 `.opencode/scripts/run-validation-pdf.sh` (execute → `--to pdf` →
 `pdfunite`). The report is a generated artifact and stays untracked; the rule
 lives in the `trust-lime-notebooks` skill ("PDF export & the repository
@@ -83,9 +92,12 @@ references, and what each one catches are listed in
 @ref TrustLiMe_testcases "Test cases → `MagneticStandalone`".
 
 Per ASN Guide n° 28 a notebook holds tests of **one single category**, and it
-runs **one and only one test case**. The folder therefore ships one validation
-form per dataset (`MagneticStandalone/<FormName>/<FormName>.ipynb`), covering
-exact invariants, mesh convergence, malformed-input diagnostics and isolated
+covers **one validation form** (see the `trust-lime-notebooks` skill; R4):
+several datasets of that form are allowed — the baseline plus its
+mesh-convergence scan levels (`src/<case>.tpl.data`), and the merged MMS
+forms (`MMS_2D`, `MMS_3D`) run four datasets each. The category ships one
+folder per form (`<Category>/<FormName>/<FormName>.ipynb`), covering exact
+invariants, mesh convergence, malformed-input diagnostics and isolated
 phenomena against analytical solutions; a future Verification/Validation
 category split folds into the form naming.
 

@@ -341,22 +341,31 @@ framework-free `src/MHD_posttraitement_kernel.h`. Validation examples live in
 
 1. **Gauss law is not enforced.** \f$\nabla\cdot b = 0\f$ is assumed, not
    projected.
-2. **Lorentz force, one-way only.** The `force_lorentz` source (§3ter) applies
-   \f$(\nabla\times b)\times b/\mu_0\f$ to the momentum equation when a
-   Navier-Stokes equation is present (explicit, lagged \f$b\f$). No feedback of
-   the solved velocity into the magnetic equation yet.
-3. **\f$u\f$ is frozen in the magnetic equation.** Even with the M1
-   `induction_stretching` source, the transport velocity is a given field:
-   \f$b\f$ feeds back into \f$u\f$ only through the Lorentz source — never
-   through the magnetic convection.
+2. **Two-way coupling implemented (`vitesse_hydraulique`).** The
+   `force_lorentz` source (§3ter) applies \f$(\nabla\times b)\times b/\mu_0\f$
+   to the momentum equation (explicit, lagged \f$b\f$), and with the
+   `vitesse_hydraulique` keyword the magnetic equation's transport
+   velocity is the solved NS velocity, rebound in `completer()` (the
+   optional equation exists only once every equation is known). The
+   scheme is fully lagged staggered: \f$b^{s+1}=F(b^s,u^s)\f$,
+   \f$u^{s+1}=G(u^s,b^s)\f$. Validated by `Coupled_Feedback` (both modes
+   in one form) and the `Error_TwoWay*` negative forms.
+3. **\f$u\f$ in the magnetic equation.** With `vitesse_hydraulique` the
+   velocity is the solved NS unknown; the `induction_stretching` source
+   rebuilds grad(u) per step (`maj_grad_u()`), keyed on the velocity's
+   own time (one rebuild per step, at assembly time — the source's
+   `mettre_a_jour` runs *before* the NS wheel rotates).
 4. **Boundary conditions reuse thermal CL keywords.** Functional but confusing;
    magnetic-named aliases are deferred.
 5. **`Pb_MHD` holds the magnetic equation plus optional extras.** Standalone is
    a single equation; a Navier-Stokes equation may be appended for the coupled
    mode (§3ter). There is no three-equation (momentum + energy + induction)
    problem yet.
-6. **Velocity is given as data in the magnetic equation.** The only
-   \f$b\f$ \f$\to\f$ \f$u\f$ feedback is the Lorentz source (§3ter).
+6. **Architecture note:** `Pb_MHD` is ill-named — it is the magnetic
+   induction problem. The target is a `Pb_Hydraulique` + a renamed magnetic
+   problem associated by a `Probleme_Couple` subclass; the velocity binding
+   machinery above carries over unchanged (the NS locator
+   `eq_navier_stokes()` is the single seam to revisit).
 
 ---
 

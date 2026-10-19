@@ -123,26 +123,32 @@ The `/validate` command automates this. From the repository root:
 
 One validation form per test case (TRUST layout
 `Rapports_automatiques/<Category>/<FormName>/<FormName>.ipynb`): the folder
-holds `Invariance/`, `Diffusion/`, `DiffusionRefined/`, `Advection/`,
+holds `Invariance/`, `Diffusion/`, `Advection/`,
 `SteadyState/`, `VaryingVelocity/`, `SourceStretching/`, `Hartmann1D/`,
-`MMS_Diff2D/`, `MMS_ExpTrig2D/`, `MMS_Trig2D/` and the negative
+`MMS_2D/` (the four historical MMS 2D cases fused: `MMS_Diff2D`, `MMS_Trig2D`,
+`MMS_ExpTrig2D`, `MMS_Poly_2D`) and the negative
 `Error_missing_eta` – `Error_bad_nbcomposantes` – `Error_bad_bc` forms;
-each form folder contains its notebook + `src/<case>.data`. These cases
+each form folder contains its notebook + `src/<case>.data` (+ `src/<case>.tpl.data`
+when the form carries a mesh-convergence scan). These cases
 target the magnetic induction equation solved in standalone form.
 
 ### MagneticCoupled (low-Rm with Lorentz force)
 
 The `force_lorentz` keyword activates a one-way coupled momentum equation
-via `J × B`. Seven forms cover the coupled path:
+via `J × B`. The **two-way** mode adds the `vitesse_hydraulique` keyword on
+the magnetic equation (solved NS velocity as transport velocity, bound in
+`completer()`). Eight forms cover the coupled path:
 
 | Form | What it validates |
 |---|---|
 | `ForceLorentzBalance/` | hydrostatic balance with \f$b=(y,0)\f$: \f$\Delta p = -0.18 \pm 10\%\f$, \f$u \to 0\f$ |
-| `MMS_Coupled/` | MMS with \f$b=(y,-x)\f$ — **both force components**: \f$\Delta p = -0.60 \pm 5\%\f$ |
-| `MMS_CoupledRefined/` | same at \f$h=0.05\f$ (mesh-independence regression) |
-| `Coupled_Feedback/` | documents the one-way limit: \f$b\f$ frozen to machine precision with \f$u_0 \neq 0\f$ |
+| `MMS_Coupled/` | MMS with \f$b=(y,-x)\f$ — **both force components**: \f$\Delta p = -0.60 \pm 5\%\f$ (its scan's L1 *is* the absorbed `MMS_CoupledRefined` twin) |
+| `Coupled_Feedback/` | both coupling modes: the baseline documents the one-way limit (\f$b\f$ frozen to machine precision with \f$u_0 \neq 0\f$), the merged `twoway_feedback.data` case (\f`vitesse_hydraulique`\f) asserts the two-way discriminator \f$10^{-3} < \max_t \|\mathbf{b}-\mathbf{b}_0\| < 0.5\f$ |
 | `MMS_Coupled3D/` (in `MagneticCoupled3D/`) | 3D twin (coarse-mesh regression, ~50 % bound) |
 | `Error_BadForceKeyword/` | invalid keyword in `force_lorentz` rejected cleanly |
+| `Error_MissingPressureSolver/` | `solveur_pression` omitted from the NS equation rejected |
+| `Error_TwoWayNoNS/` | `vitesse_hydraulique` without a NS equation rejected |
+| `Error_TwoWayBothVelocities/` | `vitesse_hydraulique` + `vitesse_magnetique` rejected |
 | `Error_MissingPressureSolver/` | missing `solveur_pression` rejected cleanly |
 
 Further coupled benchmarks (Shercliff 3D duct, Ha/Re parameter scan) are
@@ -166,13 +172,16 @@ so no `.med` file is required and the cases can be run from a clean checkout.
 | `error_bad_bc.data` | unknown CL keyword | Verification | must fail cleanly | keyword error reporting |
 
 The category column tags the **test** (assertion set), not the dataset: e.g.
-the mesh-convergence test spans the `DiffusionRefined` form (refined bound)
-and the `Diffusion` form (coarse bound), while the decay test lives in
-`Diffusion/Diffusion.ipynb` alone.
+the decay test lives in `Diffusion/Diffusion.ipynb` alone, whose
+mesh-convergence scan covers what the historical `DiffusionRefined` twin
+did at a separate level (L1 = its mesh, now one of the scan levels).
 
 Design choices worth knowing:
 
-- **Every case has a 3D twin** under `MagneticStandalone3D/<FormName>/`. The 3D
+- **Most cases have a 3D twin** under `MagneticStandalone3D/<FormName>/`. The 3D
+  suite differs in two ways: `MMS_3D/` holds the four historical 3D MMS
+  cases fused (2D counterpart `MMS_2D/`), and `Shercliff2D` has no 3D twin
+  (R5 gap).
   forms keep the same physics and assertions; the datasets differ only in
   `dimension 3`, three-component vectors/probes and `Polyedriser dom` after
   `Mailler`. Meshes keep the 2D resolution only in the direction that matters
