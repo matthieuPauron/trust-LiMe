@@ -97,7 +97,6 @@ parallel_ok=(
   # --- MagneticStandalone (2D) ---
   "$base/MagneticStandalone/Advection/"
   "$base/MagneticStandalone/Diffusion/"
-  "$base/MagneticStandalone/DiffusionRefined/"
   "$base/MagneticStandalone/ErrorBadBc/"
   "$base/MagneticStandalone/ErrorBadNbcomposantes/"
   "$base/MagneticStandalone/ErrorMissingEta/"
@@ -114,7 +113,6 @@ parallel_ok=(
   # --- MagneticStandalone3D (3D twins) ---
   "$base/MagneticStandalone3D/Advection/"
   "$base/MagneticStandalone3D/Diffusion/"
-  "$base/MagneticStandalone3D/DiffusionRefined/"
   "$base/MagneticStandalone3D/ErrorBadBc/"
   "$base/MagneticStandalone3D/ErrorBadNbcomposantes/"
   "$base/MagneticStandalone3D/ErrorMissingEta/"
