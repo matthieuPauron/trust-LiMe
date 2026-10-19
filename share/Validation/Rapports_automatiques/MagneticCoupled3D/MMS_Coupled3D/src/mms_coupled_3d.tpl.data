@@ -1,0 +1,139 @@
+# PARALLEL OK #
+
+# ============================================================================= #
+# Coupled low-Rm MHD : MMS Lorentz-force hydrostatic balance  (TRUST-LiMe)     #
+# ============================================================================= #
+# 3D twin of MMS_Coupled.  b = (y, -x, 0), F = -2(x,y,0), p = -(x^2+y^2).       #
+# Mesh: 5 nodes per direction (4 cells), Polyedriser for 3D PolyMAC.            #
+# Probes at cell centres (0.375)^3 and (0.625)^3:                                #
+#     p(0.625,0.625) - p(0.375,0.375) = -(0.625^2+0.625^2-0.375^2-0.375^2)     #
+#                               = -(0.390625+0.390625-0.140625-0.140625)         #
+#                               = -0.50                                         #
+# ============================================================================= #
+dimension 3
+Pb_MHD pb
+Domaine dom
+
+# BEGIN MESH #
+Mailler dom
+{
+    Pave pave
+    {
+        Origine              0.  0.  0.
+        Nombre_de_Noeuds     $nx $ny $nz
+        Longueurs            1.  1.  1.
+    }
+    {
+        Bord gauche   X = 0.    0. <= Y <= 1.  0. <= Z <= 1.
+        Bord droit    X = 1.    0. <= Y <= 1.  0. <= Z <= 1.
+        Bord bas      Y = 0.    0. <= X <= 1.  0. <= Z <= 1.
+        Bord avant    Z = 0.    0. <= X <= 1.  0. <= Y <= 1.
+        Bord arriere  Z = 1.    0. <= X <= 1.  0. <= Y <= 1.
+        Bord haut     Y = 1.    0. <= X <= 1.  0. <= Z <= 1.
+    }
+}
+Polyedriser dom
+# END MESH #
+
+# BEGIN PARTITION
+Partition dom
+{
+    Partition_tool metis { nb_parts 2 }
+    Larg_joint 2
+    zones_name DOM
+}
+End
+END PARTITION #
+
+# BEGIN SCATTER
+Scatter DOM.Zones dom
+END SCATTER #
+
+
+Polymac_p0 dis
+
+Associate pb dom
+
+Schema_Euler_Implicite sch
+Read sch
+{
+    tinit 0.
+    tmax 0.5
+    dt_max 0.05
+    facsec 1e6
+    facsec_max 1e6
+    solveur implicite { solveur petsc cli { } }
+}
+
+Associate pb sch
+Discretize pb dis
+
+Read pb
+{
+    nb_composantes 2
+    fluide_incompressible
+    {
+        mu      Champ_Uniforme 1 1.0
+        rho     Champ_Uniforme 1 1.0
+        lambda  Champ_Uniforme 1 1.0
+        Cp      Champ_Uniforme 1 1.0
+        beta_th Champ_Uniforme 1 0.0
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        diffusivite_magnetique Champ_Uniforme 1 0.
+        diffusion  { }
+        convection { amont }
+        boundary_conditions
+        {
+            gauche  Neumann_Paroi_adiabatique
+            droit   Neumann_Paroi_adiabatique
+            bas     Neumann_Paroi_adiabatique
+            avant   Neumann_Paroi_adiabatique
+            arriere Neumann_Paroi_adiabatique
+            haut    Neumann_Paroi_adiabatique
+        }
+        initial_conditions { magnetic_field Champ_Fonc_xyz dom 2 y -x }
+    }
+
+    Navier_Stokes_standard
+    {
+        # Pressure solver: Petsc-wrapped direct solver (the Sparskit-based #
+        # direct solver is deprecated and unstable here).                   #
+        # WARNING: make_PAR.data may rewrite this solver — do not edit.     #
+        solveur_pression Petsc Cholesky { }
+        diffusion  { }
+        convection { amont }
+        boundary_conditions
+        {
+            gauche  paroi_fixe
+            droit   paroi_fixe
+            bas     paroi_fixe
+            avant   paroi_fixe
+            arriere paroi_fixe
+            haut    paroi_fixe
+        }
+        initial_conditions
+        {
+            vitesse Champ_Uniforme 3 0. 0. 0.
+        }
+        sources
+        {
+            force_lorentz { }
+        }
+    }
+
+    Postraitement
+    {
+        Sondes
+        {
+            sonde_u grav vitesse Periode 1e-6 Points 2 0.375 0.375 0.375  0.625 0.625 0.625
+            sonde_p1 grav pression Periode 1e-6 Points 1 0.375 0.375 0.375
+            sonde_p2 grav pression Periode 1e-6 Points 1 0.625 0.625 0.625
+        }
+    }
+
+}
+
+Solve pb
