@@ -9,7 +9,8 @@
 #   notebook-baseline.sh execute <Category>/<Form>
 #       Run the CURRENT state of the form's notebook headless (nbconvert) and
 #       snapshot the executed notebook + the baseline case's probe files
-#       (build/PAR_*.son) under /tmp/opencode/lime_baseline/<Category>_<Form>/.
+#       (build/PAR_*.son and build/coarse/PAR_*.son — the coarse scale IS the
+#       baseline mesh) under /tmp/opencode/lime_baseline/<Category>_<Form>/.
 #       Call this BEFORE touching the notebook (or its src/ datasets).
 #
 #   notebook-baseline.sh compare <Category>/<Form>
@@ -17,9 +18,10 @@
 #         - every unchanged code cell must print identical output
 #           (tablePerf cells skipped: timings vary);
 #         - the baseline PAR_*.son probes must be reproduced exactly;
-#         - the only cell allowed to change is the run cell (it gains the
-#           mesh-scan registrations); its computation is covered by the
-#           .son comparison.
+#         - the run/scan registration cells may change (their computation is
+#           covered by the .son comparison); any other changed cell must
+#           reproduce its computation (stream text, with the historical
+#           L0/L1/L2 mesh-scale labels mapped to coarse/standard/fine).
 #       Exit 0 = operation validated, 1 = regression or run failure.
 #
 # Notes:
@@ -94,7 +96,12 @@ case "$cmd" in
       echo "notebook-baseline: FAILED to execute $form (see $base/execute.log)" >&2
       exit 1
     fi
-    cp "$formdir/build/"*.son "$base/" 2>/dev/null || true
+    # Baseline probes: build root (extra non-scan cases, e.g. a merged
+    # two-way twin) + build/coarse/ (the coarse scale IS the baseline mesh)
+    # + build/<Case>/coarse/ (the per-case layout of the merged MMS forms).
+    for d in "$formdir/build" "$formdir/build/coarse" "$formdir/build"/*/coarse; do
+      cp "$d"/*.son "$base/" 2>/dev/null || true
+    done
     n_son=$(ls "$base"/*.son 2>/dev/null | wc -l)
     echo "notebook-baseline: snapshot OK -> $base ($n_son probe files)"
     ;;
@@ -109,9 +116,16 @@ case "$cmd" in
       exit 1
     fi
     echo "notebook-baseline: comparing against snapshot ..."
+    # Gather the fresh probes exactly as the snapshot took them: build root
+    # (extra non-scan cases) + build/coarse/ (the baseline mesh) + the
+    # per-case build/<Case>/coarse/ layout of the merged MMS forms.
+    mkdir -p "$base/new_sons"
+    for d in "$formdir/build" "$formdir/build/coarse" "$formdir/build"/*/coarse; do
+      cp "$d"/*.son "$base/new_sons/" 2>/dev/null || true
+    done
     python3 "$script_dir/nb-compare.py" \
       "$base/executed.ipynb" "$base/new/executed.ipynb" \
-      --son-old "$base" --son-new "$formdir/build"
+      --son-old "$base" --son-new "$base/new_sons"
     rc=$?
     if [ $rc -eq 0 ]; then
       echo "notebook-baseline: $form VALIDATED (RULE satisfied)"

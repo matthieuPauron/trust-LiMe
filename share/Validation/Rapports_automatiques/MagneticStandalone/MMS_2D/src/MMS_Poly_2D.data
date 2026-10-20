@@ -11,7 +11,7 @@ Mailler dom
     Pave Cavite
     {
         Origine 0. 0.
-        Nombre_de_Noeuds 33 33
+        Nombre_de_Noeuds $nx $ny
         Longueurs 1.0 1.0
     }
     {
@@ -90,6 +90,13 @@ Read pbmhd
     Postraitement
     {
         Champs dt_post 0.2 { magnetic_field elem }
+        # scan-only instrumentation: the baseline dataset is probeless; the #
+        # zero-field identity is asserted at the scan levels via these    #
+        Sondes
+        {
+            sonde_Bx grav magnetic_field0 Periode 1e-6 Points 1 0.5 0.5
+            sonde_By grav magnetic_field1 Periode 1e-6 Points 1 0.5 0.5
+        }
     }
 }
 Solve pbmhd

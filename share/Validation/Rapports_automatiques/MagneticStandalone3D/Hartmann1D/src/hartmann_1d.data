@@ -30,7 +30,7 @@ Mailler dom
     Pave cube
     {
         Origine              0. -0.5 0.
-        Nombre_de_Noeuds     5  65  5
+        Nombre_de_Noeuds     $nx $ny $nz
         Longueurs            1.  1.  1.
     }
     {

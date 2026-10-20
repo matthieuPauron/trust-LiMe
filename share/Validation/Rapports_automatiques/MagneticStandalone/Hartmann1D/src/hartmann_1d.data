@@ -39,7 +39,7 @@ Mailler dom
     Pave pave
     {
         Origine              0. -0.5
-        Nombre_de_Noeuds     5  65
+        Nombre_de_Noeuds     $nx $ny
         Longueurs            1.  1.
     }
     {

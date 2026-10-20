@@ -23,7 +23,7 @@ Mailler dom
     {
         /* same y-resolution as the 2D case (33 nodes -> 32 cells), coarse x/z */
         Origine              0.  0.  0.
-        Nombre_de_Noeuds     9  33  9
+        Nombre_de_Noeuds     $nx $ny $nz
         Longueurs            1.  1.  1.
     }
     {

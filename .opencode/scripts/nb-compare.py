@@ -9,10 +9,17 @@ Two comparisons are made:
 1. Cell outputs — every code cell of the baseline notebook whose source is
    unchanged by the operation must produce identical outputs (stream text and
    embedded images) in the new executed notebook. Cells containing
-   ``tablePerf`` are skipped (timings vary run to run). Code cells whose source
-   is *absent* from the new notebook are reported: the only acceptable case is
-   the run cell (it gains the mesh-scan case registrations); its computation
-   is covered by comparison 2. Any other modified/deleted cell is a failure.
+   ``tablePerf`` are skipped (timings vary run to run). Code cells whose
+   source is *absent* from the new notebook:
+     - run/scan registration cells (``run.addCase`` / ``addCaseFromTemplate``):
+       exempt — their computation is covered by comparison 2;
+     - any other changed cell is paired with the new cell at the same index
+       and its *computation* must reproduce: stream text must match after
+       mapping the historical mesh-scale labels (``L0``/``L1``/``L2``) to the
+       current ones (``coarse``/``standard``/``fine``) — the user-mandated
+       rename is presentational, not computational. Image outputs of changed
+       cells are not compared (plot legends may carry the renamed labels).
+       A changed computation is a failure.
 
 2. Probe files — every baseline ``PAR_*.son`` snapshot (values and effective
    probe coordinates, i.e. the ``# Temps x= ...`` header lines) must be
@@ -23,6 +30,7 @@ Exit status: 0 = operation validated, 1 = regression / mismatch.
 import argparse
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -58,8 +66,30 @@ def outputs_of(cell):
     # summary line carries the wall-clock time ("... run in 1.4s"), which
     # legitimately varies run to run and is not a computational result.
     text = "\n".join(ln for ln in text.split("\n")
-                    if not ln.strip().startswith("=> A total of"))
+                     if not ln.strip().startswith("=> A total of"))
     return text, images, errors
+
+
+def rename_labels(text):
+    """Map the historical mesh-scale labels L0/L1/L2 to coarse/standard/fine.
+
+    Word-boundary based: ``scan/L1`` and ``"L1"`` are renamed, identifiers
+    such as ``scan_cases`` or ``diffusion_L1`` are left alone.
+    """
+    text = re.sub(r"\bL0\b", "coarse", text)
+    text = re.sub(r"\bL1\b", "standard", text)
+    text = re.sub(r"\bL2\b", "fine", text)
+    return text
+
+
+def squash_spaces(text):
+    """Collapse runs of 2+ spaces to one (column alignment is presentation).
+
+    Used only for CHANGED cells: the longer coarse/standard/fine labels change
+    table padding, which is not a computational difference. Values, labels,
+    order and line structure are still compared exactly.
+    """
+    return re.sub(r" {2,}", " ", text)
 
 
 def load_nb(path):
@@ -86,15 +116,30 @@ def compare_notebooks(old_path, new_path):
             continue  # performance table: timings legitimately vary
         bucket = new_by_key.get(cell_key(old))
         if not bucket:
-            if "run.addCase(" in src:
-                # The run cell: gains the mesh-scan registrations. Its actual
-                # computation (the baseline case) is verified via the .son
+            if "run.addCase(" in src or "addCaseFromTemplate" in src:
+                # Run/scan registration cell: gains or reworks the case
+                # registrations. Its computation is verified via the .son
                 # comparison. Informational only.
-                print(f"  note: run cell modified (source changed) — "
-                      f"validated via .son comparison [old cell #{i}]")
+                print(f"  note: run/scan registration cell changed [old cell #{i}]"
+                      " — validated via .son comparison")
                 continue
-            preview = src.strip().replace("\n", " / ")[:90]
-            problems.append(f"original cell #{i} changed or removed: {preview}")
+            # Any other changed cell: pair it with the new cell at the same
+            # index and require the computation to reproduce (stream text,
+            # with the mesh-scale label rename normalized).
+            if i >= len(new_cells):
+                problems.append(f"original cell #{i} removed from the new notebook")
+                continue
+            new = new_cells[i]
+            n_compared += 1
+            old_stream, _, old_err = outputs_of(old)
+            new_stream, _, new_err = outputs_of(new)
+            if old_err or new_err:
+                if old_err != new_err:
+                    problems.append(f"cell #{i}: error output changed")
+            if squash_spaces(rename_labels(old_stream)) != squash_spaces(new_stream):
+                problems.append(f"cell #{i}: computation differs\n"
+                                f"    --- baseline (labels renamed) ---\n{_indent(squash_spaces(rename_labels(old_stream)))}\n"
+                                f"    --- new ---\n{_indent(squash_spaces(new_stream))}")
             continue
         new = bucket.pop(0)
         n_compared += 1
@@ -105,8 +150,8 @@ def compare_notebooks(old_path, new_path):
                 problems.append(f"cell #{i}: error output changed")
         if old_stream != new_stream:
             problems.append(f"cell #{i}: stream output differs\n"
-                           f"    --- baseline ---\n{_indent(old_stream)}\n"
-                           f"    --- new ---\n{_indent(new_stream)}")
+                            f"    --- baseline ---\n{_indent(old_stream)}\n"
+                            f"    --- new ---\n{_indent(new_stream)}")
         if old_png != new_png:
             problems.append(f"cell #{i}: image output differs")
     return (not problems), n_compared, problems

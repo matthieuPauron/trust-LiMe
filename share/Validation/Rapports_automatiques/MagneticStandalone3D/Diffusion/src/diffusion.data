@@ -24,7 +24,7 @@ Mailler dom
     {
         /* keep the 2D resolution along the mode direction (Y), coarse in X/Z */
         Origine              0.  0.  0.
-        Nombre_de_Noeuds     9  65  9
+        Nombre_de_Noeuds     $nx $ny $nz
         Longueurs            1.  1.  1.
     }
     {
