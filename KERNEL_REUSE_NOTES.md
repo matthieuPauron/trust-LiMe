@@ -799,7 +799,11 @@ Traps (all hit for real during the 2026-10-16 parallel port):
 *(Status 2026-10-19: `MMS_CoupledRefined` was absorbed into
 `MMS_Coupled`'s mesh-convergence scan at merge M2, `TwoWayFeedback` was
 folded into `Coupled_Feedback` at merge M3 — the contracts they carried
-are unchanged.)*
+are unchanged. Status 2026-10-20: the four coupled error forms
+`Error_BadForceKeyword`/`Error_MissingPressureSolver`/`Error_TwoWayNoNS`/
+`Error_TwoWayBothVelocities` were merged into `MagneticCoupled/ErrorInputs`
+— same datasets, same per-case asserts and print lines, verified
+line-identical against the historical executed outputs.)*
 
 Seven forms added (`MMS_Coupled`, `MMS_CoupledRefined`, `Coupled_Feedback`,
 `MMS_Coupled3D`, `Error_BadForceKeyword`, `Error_MissingPressureSolver`,
@@ -996,3 +1000,15 @@ is green). **The underlying memory bug must be pinned by the sanitizer pass
 (ASan/UBSan, `make module_custom`)** — until then any layout shift
 (name, path, build) can flip the crash on or off for any form.
 
+
+### 18.3 The coupled error path segfaults after printing its diagnostic (open)
+
+All four coupled malformed-input datasets print their diagnostic and then
+die with **SIGSEGV (`rc=139`)** instead of a clean non-zero exit
+(`rc=255`, like the standalone error forms). Pre-existing since the forms
+were created (the historical notebooks show the same `rc=139` tails — the
+bash wrapper's crash report, which embeds the volatile PID, is what lands
+in the `tail[0][:90]` print line); the merged `ErrorInputs` form keeps the
+behaviour and its asserts treat any non-zero exit as the pass condition.
+Same family suspicion as §18.2 (the diagnostic goes through
+`Process::exit`-adjacent cleanup paths) — fold into the sanitizer pass.

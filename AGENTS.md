@@ -264,7 +264,7 @@ append new findings there.
 - Kernel and module **are built** (`trust-lime`, `trust-lime_semi_opt`,
   `trust-lime_opt` exist at the repo root) — the historical `libparaconf`
   configure blocker is resolved.
-- **All 39 validation forms pass in 2-rank parallel** (checked 2026-10-20;
+- **All 36 validation forms pass in 2-rank parallel** (checked 2026-10-20;
   2D + 3D standalone, coupled MHD 2D + 3D, post-treatment — all
   `nbProcs=2` + `case.partition()`) and are concatenated into a single
   `trust-lime_validation.pdf` at the repo root by
@@ -319,15 +319,15 @@ append new findings there.
   becomes the magnetic transport velocity (rebound in `completer()`, once
   every equation is known) and `induction_stretching` rebuilds grad(u)
   per step — a fully-lagged staggered scheme, bˢ⁺¹=F(bˢ,uˢ), uˢ⁺¹=G(uˢ,bˢ).
-  Eight validation forms cover the coupled path: `ForceLorentzBalance`
+  Five validation forms cover the coupled path: `ForceLorentzBalance`
   (hydrostatic Δp, b=(y,0)), `MMS_Coupled` (MMS with both force
-  components, b=(y,-x), Δp=−0.60 ± 5 %; its scan's L1 *is* the historical
+  components, b=(y,-x), Δp=−0.60 ± 5 %; its scan's standard level *is* the historical
   `MMS_CoupledRefined` twin, absorbed), `Coupled_Feedback` (one-way
   control + the merged two-way case `twoway_feedback.data`:
   `vitesse_hydraulique`, b must deviate from the frozen field),
   `MMS_Coupled3D` (3D twin, coarse-mesh regression), and the
-  `Error_BadForceKeyword`/`Error_MissingPressureSolver`/
-  `Error_TwoWayNoNS`/`Error_TwoWayBothVelocities` negative forms.
+  `ErrorInputs` merged negative form (the historical `error_bad_force`,
+  `error_missing_ps`, `error_two_way_no_ns` and `error_two_way_both_velocities` datasets).
   Recipe and traps (source-typing suffix, `solveur_pression`, the static
   `trust-lime_opt` rebuild, the `Operateur_Conv` wrapper two-hop binding)
   in `KERNEL_REUSE_NOTES.md` §12bis/§12ter.

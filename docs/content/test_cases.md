@@ -139,19 +139,15 @@ target the magnetic induction equation solved in standalone form.
 The `force_lorentz` keyword activates a one-way coupled momentum equation
 via `J × B`. The **two-way** mode adds the `vitesse_hydraulique` keyword on
 the magnetic equation (solved NS velocity as transport velocity, bound in
-`completer()`). Eight forms cover the coupled path:
+`completer()`). Five forms cover the coupled path:
 
 | Form | What it validates |
 |---|---|
 | `ForceLorentzBalance/` | hydrostatic balance with \f$b=(y,0)\f$: \f$\Delta p = -0.18 \pm 10\%\f$, \f$u \to 0\f$ |
-| `MMS_Coupled/` | MMS with \f$b=(y,-x)\f$ — **both force components**: \f$\Delta p = -0.60 \pm 5\%\f$ (its scan's L1 *is* the absorbed `MMS_CoupledRefined` twin) |
+| `MMS_Coupled/` | MMS with \f$b=(y,-x)\f$ — **both force components**: \f$\Delta p = -0.60 \pm 5\%\f$ (its scan's standard level *is* the absorbed `MMS_CoupledRefined` twin) |
 | `Coupled_Feedback/` | both coupling modes: the baseline documents the one-way limit (\f$b\f$ frozen to machine precision with \f$u_0 \neq 0\f$), the merged `twoway_feedback.data` case (\f`vitesse_hydraulique`\f) asserts the two-way discriminator \f$10^{-3} < \max_t \|\mathbf{b}-\mathbf{b}_0\| < 0.5\f$ |
 | `MMS_Coupled3D/` (in `MagneticCoupled3D/`) | 3D twin (coarse-mesh regression, ~50 % bound) |
-| `Error_BadForceKeyword/` | invalid keyword in `force_lorentz` rejected cleanly |
-| `Error_MissingPressureSolver/` | `solveur_pression` omitted from the NS equation rejected |
-| `Error_TwoWayNoNS/` | `vitesse_hydraulique` without a NS equation rejected |
-| `Error_TwoWayBothVelocities/` | `vitesse_hydraulique` + `vitesse_magnetique` rejected |
-| `Error_MissingPressureSolver/` | missing `solveur_pression` rejected cleanly |
+| `ErrorInputs/` | the four merged malformed-input datasets (`error_bad_force`, `error_missing_ps`, `error_two_way_no_ns`, `error_two_way_both_velocities`): each rejected with a non-zero exit and a readable diagnostic (also removing the historical duplicate `Error_MissingPressureSolver` row) |
 
 Further coupled benchmarks (Shercliff 3D duct, Ha/Re parameter scan) are
 tracked as open targets.

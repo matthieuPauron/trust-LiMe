@@ -70,10 +70,10 @@ dataset into `build/<dataset name>/` where the results (`.son` probes, `.dt_ev`,
 
 Each form can be exported to PDF and the per-form PDFs concatenated into a
 single report at the repository root (`trust-lime_validation.pdf`,
-39 forms: the 2D and 3D standalone families (the 3D MMS cases fused as
+36 forms: the 2D and 3D standalone families (the 3D MMS cases fused as
 `MMS_3D`), the coupled-MHD forms and the post-treatment fields — every
-positive form carrying its mesh-convergence scan, and the three
-malformed-input forms of each standalone category merged into `ErrorInputs`), via
+positive form carrying its mesh-convergence scan, and the malformed-input
+forms merged into one `ErrorInputs` notebook per category), via
 `.opencode/scripts/run-validation-pdf.sh` (execute → `--to pdf` →
 `pdfunite`). The report is a generated artifact and stays untracked; the rule
 lives in the `trust-lime-notebooks` skill ("PDF export & the repository
