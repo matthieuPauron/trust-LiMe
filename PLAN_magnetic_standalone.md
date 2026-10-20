@@ -1,5 +1,11 @@
 # Work plan — Standalone magnetic models (M0 → M1)
 
+> **STATUS (2026-10-21): COMPLETE — historical record.** All phases of this
+> plan are implemented and validated; the checkboxes below were never ticked
+> and are superseded by `AGENTS.md` § « Current state » (36-form suite green
+> in 2-rank parallel, mesh-convergence scans on every positive form). Read
+> this file as the original design intent, not as a task list.
+
 Status: draft · Author: agent loop w/ matthieu · Scope: **magnetic equation only**,
 no hydraulics coupling (coupled MHD / Lorentz force is deferred).
 

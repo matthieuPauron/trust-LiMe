@@ -1,5 +1,13 @@
 # Coupled MHD Simulations Plan — trust-LiMe baltik
 
+> **STATUS (2026-10-21): COMPLETE up to Phase 2 — historical record.** The
+> low-Rm coupled mode (`force_lorentz`) **and** the two-way coupling
+> (`vitesse_hydraulique`) are implemented and validated; Phase 3 items
+> (Nedelec vector potential, turbulent MHD/EDM, Ohmic heating) remain open
+> and deferred (see `END_GOAL.md`). The checkboxes below were never ticked
+> and are superseded by `AGENTS.md` § « Current state ». Read this file as
+> the original design intent, not as a task list.
+
 ## Overview
 
 This plan describes the integration of **fully coupled MHD simulations** into trust-LiMe, going beyond the standalone magnetic induction equation (M0/M1) to solve the complete set of MHD equations where the magnetic field and fluid velocity are solved simultaneously or in a tightly coupled manner.
