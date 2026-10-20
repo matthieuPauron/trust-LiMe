@@ -57,9 +57,9 @@ one category, following the official English translation of **ASN Guide n° 28**
 | **Validation – integral** | § 3.3 | all phenomena and their interactions (reserved: none yet in the standalone phase) |
 
 A notebook covers **one validation form** — it may run several cases of
-that form (the baseline dataset plus its mesh-convergence levels, generated
-from a `src/<case>.tpl.data` template) — and contains tests of **one
-single category**. Following the TRUST validation-form layout
+that form (its mesh-convergence scales `coarse`/`standard`/`fine`,
+substituted from the single template `src/<case>.data`) — and contains
+tests of **one single category**. Following the TRUST validation-form layout
 (`Rapports_automatiques/<Category>/<FormName>/<FormName>.ipynb`), the standalone
 magnetic folder ships one *form folder* per dataset, each containing
 `<FormName>.ipynb` + `src/<case>.data` (`MagneticStandalone/Invariance/`,
@@ -70,8 +70,8 @@ the dataset gains `dimension 3`, three-component vectors, and `Polyedriser dom`
 after `Mailler` — PolyMAC_MPFA needs polyhedral cells in 3D). The
 `.data` files are **computations**, not tests — a dataset such as `diffusion`
 feeds its validation form (`Diffusion/Diffusion.ipynb`), which carries the
-mesh-convergence scan itself (baseline + ×2/×4 levels instantiated from
-`src/diffusion.tpl.data`).
+mesh-convergence scan itself (coarse = baseline, standard = ×2, fine = ×4,
+all instantiated from the single template `src/diffusion.data`).
 
 New tests are written in a **fixed sequence** — a test of a later stage may
 only be added once all earlier stages are green for that case:
@@ -126,10 +126,12 @@ One validation form per test case (TRUST layout
 holds `Invariance/`, `Diffusion/`, `Advection/`,
 `SteadyState/`, `VaryingVelocity/`, `SourceStretching/`, `Hartmann1D/`,
 `MMS_2D/` (the four historical MMS 2D cases fused: `MMS_Diff2D`, `MMS_Trig2D`,
-`MMS_ExpTrig2D`, `MMS_Poly_2D`) and the negative
-`Error_missing_eta` – `Error_bad_nbcomposantes` – `Error_bad_bc` forms;
-each form folder contains its notebook + `src/<case>.data` (+ `src/<case>.tpl.data`
-when the form carries a mesh-convergence scan). These cases
+`MMS_ExpTrig2D`, `MMS_Poly_2D`) and the merged negative
+`ErrorInputs/` form (the historical `error_missing_eta`,
+`error_bad_nbcomposantes`, `error_bad_bc` datasets);
+each form folder contains its notebook + `src/<case>.data` (the single
+trustutils template with `$nx/$ny` placeholders when the form carries a
+mesh-convergence scan). These cases
 target the magnetic induction equation solved in standalone form.
 
 ### MagneticCoupled (low-Rm with Lorentz force)

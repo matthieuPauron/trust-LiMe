@@ -878,32 +878,121 @@ created, discretised and read *after* the magnetic block
 - **`Equation_base::lire_sources` is per-equation**, so merged multi-case
   notebooks are fine.
 
-### Mesh-convergence scan convention (validated 2026-10-19)
+### Mesh-convergence scan convention (2026-10-19, renamed 2026-10-20)
 
-- **Template**: `src/<case>.tpl.data` = byte-copy of the baseline with
+- **Single template**: `src/<case>.data` **is** the trustutils template —
   `$nx $ny [$nz]` placeholders in the `Nombre_de_Noeuds` line (partition
-  markers kept — allowlisted datasets stay parallel-portable).
-- **Ladder**: L1 = cells ×2 (`2N−1` nodes), L2 = cells ×4 (`4N−3`), only
-  in the ACTIVE directions (freeze passive ones: Hartmann/Shercliff refine
-  y only; MMS_Diff3D y only — a single-mode eigenmode is 1D).
-- **Per-level build dirs** `build/scan/<case>/<lvl>/` — partitioned
-  `DOM_000*.Zones` of one level must never overwrite another's.
+  markers kept — allowlisted datasets stay parallel-portable). No
+  `.tpl.data` twin any more: every scale runs the SAME file, substituted
+  per scale via `run.addCaseFromTemplate` → `string.Template`.
+- **Scale naming** (never `L1`/`L2` — confusable with the L¹/L² metric
+  spaces): `coarse` = the baseline mesh, `standard` = cells ×2
+  (`2N−1` nodes), `fine` = cells ×4 (`4N−3`), only in the ACTIVE
+  directions (freeze passive ones: Hartmann/Shercliff refine y only;
+  MMS_Diff3D y only — a single-mode eigenmode is 1D).
+- **Per-scale build dirs** `build/<scale>/` (merged multi-case forms:
+  `build/<Case>/<scale>/`) — `trust -partition` writes `DOM_000*.Zones`
+  in the case's directory, so cases sharing a directory overwrite each
+  other's zones (see §18 — the M4-era MMS baselines shipped with exactly
+  that bug).
 - **Probe reading after `partition()`**: a case's sondes are named
   `PAR_<case>_SONDE_*`; read via `case.dataFileName_` (the case object),
-  never a literal name.
+  never a literal name. `read_son()` looks in `build/coarse/` (and
+  `build/<Case>/coarse/`) first, then the build root (plain `addCase`
+  datasets, e.g. the twoway twin).
 - **Identity-scan contract**: machine-precision bounds asserted at every
-  level; for position-dependent analytics, evaluate the analytic at the
+  scale; for position-dependent analytics, evaluate the analytic at the
   probe's EFFECTIVE cell-centre position from the `.son` header
   (`# Temps x= ... y= [z= ...]`, tokens after normalising `=` — note the
   token after `x` is `=`, the value is at +2). `NombreDeReynoldsMagnetique`
-  L_e is the CELL size — level-dependent expected value.
+  L_e is the CELL size — scale-dependent expected value.
 - **Volatile outputs in the RULE harness**: nb-compare skips `tablePerf`
   cells and must also strip the trustutils timing line
   (`=> A total of N cases ... run in X.Xs`) — run cells whose source
-  didn't change are otherwise output-compared (fixed 2026-10-19).
+  didn't change are otherwise output-compared (fixed 2026-10-19). Cells
+  whose source changed are paired by cell index; their stream text is
+  compared after mapping the historical `L0`/`L1`/`L2` labels to
+  `coarse`/`standard`/`fine` and collapsing column-alignment whitespace
+  (the longer labels change table padding — presentation, not
+  computation); their images are not compared (plot legends may carry the
+  renamed labels) — the physics stays covered by the `.son` comparison.
 - **Scan metrics**: exact-implicit-Euler-cancelled decay
   (temporal error is common to every mesh, so the residual is the spatial
   one); wall-profile core errors (wall-adjacent Green–Gauss bias
-  documented and excluded); steady identities (drift + per-level P0
+  documented and excluded); steady identities (drift + per-scale P0
   projection bound); temporal-floor cases (SourceStreching,
-  hydrostatic Δp): fixed bound at every level, no monotone order.
+  hydrostatic Δp): fixed bound at every scale, no monotone order.
+
+---
+
+## 18. Two latent bugs caught by the RULE harness during the 2026-10-20 scan rename
+
+The rollout to the coarse/standard/fine naming (single substituted template,
+per-scale build dirs) was RULE-gated per form. Two findings were NOT
+presentational and are recorded here.
+
+### 18.1 Build-root `DOM_000*.Zones` collision (merge-era, real bug — now fixed)
+
+`trust -partition <case>.data N` writes `DOM_0000.Zones`/`DOM_0001.Zones`
+**in the case's directory**. Several partitioned cases registered in the
+SAME directory therefore overwrite each other's zones, and every solve
+afterwards reads the zones of the LAST partition — i.e. it solves a
+DIFFERENT MESH than its own data file.
+
+- The M4a/M4b-merged `MMS_2D`/`MMS_3D` notebooks shipped with exactly this
+  bug: their four baselines were registered at the build root, so all
+  solves used the last-partitioned baseline's mesh. Confirmed on the
+  reproduced tree: every `PAR_MMS_*.err` reports "Total nb of elements =
+  1024" (= the 33×33 `MMS_Poly_2D` mesh) although `MMS_Diff2D.data` says
+  21×21 nodes (400 cells); the recorded probe positions (0.484375 =
+  15.5/32) and the mesh-dependent `dt_stab` grids match the 33×33 mesh,
+  not each case's own. The MMS_2D ExpTrig baseline checks therefore
+  passed "perfectly" on the wrong (finer) mesh, and the MMS_3D Diff3D
+  baseline ran on a 5×5×5 mesh instead of its 21³ (its scan table even
+  showed a bogus order 6.63 for the baseline level).
+- Why nobody noticed: the invariance identities hold on any mesh, and the
+  decay checks have generous bounds. The suites were green since 2026-10-18.
+- Fix: the per-scale (and per-case) build subfolders of the new layout give
+  every case its own `DOM_000*.Zones`. The MMS baselines now run their own
+  meshes; the MMS_3D Diff3D scan table now shows a clean order ~2 across
+  all three scales. The nb-compare "NOT VALIDATED" verdicts on the two MMS
+  forms during the rollout flagged exactly these (deliberate, documented)
+  changes; every other diff was the Poly template sondes now present in the
+  baseline file (single-file convention).
+- Rule of thumb: **one partitioned case per directory.** A plain
+  `addCase(".")` case may share the build root only with cases of the SAME
+  mesh (e.g. Coupled_Feedback's twoway twin — that is why the M3 merge never
+  tripped this).
+
+### 18.2 Layout-dependent SIGFPE in the parallel path (CourantMagnetique fine — open)
+
+`Postraitement_fields/CourantMagnetique`, fine scale (17³ nodes), case name
+`PAR_courant_magnetique`, `nbProcs=2`: 100% reproducible crash at problem
+initialisation (`signal 8 / FPE_FLTINV` right after the Fluide initialiser,
+between `Domaine_VF::marquer_faces_double_contrib` and the solve banner).
+
+Facts established by bisection (identical data bytes, identical
+`DOM_000*.Zones` md5s in every experiment):
+
+| case name | directory | result |
+|---|---|---|
+| `PAR_courant_magnetique` | `build/fine/` (the form) | FPE, 100% (4/4 runs) |
+| `PAR_courant_magnetique` | scratch copy | FPE |
+| `PAR_courant_magnetique_L2` (the historical name) | scratch copy of `build/fine/` | FPE |
+| `PAR_courant_magnetique2`, `PAR_ccm`, `PAR_jdd` | same scratch copy | clean, correct values |
+| `PAR_courant_magnetique` | sequential (`nbProcs=1`) | clean, correct values |
+
+So the crash depends on the case-name/path STRING (heap layout), not on any
+physical or data content: the classic signature of an uninitialized-memory
+read somewhere in the TRUST parallel init path (kernel or module — the
+`Champ_Fonc_MHD`/`gradient_b_elements` code was audited and is
+bounds-checked with its buffers zeroed). The historical `scan/L2` run of
+the same mesh passed purely by layout luck.
+
+Interim handling (visible, not hidden — see the form's run cell): the fine
+scale of this one form runs on 1 processor; the sequential probe values
+reproduce the historical L2 values exactly (the RULE compare for the form
+is green). **The underlying memory bug must be pinned by the sanitizer pass
+(ASan/UBSan, `make module_custom`)** — until then any layout shift
+(name, path, build) can flip the crash on or off for any form.
+

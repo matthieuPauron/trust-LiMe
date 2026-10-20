@@ -17,7 +17,7 @@ share/Validation/Rapports_automatiques/
 │   ├── SteadyState/  VaryingVelocity/  SourceStretching/
 │   ├── Hartmann1D/                 # Hartmann induced field (1D physics)
 │   ├── MMS_2D/                     # the four historical MMS cases fused
-│   └── ErrorMissingEta/  ErrorBadNbcomposantes/  ErrorBadBc/
+│   └── ErrorInputs/                 # the 3 malformed-input cases merged
 ├── MagneticStandalone3D/           # the same 11 forms, one-to-one, in 3D
 │   └── <FormName>/…                # (Polyedriser dom after Mailler — see below)└── Postraitement_fields/           # one form per post-treatment field
 ├── MagneticStandalone3D/           # the same forms, one-to-one, in 3D
@@ -40,10 +40,9 @@ Four formatting rules are enforced by `.opencode/scripts/check-validation.sh`
 `Rapports_automatiques/<Category>/<FormName>/<FormName>.ipynb`, never in
 `src/`; datasets are **sequential-only** (no `Decouper`/`Scatter` partition
 machinery in a `.data`, no `partition()` / `nbProcs>1` in a notebook); the R4 rule
-is **one form per notebook** (see the `trust-lime-notebooks` skill) — a form may run
-the baseline dataset plus its mesh-convergence scan levels from
-`src/<case>.tpl.data`, and the `MMS_2D`/`MMS_3D` forms run four datasets each.
-see the `trust-lime-notebooks` skill).
+is **one form per notebook** (see the `trust-lime-notebooks` skill) — a form runs
+its mesh-convergence scales (coarse/standard/fine) from the single template
+`src/<case>.data`, and the `MMS_2D`/`MMS_3D` forms run four datasets each.
 
 ---
 
@@ -71,9 +70,10 @@ dataset into `build/<dataset name>/` where the results (`.son` probes, `.dt_ev`,
 
 Each form can be exported to PDF and the per-form PDFs concatenated into a
 single report at the repository root (`trust-lime_validation.pdf`,
-43 forms: the 2D and 3D standalone families (the 3D MMS cases fused as
+39 forms: the 2D and 3D standalone families (the 3D MMS cases fused as
 `MMS_3D`), the coupled-MHD forms and the post-treatment fields — every
-positive form now also carrying its mesh-convergence scan), via
+positive form carrying its mesh-convergence scan, and the three
+malformed-input forms of each standalone category merged into `ErrorInputs`), via
 `.opencode/scripts/run-validation-pdf.sh` (execute → `--to pdf` →
 `pdfunite`). The report is a generated artifact and stays untracked; the rule
 lives in the `trust-lime-notebooks` skill ("PDF export & the repository
@@ -93,8 +93,9 @@ references, and what each one catches are listed in
 
 Per ASN Guide n° 28 a notebook holds tests of **one single category**, and it
 covers **one validation form** (see the `trust-lime-notebooks` skill; R4):
-several datasets of that form are allowed — the baseline plus its
-mesh-convergence scan levels (`src/<case>.tpl.data`), and the merged MMS
+several datasets of that form are allowed — its mesh-convergence scales
+(coarse = the baseline mesh, standard, fine) substituted from the single
+template `src/<case>.data`, and the merged MMS
 forms (`MMS_2D`, `MMS_3D`) run four datasets each. The category ships one
 folder per form (`<Category>/<FormName>/<FormName>.ipynb`), covering exact
 invariants, mesh convergence, malformed-input diagnostics and isolated

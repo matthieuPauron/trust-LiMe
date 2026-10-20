@@ -178,8 +178,8 @@ in 3D). Example: `MagneticStandalone/Diffusion/Diffusion.ipynb`. Use
 (`/check-validation`):** the `.ipynb` lives at the form root only
 (`Rapports_automatiques/<Category>/<FormName>/<FormName>.ipynb`, never in
 `src/`), each notebook covers **one validation form** and may run several
-cases of that form (the baseline dataset plus its mesh-convergence scan
-levels, generated from `src/<case>.tpl.data` — see the `trust-lime-notebooks`
+cases of that form (its mesh-convergence scales, substituted from the
+single template `src/<case>.data` — see the `trust-lime-notebooks`
 skill), and **all cases run sequentially** — `.data` files must never contain
 TRUST parallelism machinery (`Decouper`/`Partitionneur`/`Scatter`/`Larg_joint`/
 `Nom_Zones`/…), and notebooks must not call `partition()` or set `nbProcs>1`.
@@ -264,17 +264,20 @@ append new findings there.
 - Kernel and module **are built** (`trust-lime`, `trust-lime_semi_opt`,
   `trust-lime_opt` exist at the repo root) — the historical `libparaconf`
   configure blocker is resolved.
-- **All 43 validation forms pass in 2-rank parallel** (checked 2026-10-19;
+- **All 39 validation forms pass in 2-rank parallel** (checked 2026-10-20;
   2D + 3D standalone, coupled MHD 2D + 3D, post-treatment — all
   `nbProcs=2` + `case.partition()`) and are concatenated into a single
   `trust-lime_validation.pdf` at the repo root by
   `.opencode/scripts/run-validation-pdf.sh` (rc=0). Every positive form
-  also carries an in-notebook **mesh-convergence scan** (shared ladder:
-  L1 = cells ×2, L2 = ×4 in the active directions, instantiated from
-  `src/<case>.tpl.data` templates into per-level `build/scan/<lvl>/`
-  directories); error forms are excluded by design. Notebook operations
-  are gated by the **RULE harness** (`notebook-baseline.sh execute|compare`
-  + `nb-compare.py`): unchanged cells must print identically and the
+  also carries an in-notebook **mesh-convergence scan** on the shared
+  scale ladder (`coarse` = the baseline mesh, `standard` = cells ×2,
+  `fine` = ×4 in the active directions): a single template dataset
+  `src/<case>.data` with `$nx/$ny[$nz]` placeholders, substituted per
+  scale via `run.addCaseFromTemplate` into `build/<scale>/` — the same
+  data-file name in every scale; error forms (`ErrorInputs`, merged per
+  category) are excluded by design. Notebook operations are gated by the
+  **RULE harness** (`notebook-baseline.sh execute|compare` +
+  `nb-compare.py`): unchanged cells must print identically and the
   baseline probes must be reproduced exactly. Multi-component
   `nb_composantes` works and is exercised by the post-treatment forms
   (`vecteur_poynting`, `helicite_croisee`) and by `Hartmann1D`
