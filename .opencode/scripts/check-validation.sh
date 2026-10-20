@@ -98,9 +98,7 @@ parallel_ok=(
   "$base/MagneticStandalone/Advection/"
   "$base/MagneticStandalone/Diffusion/"
   "$base/MagneticStandalone/MMS_2D/"
-  "$base/MagneticStandalone/ErrorBadBc/"
-  "$base/MagneticStandalone/ErrorBadNbcomposantes/"
-  "$base/MagneticStandalone/ErrorMissingEta/"
+  "$base/MagneticStandalone/ErrorInputs/"
   "$base/MagneticStandalone/Hartmann1D/"
   "$base/MagneticStandalone/Invariance/"
   "$base/MagneticStandalone/Shercliff2D/"
@@ -111,9 +109,7 @@ parallel_ok=(
   "$base/MagneticStandalone3D/Advection/"
   "$base/MagneticStandalone3D/Diffusion/"
   "$base/MagneticStandalone3D/MMS_3D/"
-  "$base/MagneticStandalone3D/ErrorBadBc/"
-  "$base/MagneticStandalone3D/ErrorBadNbcomposantes/"
-  "$base/MagneticStandalone3D/ErrorMissingEta/"
+  "$base/MagneticStandalone3D/ErrorInputs/"
   "$base/MagneticStandalone3D/Hartmann1D/"
   "$base/MagneticStandalone3D/Invariance/"
   "$base/MagneticStandalone3D/SourceStretching/"
@@ -243,6 +239,16 @@ for f in "${files[@]}"; do
         [ -n "${line:-}" ] || continue
         report "$f" "$line" "R4 template targetDirectory must stay inside build/ (no \"..\")"
       done < <(grep -nEi -- 'targetDirectory[[:space:]]*=[[:space:]]*"[^"]*\.\.' "$f" || true)
+      # R4: the trustutils template must be a bare file of the form's own src/
+      # (copied to the build root by the suite; no directory escapes).
+      while IFS= read -r tpl; do
+        [ -n "${tpl:-}" ] || continue
+        case "$tpl" in
+          */*|*..*) report "$f" "-" \
+               "R4 addCaseFromTemplate template must be a bare src/ file name, got \"$tpl\"" ;;
+        esac
+      done < <(grep -Eo -- '\.addCaseFromTemplate[[:space:]]*\([[:space:]]*"[^"]*"' "$f" \
+                 | sed -E 's/.*"([^"]*)".*/\1/' || true)
       ;;
   esac
 done
