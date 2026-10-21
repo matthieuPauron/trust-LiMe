@@ -86,11 +86,14 @@ if [[ "$mode" == "arith" ]]; then
 else
   test_sources=(tests/UnitTests/unit_magnetic_field.cpp
                 tests/UnitTests/unit_induction_source.cpp
+                tests/UnitTests/unit_lorentz_source.cpp
                 tests/UnitTests/unit_induction_kernel.cpp
                 tests/UnitTests/unit_mhd_posttraitement_kernel.cpp)
   module_sources=(src/Convection_Diffusion_Magnetic_field.cpp
                   src/Pb_MHD.cpp
                   src/Terme_Source_Induction_stretching.cpp
+                  src/Terme_Source_Lorentz.cpp
+                  src/Paroi_isolante_magnetique.cpp
                   src/Champ_Fonc_MHD.cpp)
   main_source=tests/UnitTests/main_gtest.cpp
 fi
@@ -172,6 +175,15 @@ if [[ -f "$link_txt" ]]; then
   if [[ "${#dropped[@]}" -gt 0 ]]; then
     echo "  (link: ${#dropped[@]} library(ies) not built, dropped: ${dropped[*]})"
   fi
+
+  # The bundled MPICH embeds hwloc with its XML backend: pulling some of its
+  # archive members (the full kernel does) leaves undefined libxml2 references
+  # that the recorded CMake line never names (the real exe gets the system
+  # libxml2 through CMake's link environment). Add it when missing - harmless
+  # when the driver already resolves it.
+  if [[ "$link_line" != *xml2* ]]; then
+    link_line+=" -lxml2"
+  fi
 fi
 
 # The MPI wrapper compiled into the link line invokes $TRUST_ROOT/exec/ccache/g++,
@@ -192,7 +204,7 @@ else
     "$trust_root/lib/src/LIBKOKKOS/linux_opt/lib64/libkokkoscontainers.a" \
     "$trust_root/lib/src/LIBKOKKOS/linux_opt/lib64/libkokkoscore.a" \
     "$trust_root/lib/src/LIBMPI/mpich/lib/libmpi.a" \
-    -L"$gtest_root/lib" -lgtest -lpthread -ldl
+    -L"$gtest_root/lib" -lgtest -lpthread -ldl -lxml2
 fi
 
 [[ "$run" == "1" ]] || { echo "built $exe (not run)"; exit 0; }

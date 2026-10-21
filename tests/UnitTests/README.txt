@@ -26,12 +26,14 @@ Running
 Any extra argument is forwarded to the test binary, so the usual gtest flags
 (--gtest_filter, --gtest_list_tests, ...) work.
 
---arith-only builds unit_induction_kernel.cpp alone. It needs nothing but the
-TRUST array type, so it runs as soon as the micro + numeric kernels exist
+--arith-only builds unit_induction_kernel.cpp and
+unit_mhd_posttraitement_kernel.cpp alone. They need nothing but the TRUST
+array type, so they run as soon as the micro + numeric kernels exist
 (make micro_kernel_semi_optim numeric_kernel_semi_optim). The other suites
-instantiate Convection_Diffusion_Magnetic_field and
-Terme_Source_Induction_stretching, which derive from classes of the *standard*
-kernel and therefore need the full build (make optim).
+instantiate Convection_Diffusion_Magnetic_field,
+Terme_Source_Induction_stretching and Terme_Source_Lorentz, which derive
+from classes of the *standard* kernel and therefore need the full build
+(make optim).
 
 Contents
 --------
@@ -42,8 +44,13 @@ Contents
                                  PE_Groups here drags Comm_Group_MPI into the
                                  static link and breaks archive ordering.
   unit_magnetic_field.cpp        equation and problem contracts.
-  unit_induction_source.cpp      data-file contract of the source object.
+  unit_induction_source.cpp      data-file contract of the M1 source object.
+  unit_lorentz_source.cpp        data-file contract of the Lorentz source:
+                                 primary keyword, mu0 override/fallback,
+                                 problem binding, and the error paths
+                                 (death tests).
   unit_induction_kernel.cpp      arithmetic of S = (b.grad) u.
+  unit_mhd_posttraitement_kernel.cpp  arithmetic of the post-treatment fields.
 
 Writing a new test
 ------------------
