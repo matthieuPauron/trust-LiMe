@@ -1,0 +1,131 @@
+# PARALLEL OK #
+
+# ============================================================================= #
+# Post-treatment fields : the grad-b family (TRUST-LiMe standalone MHD)         #
+# ============================================================================= #
+# Merged form (post-treatment merge): one run carries the five fields that      #
+# read the module-reconstructed element gradient of b (Green-Gauss, exact       #
+# for linear fields, B2 correction at wall cells):                              #
+#     divergence_magnetique, rotationnel_magnetique, courant_magnetique,        #
+#     force_lorentz, tension_magnetique                                         #
+#                                                                               #
+# DESIGN (this is what keeps every check non-degenerate together):              #
+#   b = (x - y, x + y)  =>  grad b = [[1, -1], [1, 1]]                          #
+#     div b    = 1 + 1     = 2     (position-independent)                       #
+#     curl_z b = 1 - (-1)  = 2     (position-independent)                       #
+#   Choosing b = (x, y) would give curl = 0 (force/current/rotationnel          #
+#   vacuous); choosing b = (-y, x) would give div = 0 (divergence vacuous).     #
+#   (x - y, x + y) is the simplest linear field keeping both non-zero.          #
+#                                                                               #
+#   mu0 = 2.0 (non-default, so a formula that ignores the mu0 keyword is        #
+#   caught): J_z = curl/mu0 = 1, F = (-(x+y), x-y), Ft = (-y, x).               #
+#   eta = 0 and no transport velocity => b is an exact equilibrium, so the      #
+#   analytic linear field holds at every time step and at every wall cell.      #
+# ============================================================================= #
+dimension 2
+Pb_MHD pb
+Domaine dom
+
+# BEGIN MESH #
+Mailler dom
+{
+    Pave pave
+    {
+        Origine              0.  0.
+        Nombre_de_Noeuds     $nx $ny
+        Longueurs            1.  1.
+    }
+    {
+        Bord gauche   X = 0.    0. <= Y <= 1.
+        Bord droite   X = 1.    0. <= Y <= 1.
+        Bord bas      Y = 0.    0. <= X <= 1.
+        Bord haut     Y = 1.    0. <= X <= 1.
+    }
+}
+# END MESH #
+
+# BEGIN PARTITION
+Partition dom
+{
+    Partition_tool metis { nb_parts 2 }
+    Larg_joint 2
+    zones_name DOM
+}
+End
+END PARTITION #
+
+# BEGIN SCATTER
+Scatter DOM.Zones dom
+END SCATTER #
+
+
+Polymac_p0 dis
+
+Associate pb dom
+
+Schema_Euler_Implicite sch
+Read sch
+{
+    tinit 0.
+    tmax 0.05
+    dt_max 0.02
+    facsec 1e6
+    facsec_max 1e6
+    solveur implicite { solveur petsc cli { } }
+}
+
+Associate pb sch
+Discretize pb dis
+
+Read pb
+{
+    # Vector model: the grad-b fields require nb_composantes == dimension #
+    nb_composantes 2
+    fluide_incompressible
+    {
+        mu      Champ_Uniforme 1 1.0
+        rho     Champ_Uniforme 1 1.0
+        lambda  Champ_Uniforme 1 1.0
+        Cp      Champ_Uniforme 1 1.0
+        beta_th Champ_Uniforme 1 0.0
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        # eta = 0 and no velocity: the linear field is an exact equilibrium #
+        diffusivite_magnetique Champ_Uniforme 1 0.
+        # permeability: J, F and Ft are all divided by it #
+        mu0 2.0
+
+        diffusion  { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            gauche  Neumann_Paroi_adiabatique
+            droite  Neumann_Paroi_adiabatique
+            bas     Neumann_Paroi_adiabatique
+            haut    Neumann_Paroi_adiabatique
+        }
+        # exactly linear field b = (x - y, x + y) #
+        initial_conditions { magnetic_field Champ_Fonc_xyz dom 2 x-y x+y }
+  }
+
+  Postraitement
+  {
+    Sondes
+    {
+      # interior probe, centre of cell (4, 5) of the 10x10 baseline grid #
+      sonde_div    grav divergence_magnetique Periode 1e-6 Points 1 0.45 0.55
+      sonde_rot    grav rotationnel_magnetique Periode 1e-6 Points 1 0.45 0.55
+      sonde_j      grav courant_magnetique    Periode 1e-6 Points 1 0.45 0.55
+      sonde_fl     grav force_lorentz         Periode 1e-6 Points 1 0.45 0.55
+      sonde_ft     grav tension_magnetique    Periode 1e-6 Points 1 0.45 0.55
+      # wall-cell probe (centre of cell (0, 5)): exercises the B2 correction #
+      sonde_div_bd grav divergence_magnetique Periode 1e-6 Points 1 0.05 0.55
+    }
+  }
+
+}
+
+Solve pb

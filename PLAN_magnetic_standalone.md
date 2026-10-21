@@ -2,7 +2,7 @@
 
 > **STATUS (2026-10-21): COMPLETE — historical record.** All phases of this
 > plan are implemented and validated; the checkboxes below were never ticked
-> and are superseded by `AGENTS.md` § « Current state » (38-form suite green
+> and are superseded by `AGENTS.md` § « Current state » (28-form suite green
 > in 2-rank parallel, mesh-convergence scans on every positive form). Read
 > this file as the original design intent, not as a task list.
 

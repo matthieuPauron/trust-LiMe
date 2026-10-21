@@ -122,20 +122,9 @@ parallel_ok=(
   "$base/MagneticCoupled/MMS_Coupled/"
   "$base/MagneticCoupled/Coupled_Feedback/"
   "$base/MagneticCoupled/ErrorInputs/"
-  "$base/MagneticCoupled3D/MMS_Coupled3D/"
-  # --- Postraitement_fields ---
-  "$base/Postraitement_fields/CourantMagnetique/"
-  "$base/Postraitement_fields/DivergenceMagnetique/"
-  "$base/Postraitement_fields/EnergieMagnetique/"
-  "$base/Postraitement_fields/ForceLorentz/"
-  "$base/Postraitement_fields/HeliciteCinetique/"
-  "$base/Postraitement_fields/HeliciteCroisee/"
-  "$base/Postraitement_fields/NombreDePrandtlMagnetique/"
-  "$base/Postraitement_fields/NombreDeReynoldsMagnetique/"
-  "$base/Postraitement_fields/PulsationCyclotronique/"
-  "$base/Postraitement_fields/RotationnelMagnetique/"
-  "$base/Postraitement_fields/TensionMagnetique/"
-  "$base/Postraitement_fields/VecteurPoynting/"
+  # --- Postraitement_fields (merged: one form per dimension) ---
+  "$base/Postraitement_fields/Champs2D/"
+  "$base/Postraitement_fields/Champs3D/"
 )
 
 is_parallel_ok() {

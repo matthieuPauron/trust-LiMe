@@ -23,19 +23,8 @@ forms=(
   MagneticStandalone3D/VaryingVelocity
   MagneticCoupled/ForceLorentzBalance
   MagneticCoupled/MMS_Coupled
-  MagneticCoupled3D/MMS_Coupled3D
-  Postraitement_fields/CourantMagnetique
-  Postraitement_fields/DivergenceMagnetique
-  Postraitement_fields/EnergieMagnetique
-  Postraitement_fields/ForceLorentz
-  Postraitement_fields/HeliciteCinetique
-  Postraitement_fields/HeliciteCroisee
-  Postraitement_fields/NombreDePrandtlMagnetique
-  Postraitement_fields/NombreDeReynoldsMagnetique
-  Postraitement_fields/PulsationCyclotronique
-  Postraitement_fields/RotationnelMagnetique
-  Postraitement_fields/TensionMagnetique
-  Postraitement_fields/VecteurPoynting
+  Postraitement_fields/Champs2D
+  Postraitement_fields/Champs3D
 )
 
 one_form() {

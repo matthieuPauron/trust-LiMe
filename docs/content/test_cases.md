@@ -140,15 +140,15 @@ target the magnetic induction equation solved in standalone form.
 The `force_lorentz` keyword activates a one-way coupled momentum equation
 via `J × B`. The **two-way** mode adds the `vitesse_hydraulique` keyword on
 the magnetic equation (solved NS velocity as transport velocity, bound in
-`completer()`). Six forms cover the coupled path:
+`completer()`). Five forms cover the coupled path (`MMS_Coupled` carries both
+geometries — its 2D case and its 3D twin `mms_coupled_3d` in the same form):
 
 | Form | What it validates |
 |---|---|
 | `ForceLorentzBalance/` | hydrostatic balance with \f$b=(y,0)\f$: \f$\Delta p = -0.18 \pm 10\%\f$, \f$u \to 0\f$ |
-| `MMS_Coupled/` | MMS with \f$b=(y,-x)\f$ — **both force components**: \f$\Delta p = -0.60 \pm 5\%\f$ (its scan's standard level *is* the absorbed `MMS_CoupledRefined` twin) |
+| `MMS_Coupled/` | MMS with \f$b=(y,-x)\f$ — **both force components**: \f$\Delta p = -0.60 \pm 5\%\f$ (its scan's standard level *is* the absorbed `MMS_CoupledRefined` twin); the same form also carries the **3D twin** as a second dataset (`mms_coupled_3d`, coarse-mesh regression) |
 | `Coupled_Feedback/` | both coupling modes: the baseline documents the one-way limit (\f$b\f$ frozen to machine precision with \f$u_0 \neq 0\f$), the merged `twoway_feedback.data` case (`vitesse_hydraulique`) asserts the two-way discriminator \f$10^{-3} < \max_t \|\mathbf{b}-\mathbf{b}_0\| < 0.5\f$ |
 | `HartmannTwoWay/` | the **quantitative** two-way follow-up announced by `Coupled_Feedback`: a channel driven by an imposed pressure difference with both feedbacks live — the solved \f$u\f$ relaxes to the analytic Hartmann profile (\f$\mathrm{Ha}=5\f$, centreline 12.7× below Poiseuille, core error < 1 %), the stretching source induces the analytic \f$b_x\f$ from the *solved* velocity, and the open boundaries impose the analytic magnetic-pressure profile \f$p(y) = P - b_x(y)^2/(2\mu_0)\f$ (which kills the spurious cross-flow a uniform \f$p\f$ would leave); a **Hartmann-number scan** (\f$\mathrm{Ha} \in \{2.5, 5, 7.9\}\f$) maps the suppression factor \f$\sigma(\mathrm{Ha}) = \mathrm{Ha}^2/(2(1-1/\cosh\mathrm{Ha}))\f$ — the low-Rm regime map of PLAN_mhd_coupled §2.5 |
-| `MMS_Coupled3D/` (in `MagneticCoupled3D/`) | 3D twin (coarse-mesh regression, ~50 % bound) |
 | `ErrorInputs/` | the four merged malformed-input datasets (`error_bad_force`, `error_missing_ps`, `error_two_way_no_ns`, `error_two_way_both_velocities`): each rejected with a non-zero exit and a readable diagnostic (also removing the historical duplicate `Error_MissingPressureSolver` row) |
 
 The **Ha axis** of the low-Rm regime map is covered by `HartmannTwoWay`'s
@@ -230,27 +230,54 @@ Design choices worth knowing:
 
 ## `Postraitement_fields` — derived MHD post-treatment fields
 
-One form per post-treatment field of
-@ref TrustLiMe_model "Problems, equations and boundary conditions" §4bis, each
-with one 1-probe dataset asserting the analytic value of the field on a
-uniform (or exactly-linear) configuration:
+Two forms, merged by dimension, covering every post-treatment field of
+@ref TrustLiMe_model "Problems, equations and boundary conditions" §4bis. The
+fields split into two physical families that cannot share one state, so each
+form carries **two datasets** (the `MMS_2D` pattern: several `.data` templates,
+one notebook, one form folder):
 
-| Form | Field | Configuration | Checked value |
-|---|---|---|---|
-| `EnergieMagnetique` | `energie_magnetique` | \f$ b_0 = 2.5 \f$, \f$ \mu_0 = 2 \f$ | \f$ 6.25/4 = 1.5625 \f$ |
-| `PulsationCyclotronique` | `pulsation_cyclotronique` | \f$ b_0 = 2.5 \f$, \f$ q/m = 2 \f$ (keyword) | \f$ 5 \f$ |
-| `VecteurPoynting` | `vecteur_poynting` | \f$ b = (1,2) \f$, \f$ u = (3,4) \f$, \f$ \mu_0 = 1 \f$ | \f$ S = (4, -2) \f$ |
-| `HeliciteCroisee` | `helicite_croisee` | \f$ b = (1,2) \f$, \f$ u = (3,4) \f$ | \f$ u\cdot b = 11 \f$ |
-| `HeliciteCinetique` | `helicite_cinetique` | 3D, \f$ u = (y, z, x) \f$ (exactly linear) | \f$ -(x{+}y{+}z) \f$ at \f$ (0.375)^3 \f$ |
-| `NombreDeReynoldsMagnetique` | `nombre_de_reynolds_magnetique` | 10×10 mesh, \f$ u = (3,0) \f$, \f$ \eta = 2 \f$ | \f$ 3\cdot 0.1/2 = 0.15 \f$ |
-| `NombreDePrandtlMagnetique` | `nombre_de_prandtl_magnetique` | \f$ \mu = 2 \f$, \f$ \rho = 4 \f$, \f$ \eta = 0.25 \f$ | \f$ \nu/\eta = 2 \f$ |
-| `TensionMagnetique` | `tension_magnetique` | \f$ b = (y, x) \f$ (exactly linear) | \f$ F_t = (x, y) \f$ at \f$ (0.45, 0.55) \f$ |
-| `DivergenceMagnetique` | `divergence_magnetique` | \f$ b = (x, y) \f$ (exactly linear) | \f$ \nabla\cdot b = 2 \f$ at \f$ (0.45, 0.55) \f$ |
-| `RotationnelMagnetique` | `rotationnel_magnetique` | \f$ b = (-y, x) \f$ (exactly linear, 2D) | \f$ w_z = 2 \f$ at \f$ (0.45, 0.55) \f$ |
-| `CourantMagnetique` | `courant_magnetique` | $b = (y, z, x)$ (exactly linear, 3D) | $J = (-1,-1,-1)$ at $(0.375, 0.375, 0.375)$ |
-| `ForceLorentz` | `force_lorentz` | $b = (-y, x)$ (exactly linear) | $F = (-0.9, -1.1)$ at $(0.45, 0.55)$ |
+| Form / dataset | Fields | Configuration |
+|---|---|---|
+| `Champs2D` / `champs2d_gradient` | `divergence_magnetique`, `rotationnel_magnetique`, `courant_magnetique`, `force_lorentz`, `tension_magnetique` | 2D, \f$ b = (x-y,\,x+y) \f$ exactly linear, \f$ \eta = 0 \f$, no velocity, \f$ \mu_0 = 2 \f$ |
+| `Champs2D` / `champs2d_transport` | `vecteur_poynting`, `helicite_croisee`, `nombre_de_reynolds_magnetique`, `nombre_de_prandtl_magnetique`, `energie_magnetique`, `pulsation_cyclotronique` | 2D, \f$ b = (3,4) \f$, \f$ u = (4,3) \f$ uniform, \f$ \eta = 0.25 \f$, \f$ \mu = 2 \f$, \f$ \rho = 4 \f$, \f$ \mu_0 = 2 \f$, \f$ q/m = 2 \f$ |
+| `Champs3D` / `champs3d_gradient` | `courant_magnetique` (full vector) | 3D, \f$ b = (y,z,x) \f$ exactly linear, \f$ \eta = 0 \f$, \f$ \mu_0 = 2 \f$ |
+| `Champs3D` / `champs3d_transport` | `helicite_cinetique` + the scalar-model (`nb_composantes 1`) branch of `energie_magnetique` and `pulsation_cyclotronique` | 3D, \f$ u = (y,z,x) \f$ exactly linear, \f$ b = 1 \f$, \f$ \eta = 1 \f$, \f$ \mu_0 = 2 \f$, \f$ q/m = 2 \f$ |
 
-Categories (ASN 28): *Validation – separate effects* — each form checks one
+| Field | Checked value | Probe |
+|---|---|---|
+| `divergence_magnetique` | \f$ \nabla\cdot b = 2 \f$ | interior \f$ (0.45,0.55) \f$ **and** wall cell \f$ (0.05,0.55) \f$ |
+| `rotationnel_magnetique` | \f$ w_z = 2 \f$ | \f$ (0.45,0.55) \f$ |
+| `courant_magnetique` | \f$ J_z = 1 \f$; 3D \f$ J = (-0.5,-0.5,-0.5) \f$ | \f$ (0.45,0.55) \f$; \f$ (0.375)^3 \f$ |
+| `force_lorentz` | \f$ F = (-1,\,-0.1) \f$ | \f$ (0.45,0.55) \f$ |
+| `tension_magnetique` | \f$ F_t = (-0.55,\,0.45) \f$ (= \f$ (-y,x) \f$) | \f$ (0.45,0.55) \f$ |
+| `vecteur_poynting` | \f$ S = (14,\,-10.5) \f$ | \f$ (0.45,0.55) \f$ |
+| `helicite_croisee` | \f$ u\cdot b = 24 \f$ | \f$ (0.45,0.55) \f$ |
+| `nombre_de_reynolds_magnetique` | \f$ R_m = |u|\,L_e/\eta = 20\,h \f$ | \f$ (0.45,0.55) \f$ |
+| `nombre_de_prandtl_magnetique` | \f$ \nu/\eta = 2 \f$ | \f$ (0.45,0.55) \f$ |
+| `energie_magnetique` | \f$ |b|^2/(2\mu_0) = 6.25 \f$ (vector), \f$ 0.25 \f$ (scalar) | \f$ (0.45,0.55) \f$; \f$ (0.375)^3 \f$ |
+| `pulsation_cyclotronique` | \f$ (q/m)|b| = 10 \f$ (vector), \f$ 2 \f$ (scalar) | \f$ (0.45,0.55) \f$; \f$ (0.375)^3 \f$ |
+| `helicite_cinetique` | \f$ u\cdot(\nabla\times u) = -(x+y+z) \f$ | \f$ (0.375)^3 \f$ |
+
+Design notes (details in `KERNEL_REUSE_NOTES.md` §11ter):
+
+- **Every constant is non-default** (\f$ \mu_0 \f$, \f$ q/m \f$, \f$ \mu \f$,
+  \f$ \rho \f$, \f$ \eta \f$), so an implementation with a hard-coded \f$ 1 \f$
+  cannot pass.
+- **The linear field keeps both invariants alive**: \f$ b=(x-y,\,x+y) \f$ gives
+  \f$ \nabla\cdot b \neq 0 \f$ *and* \f$ (\nabla\times b)_z \neq 0 \f$.
+  \f$ b=(x,y) \f$ would make the curl/current/Lorentz checks vacuous and
+  \f$ b=(-y,x) \f$ would make the divergence check vacuous.
+- **The two transport vectors are neither parallel nor orthogonal**
+  (\f$ |b|=|u|=5 \f$, \f$ u\cdot b = 24 \f$): parallel kills the Poynting
+  vector, orthogonal kills the crossed helicity.
+- **Every reference is exactly representable in 9 significant digits**, the
+  precision a `.son` probe file stores — a value such as \f$ 2\sqrt{5} \f$
+  could not be asserted to machine precision.
+- Each dataset carries the shared 3-level mesh-convergence ladder
+  (`coarse`/`standard`/`fine`, cells ×2 / ×4) and asserts the identity at
+  **every** level.
+
+Categories (ASN 28): *Validation – separate effects* — each field checks one
 physical convention (formula/sign/normalisation) against a closed-form value.
 The forms exercise both the post-processing plumbing
 (`creer_champ`/`has_champ`/`get_champ`, probes through `Postraitement`) and the

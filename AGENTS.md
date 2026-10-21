@@ -289,11 +289,11 @@ append new findings there.
 - Kernel and module **are built** (`trust-lime`, `trust-lime_semi_opt`,
   `trust-lime_opt` exist at the repo root) — the historical `libparaconf`
   configure blocker is resolved.
-- **All 38 validation forms pass** (checked 2026-10-21; 2D + 3D standalone,
+- **All 27 validation forms pass** (checked 2026-10-21; 2D + 3D standalone,
   coupled MHD 2D + 3D, post-treatment — every baseline runs
   `nbProcs=2` + `case.partition()`; the scan levels that the §18.2 kernel
-  heisenbug pins to 1 rank — `CourantMagnetique` fine, `Shercliff3D`
-  standard/fine — are the documented exceptions) and are concatenated into a
+  heisenbug pins to 1 rank — `Shercliff3D` standard/fine — are the documented
+  exceptions) and are concatenated into a
   single `trust-lime_validation.pdf` at the repo root by
   `.opencode/scripts/run-validation-pdf.sh` (rc=0). Every positive form
   also carries an in-notebook **mesh-convergence scan** on the shared
@@ -314,8 +314,12 @@ append new findings there.
   magnetic tension) are exposed by the equation via
   `creer_champ`/`has_champ`/`get_champ` with a field class
   `src/Champ_Fonc_MHD.{h,cpp}` — validation forms live in
-  `share/Validation/Rapports_automatiques/Postraitement_fields/<FormName>/`
-  (one form per field). The recipe lives in `KERNEL_REUSE_NOTES.md` §11.
+  `share/Validation/Rapports_automatiques/Postraitement_fields/`, **merged by
+  dimension**: `Champs2D/` (eleven 2D fields, two datasets — the `η = 0`
+  gradient family and the `η > 0` transport family) and `Champs3D/` (the two
+  fields with no meaningful 2D image, plus the `nb_composantes 1` scalar
+  branch of the `|b|²` fields). The recipe lives in `KERNEL_REUSE_NOTES.md`
+  §11.
 - The `induction_stretching` source needs the velocity face field's
   **auxiliary element variables** or `grad_u` reads garbage — see
   `KERNEL_REUSE_NOTES.md` ("Getting a velocity gradient for free"). Its element
@@ -349,10 +353,12 @@ append new findings there.
   Five validation forms cover the coupled path: `ForceLorentzBalance`
   (hydrostatic Δp, b=(y,0)), `MMS_Coupled` (MMS with both force
   components, b=(y,-x), Δp=−0.60 ± 5 %; its scan's standard level *is* the historical
-  `MMS_CoupledRefined` twin, absorbed), `Coupled_Feedback` (one-way
+  `MMS_CoupledRefined` twin, absorbed — and the form also carries its **3D
+  twin** as a second dataset, `mms_coupled_3d`, so the retired
+  `MMS_Coupled3D` form lives on here), `Coupled_Feedback` (one-way
   control + the merged two-way case `twoway_feedback.data`:
   `vitesse_hydraulique`, b must deviate from the frozen field),
-  `MMS_Coupled3D` (3D twin, coarse-mesh regression), and the
+  and the
   `ErrorInputs` merged negative form (the historical `error_bad_force`,
   `error_missing_ps`, `error_two_way_no_ns` and `error_two_way_both_velocities` datasets),
   **plus the quantitative two-way follow-up `HartmannTwoWay`** (the driven

@@ -8,7 +8,7 @@ this page follows them.
 
 @note Status snapshot: October 2026. Every item marked *done* below is backed
 by a green run — see @ref TrustLiMe_validation "Validation cases" for the
-38-form suite that guards it (every positive form with its mesh-convergence scan on the coarse/standard/fine ladder), and @ref TrustLiMe_testcases "Test cases" for
+28-form suite that guards it (every positive form with its mesh-convergence scan on the coarse/standard/fine ladder), and @ref TrustLiMe_testcases "Test cases" for
 the unit-test layer underneath.
 
 ---
@@ -20,9 +20,9 @@ the unit-test layer underneath.
 | M0 — standalone magnetic advection–diffusion | **done** |
 | M1 — \f$S = (b\cdot\nabla)u\f$ stretching source (`induction_stretching`) | **done** |
 | Coupled low-Rm mode — `force_lorentz` on an optional `Navier_Stokes_standard` | **done** (one-way \f$b \to\f$ momentum) |
-| Post-treatment fields (`Champ_Fonc_MHD`) and their 12 forms | **done** |
+| Post-treatment fields (`Champ_Fonc_MHD`) and their forms (merged 2026-10-21 into `Champs2D` / `Champs3D`) | **done** |
 | Coupled validation forms (7) | **done** |
-| Full validation suite — 2D, 3D twins, coupled, post-treatment | **done** — 38/38 forms pass (checked 2026-10-21; every baseline at `nbProcs=2`, the §18.2-pinned scan levels — `CourantMagnetique` fine, `Shercliff3D` standard/fine — at 1 rank), every positive form carrying its mesh-convergence scan on the `coarse`/`standard`/`fine` ladder from a single substituted `src/<case>.data` template (suite history: DiffusionRefined/MMS_CoupledRefined absorbed, TwoWayFeedback folded into Coupled_Feedback, the MMS families fused into `MMS_2D`/`MMS_3D`, the malformed-input forms merged into one `ErrorInputs` notebook per category, the Shercliff 3D twin added closing the R5 gap, the quantitative two-way `HartmannTwoWay` follow-up added) |
+| Full validation suite — 2D, 3D twins, coupled, post-treatment | **done** — 27/27 forms pass (checked 2026-10-21; every baseline at `nbProcs=2`, the §18.2-pinned scan levels — `Shercliff3D` standard/fine — at 1 rank), every positive form carrying its mesh-convergence scan on the `coarse`/`standard`/`fine` ladder from a single substituted `src/<case>.data` template (suite history: DiffusionRefined/MMS_CoupledRefined absorbed, TwoWayFeedback folded into Coupled_Feedback, the MMS families fused into `MMS_2D`/`MMS_3D`, the malformed-input forms merged into one `ErrorInputs` notebook per category, the post-treatment forms merged into `Champs2D`/`Champs3D`, `MMS_Coupled3D` folded into `MMS_Coupled` as its 3D dataset, the Shercliff 3D twin added closing the R5 gap, the quantitative two-way `HartmannTwoWay` follow-up added) |
 | Unit tests (GoogleTest, arithmetic suite) | **done** — green via `--arith-only` |
 | Two-way coupling — NS velocity feeds the magnetic convection (`vitesse_hydraulique`) | **done** (lagged staggered scheme; commits `9e5b13b`, `d484fbd`) |
 | \f$\nabla\cdot b = 0\f$ enforcement, turbulence, dynamo | **open** — sections 3–5 |
@@ -86,7 +86,8 @@ itself lives in the kernel
 carries the full vector model). The remaining untwinned forms are the
 **coupled** ones: `HartmannTwoWay/`, `ForceLorentzBalance/` and
 `Coupled_Feedback/` have no 3D counterpart yet (`MagneticCoupled3D/` holds
-`MMS_Coupled3D` only, plus the in-progress `ShercliffDuct3D`). The
+only the in-progress `ShercliffDuct3D`; the `MMS_Coupled` form carries its own
+3D twin as a second dataset). The
 `Hartmann1D` 2D/3D forms differ in probe sets by design. Worth a twin sweep
 once the form set stabilises — tracked as R5 in `AGENTS.md`.
 

@@ -1,0 +1,140 @@
+# PARALLEL OK #
+
+# ============================================================================= #
+# Post-treatment fields : helicite_cinetique + the scalar (nb=1) |b|^2 branch   #
+# ============================================================================= #
+# Merged form (post-treatment merge), 3D transport dataset.                     #
+#                                                                               #
+# 1) The kinetic helicity h_k = u . curl(u) is IDENTICALLY ZERO in 2D (the      #
+#    vorticity is out of plane and u is in plane), so it has no 2D image:       #
+#    this dataset is the only place where the three-component curl-u branch     #
+#    of mhd_curl_u_elem() and mhd_helicite_cinetique() is exercised.            #
+#   u = (y, z, x) exactly linear  =>  curl u = (-1, -1, -1)                     #
+#     => h_k = u . curl u = -(x + y + z)                                        #
+#                                                                               #
+# 2) It is also the SCALAR-model (nb_composantes 1) home of the two fields      #
+#    that read b only through |b|^2: energie_magnetique and                     #
+#    pulsation_cyclotronique. Their vector branch is checked in Champs2D;       #
+#    here nb_b = 1 pins the component loop at its degenerate end (a field       #
+#    reader that hardcoded 2 or 3 components would read out of bounds).         #
+#   b = 1 uniform, mu0 = 2  =>  e_m     = 1 / (2*2) = 0.25                      #
+#   q/m = 2                 =>  omega_c = 2 * 1     = 2                         #
+#                                                                               #
+# b is uniform and the field does not read it; a uniform b is an exact          #
+# discrete equilibrium under both advection and diffusion.                      #
+# ============================================================================= #
+dimension 3
+Pb_MHD pb
+Domaine dom
+
+# PolyMAC_MPFA works on polyhedra: convert the Pave hexahedra (3D only) #
+
+# BEGIN MESH #
+Mailler dom
+{
+    Pave pave
+    {
+        Origine              0.  0.  0.
+        Nombre_de_Noeuds     $nx $ny $nz
+        Longueurs            1.  1.  1.
+    }
+    {
+        Bord gauche   X = 0.    0. <= Y <= 1.  0. <= Z <= 1.
+        Bord droite   X = 1.    0. <= Y <= 1.  0. <= Z <= 1.
+        Bord bas      Y = 0.    0. <= X <= 1.  0. <= Z <= 1.
+        Bord haut     Y = 1.    0. <= X <= 1.  0. <= Z <= 1.
+        Bord devant   Z = 0.    0. <= X <= 1.  0. <= Y <= 1.
+        Bord derriere Z = 1.    0. <= X <= 1.  0. <= Y <= 1.
+    }
+}
+Polyedriser dom
+# END MESH #
+
+# BEGIN PARTITION
+Partition dom
+{
+    Partition_tool metis { nb_parts 2 }
+    Larg_joint 2
+    zones_name DOM
+}
+End
+END PARTITION #
+
+# BEGIN SCATTER
+Scatter DOM.Zones dom
+END SCATTER #
+
+
+Polymac_p0 dis
+
+Associate pb dom
+
+Schema_Euler_Implicite sch
+Read sch
+{
+    tinit 0.
+    tmax 0.05
+    dt_max 0.02
+    facsec 1e6
+    facsec_max 1e6
+    solveur implicite { solveur petsc cli { } }
+}
+
+Associate pb sch
+Discretize pb dis
+
+Read pb
+{
+    # Scalar model: the module transports a single magnetic component. The  #
+    # field itself does not read b; the scalar model is kept so that the     #
+    # historical dataset (and its asserted value) is unchanged.             #
+    nb_composantes 1
+    fluide_incompressible
+    {
+        mu      Champ_Uniforme 1 1.0
+        rho     Champ_Uniforme 1 1.0
+        lambda  Champ_Uniforme 1 1.0
+        Cp      Champ_Uniforme 1 1.0
+        beta_th Champ_Uniforme 1 0.0
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        diffusivite_magnetique Champ_Uniforme 1 1.0
+        # non-default permeability and charge-to-mass ratio (see header) #
+        mu0 2.0
+        rapport_charge_masse 2.0
+        # frozen linear transport velocity: u = (y, z, x) #
+        vitesse_magnetique     Champ_Fonc_xyz dom 3 y z x
+
+        diffusion  { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            gauche   Neumann_Paroi_adiabatique
+            droite   Neumann_Paroi_adiabatique
+            bas      Neumann_Paroi_adiabatique
+            haut     Neumann_Paroi_adiabatique
+            devant   Neumann_Paroi_adiabatique
+            derriere Neumann_Paroi_adiabatique
+        }
+        # uniform scalar field b = 1 #
+        initial_conditions { magnetic_field Champ_Uniforme 1 1.0 }
+  }
+
+  Postraitement
+  {
+    Sondes
+    {
+      # probe snapped to the cell centre (0.375, 0.375, 0.375) #
+      sonde_hk    grav helicite_cinetique    Periode 1e-6 Points 1 0.375 0.375 0.375
+      # scalar-model branch of the two |b|^2 fields (see header) #
+      sonde_em    grav energie_magnetique    Periode 1e-6 Points 1 0.375 0.375 0.375
+      sonde_omega grav pulsation_cyclotronique Periode 1e-6 Points 1 0.375 0.375 0.375
+    }
+  }
+
+}
+
+Solve pb

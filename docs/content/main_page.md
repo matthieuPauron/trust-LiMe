@@ -19,6 +19,7 @@ time integration, data-file parsing, and boundary/source machinery for free.
 - @subpage TrustLiMe_model
 - @subpage TrustLiMe_testcases
 - @subpage TrustLiMe_validation
+- @subpage TrustLiMe_benchmarks
 - @subpage TrustLiMe_plans
 - @subpage TrustLiMe_api
 - @subpage TrustLiMe_docsys

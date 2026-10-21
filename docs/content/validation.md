@@ -22,10 +22,10 @@ share/Validation/Rapports_automatiques/
 │   └── <FormName>/…                # (Polyedriser dom after Mailler — see below)
 ├── MagneticCoupled/                # coupled low-Rm MHD (2D, incl. the merged
 │   └── <FormName>/…                #   one-way + two-way feedback form)
-├── MagneticCoupled3D/              # the 3D coupled twins
-│   └── <FormName>/…                # (MMS_Coupled3D; ShercliffDuct3D in progress)
-└── Postraitement_fields/           # one form per post-treatment field
-    └── <FormName>/…                # (∇b / |b|² / u·b based — see the table below)
+├── MagneticCoupled3D/              # 3D-only coupled forms (the MMS twin now
+│   └── <FormName>/…                #   lives in MagneticCoupled/MMS_Coupled/)
+└── Postraitement_fields/           # merged by dimension (2026-10-21)
+    └── Champs2D/ Champs3D/         # (∇b / |b|² / u·b based — two datasets each)
 ```
 
 The `MagneticStandalone3D` forms differ from their 2D counterpart only in the
@@ -69,10 +69,10 @@ dataset into `build/<dataset name>/` where the results (`.son` probes, `.dt_ev`,
 
 Each form can be exported to PDF and the per-form PDFs concatenated into a
 single report at the repository root (`trust-lime_validation.pdf`,
-38 forms: the 2D and 3D standalone families (the 3D MMS cases fused as
+28 forms: the 2D and 3D standalone families (the 3D MMS cases fused as
 `MMS_3D`, the Shercliff twins `Shercliff2D`/`Shercliff3D`), the coupled-MHD
 forms (including the quantitative two-way `HartmannTwoWay`) and the
-post-treatment fields — every
+post-treatment fields merged into `Champs2D`/`Champs3D` — every
 positive form carrying its mesh-convergence scan, and the malformed-input
 forms merged into one `ErrorInputs` notebook per category), via
 `.opencode/scripts/run-validation-pdf.sh` (execute → `--to pdf` →

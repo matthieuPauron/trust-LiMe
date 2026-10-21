@@ -523,6 +523,81 @@ not implemented in the current M0/M1 standalone scope. The baseline treatment
 (Path 1) is what is used in all existing validation cases and is consistent
 with the thermalhydraulics velocity-field assumption pattern.
 
+## 11ter. Merging the post-treatment validation forms (2026-10-21)
+
+The twelve per-field forms became **two forms, merged by dimension**:
+`Postraitement_fields/Champs2D` (eleven 2D fields) and
+`Postraitement_fields/Champs3D`. The move is architectural (one notebook per
+dimension, shared helpers, two `parallel_ok` entries instead of twelve, two PDF
+sections); the field formulas and the asserted values are unchanged in
+substance.
+
+### Why a single dataset per form is impossible
+The eleven 2D fields do not share one physical state, so the 2D form carries
+**two datasets** (the `MMS_2D` pattern: several `.data` templates, one
+notebook, one form folder):
+
+| Dataset | State | Why it must be like that |
+|---|---|---|
+| `champs2d_gradient` | `b` linear, `η = 0`, no velocity | a linear `b` is an exact equilibrium only without diffusion — and the divergence probe must include a **wall** cell, whose discrete Laplacian of a linear field is `O(1/h)`, so any `η > 0` drifts it |
+| `champs2d_transport` | `b`, `u` uniform, `η = 0.25` | `nombre_de_reynolds_magnetique` divides by `η`; a uniform `b` keeps `(u·∇)b = 0` and `∇²b = 0` exactly, even at wall cells |
+
+The same split applies in 3D (`champs3d_gradient` for the vector current,
+`champs3d_transport` for the kinetic helicity, which needs a non-uniform `u`).
+
+### Design rules that make the merged state non-degenerate
+- **Non-default constants everywhere**: `mu0 2.0`, `rapport_charge_masse 2.0`,
+  `mu 2.0`, `rho 4.0`, `eta 0.25`. A formula with a hard-coded `1.0` cannot
+  pass. `mu0 = 1` (the default) would silently accept an implementation that
+  ignores the keyword.
+- **The linear field must keep both differential invariants alive**:
+  `b = (x-y, x+y)` gives `∇·b = 2` **and** `(∇×b)_z = 2`. `b = (x,y)` makes
+  curl/current/Lorentz vacuous; `b = (-y,x)` makes divergence vacuous.
+  Consequence: `tension_magnetique` on that field is `Ft = (-y, x)`
+  (`Ft_i = μ0⁻¹ Σ_j b_j ∂b_i/∂x_j` — note the index order, easy to get backwards).
+- **`b` and `u` must be neither parallel nor orthogonal** in the transport
+  dataset: parallel kills the Poynting vector, orthogonal kills the crossed
+  helicity.
+
+### Trap 1 — a `.son` probe stores only **9 significant digits**
+Discovered when `ω_c = 2√5` read back as `4.47213595` and a `1e-12`
+assertion failed. The writer is `%.9g`-equivalent, so any analytic reference
+with more than 9 significant digits can never be asserted to machine
+precision, no matter how exact the code is.
+
+Fix: **choose data whose references are exactly representable**. The transport
+dataset uses `b = (3,4)`, `u = (4,3)` (both of length 5 exactly) so that
+`S = (14, -10.5)`, `h_c = 24`, `e_m = 6.25`, `ω_c = 10`, `Rm = 20h` are all
+exact. Prefer this over loosening the tolerance — a `1e-8` tolerance would also
+hide a genuine `1e-9` regression.
+
+### Trap 2 — a `#` glued to a non-space character breaks comment toggling
+TRUST tracks comment state by toggling on every `#` **that is a standalone
+delimiter**. A closing `#` written flush against the text (`coverage.#`)
+is not recognised, so the parity flips and the *next* line is parsed as code:
+
+```
+Error while reading '(y,' from datafile ... at line 11.
+Check for missing space character.
+```
+
+Every comment line must therefore end with `" #"` (space before the final `#`).
+Check mechanically before running:
+
+```bash
+python3 - <<'PY'
+import glob, re
+for f in glob.glob('*/src/*.data'):
+    for i, ln in enumerate(open(f).read().splitlines(), 1):
+        for m in re.finditer(r'\S#', ln):
+            print(f, i, m.group(0))
+PY
+```
+
+### Cost of the merge
+One notebook run is ~4 s execute (six TRUST cases, 0.5–0.7 s of compute) plus
+the PDF step, versus twelve runs before.
+
 ## 12. Open items / gotchas found
 
 - `compile_commands.json` is stale (`c++17`); always force `-std=c++20`.
@@ -578,6 +653,16 @@ Everything learned while wiring the low-Rm Lorentz coupling
   element-velocity block `secmem(nf_tot + dim*e + d) += F(d)*poro_elem(e)*
   V_e`, skipping faces with `fcl(f,0) >= 2` (Dirichlet velocity) in the face
   block. The `fcl` table lives on `Champ_Face_base` (kernel).
+- **Matrix symmetry (P5, resolved).** `Terme_Source_Lorentz::ajouter_blocs`
+  modifies only `secmem` (the RHS vector) — it never touches the
+  matrices. The Lorentz force is an explicit, lagged source
+  ($\mathbf{J}\times\mathbf{B}\f$ evaluated at $b^s$), so it
+  does not enter the momentum matrix at all. Matrix symmetry is therefore
+  determined by the kernel operators: the PolyMAC_MPFA diffusion operator
+  is symmetric, the convection operator is non-symmetric (upwind). This is a
+  kernel-level property, not a module concern. If a future implementation
+  treats the Lorentz force implicitly (in the matrix), symmetry must be
+  revisited — but for the current lagged scheme, P5 is a non-issue.
 - **NS requires `solveur_pression`** in the equation block
   (`Param::REQUIRED` non-standard keyword of `Navier_Stokes_std`). The
   keyword is auto-prefixed: write `solveur_pression Cholesky { }` (resolves
@@ -805,6 +890,11 @@ are unchanged. Status 2026-10-20: the four coupled error forms
 — same datasets, same per-case asserts and print lines, verified
 line-identical against the historical executed outputs.)*
 
+*(Status 2026-10-21: `MMS_Coupled3D` was folded into `MagneticCoupled/MMS_Coupled`
+as a second dataset — the form now runs its 2D case and its 3D twin from one
+notebook; see §19. The `MagneticCoupled3D` category stays, holding only the
+in-progress `ShercliffDuct3D`.)*
+
 Seven forms added (`MMS_Coupled`, `MMS_CoupledRefined`, `Coupled_Feedback`,
 `MMS_Coupled3D`, `Error_BadForceKeyword`, `Error_MissingPressureSolver`,
 plus the `ForceLorentzBalance` hardening). Findings:
@@ -908,7 +998,7 @@ created, discretised and read *after* the magnetic block
   scale; for position-dependent analytics, evaluate the analytic at the
   probe's EFFECTIVE cell-centre position from the `.son` header
   (`# Temps x= ... y= [z= ...]`, tokens after normalising `=` — note the
-  token after `x` is `=`, the value is at +2). `NombreDeReynoldsMagnetique`
+  token after `x` is `=`, the value is at +2). `nombre_de_reynolds_magnetique`
   L_e is the CELL size — scale-dependent expected value.
 - **Volatile outputs in the RULE harness**: nb-compare skips `tablePerf`
   cells and must also strip the trustutils timing line
@@ -968,8 +1058,9 @@ DIFFERENT MESH than its own data file.
   mesh (e.g. Coupled_Feedback's twoway twin — that is why the M3 merge never
   tripped this).
 
-### 18.2 Layout-dependent SIGFPE in the parallel path (CourantMagnetique fine — open)
+### 18.2 Layout-dependent SIGFPE in the parallel path (post-treatment 3D fine scale — open)
 
+The form that first exposed it was the pre-merge
 `Postraitement_fields/CourantMagnetique`, fine scale (17³ nodes), case name
 `PAR_courant_magnetique`, `nbProcs=2`: 100% reproducible crash at problem
 initialisation (`signal 8 / FPE_FLTINV` right after the Fluide initialiser,
@@ -994,11 +1085,21 @@ bounds-checked with its buffers zeroed). The historical `scan/L2` run of
 the same mesh passed purely by layout luck.
 
 Interim handling (visible, not hidden — see the form's run cell): the fine
-scale of this one form runs on 1 processor; the sequential probe values
-reproduce the historical L2 values exactly (the RULE compare for the form
-is green). **The underlying memory bug must be pinned by the sanitizer pass
+scale of that form ran on 1 processor; the sequential probe values
+reproduced the historical L2 values exactly (the RULE compare was green).
+**The underlying memory bug must be pinned by the sanitizer pass
 (ASan/UBSan, `make module_custom`)** — until then any layout shift
 (name, path, build) can flip the crash on or off for any form.
+
+**2026-10-21 — the crash moved away with the post-treatment merge.** That form
+was replaced by `Postraitement_fields/Champs3D` (dataset `champs3d_gradient`,
+same 17³ fine scale, `nbProcs=2`, longer case name): 3/3 fine runs plus every
+coarse/standard run are clean, with machine-precision values, so the merged
+form carries **no** rank pin. This is exactly the predicted layout-luck
+behaviour — the kernel bug is still open, so re-verify with the sanitizer pass
+before relying on any particular name/path (and if a future rename flips it
+back on, reapply a local `nbProcs=1` for that scale rather than weakening the
+probe).
 
 **Sanitizer-pass findings 2026-10-20** (module-instrumented ASan/UBSan
 build + gdb):
@@ -1060,3 +1161,55 @@ and the segfault happens AFTER it — inside the kernel's own error-exit
 path (`Process::exit` after the interpreter error), not in the module
 (no ASan report; the path is uninstrumented). Pure-kernel defect, worth an
 upstream report regardless of what the full-kernel ASan build adds.
+
+## 19. Folding a 2D form and its 3D twin into one notebook (2026-10-21)
+
+`MagneticCoupled3D/MMS_Coupled3D` was retired: its dataset
+(`mms_coupled_3d.data`) moved into `MagneticCoupled/MMS_Coupled/src/` and the
+2D notebook grew a 3D section, so the `MMS_Coupled` form now runs **two
+datasets, two ladders**. Recipe and traps:
+
+- **One build subfolder per dataset is mandatory.** `trust -partition` writes
+  `DOM_000*.Zones` **into the case directory**, so two cases sharing a
+  `build/<scale>/` target silently overwrite each other's partition (every
+  solve then runs on the last partition's mesh). Register every case as
+  `run.addCaseFromTemplate("<case>.data", "<case>/<scale>", ...)` →
+  `build/<case>/<scale>/` (the `MMS_2D` pattern; the merged notebook keeps a
+  flat-layout fallback in `son_path()` so a single-case form still works).
+- **The `.son` file carries the `PAR_` prefix**: after `partition()`,
+  `case.dataFileName_` is `PAR_<case>`, and the probe file is
+  `build/<case>/<scale>/PAR_<case>_<sonde>.son` — resolve the subdirectory
+  from the un-prefixed name.
+- **Keep the per-geometry cells byte-identical.** Cells that did not change
+  keep their verbatim source (only the local alias `case` → `case_2d` /
+  `case_3d`), and the duplicated helpers (`read_son_all`, `read_son_dir`,
+  `probe_pos`) move into one shared helpers cell. The RULE harness
+  (`notebook-baseline.sh execute|compare`) then sees identical printed output.
+  Name the per-geometry scan helpers apart (`dp_error_2d` / `dp_error_3d`):
+  two same-named definitions in one notebook shadow each other with
+  *different* dimensionality and read like a bug.
+- **`notebook-baseline.sh execute` must run BEFORE the source notebook is
+  deleted** — the 3D snapshot is the only reference for the 3D prints.
+- **The probe positions snap to cell centres under refinement** (3D:
+  `0.375^3 → 0.3125^3` at `standard`, `0.34375^3` at `fine`), so a
+  mesh-convergence metric **must** read the effective position from the
+  `.son` header (`# Temps x= … y= … z= …`) and evaluate the analytic
+  reference there; the nominal position would carry an O(h) error that is
+  not a physics error.
+
+### 19.1 The 3D MMS baseline reference is 2D-shaped (known sharp edge)
+
+The historical 3D baseline declared
+`expected = -(0.625**2 + 0.625**2 - 0.375**2 - 0.375**2) = -0.50` — a
+**two-term, 2D-style** expression — while the 3D probes sit on the diagonal
+`(0.375,0.375,0.375)` and `(0.625,0.625,0.625)`, where the exact drop of
+`p = -(x^2+y^2+z^2)/mu0^2 rho` is `-0.75`. The check passes only because its
+bound is 50 %: the coarse mesh measures `-0.744671`, i.e. **48.9 %** away
+from `-0.50` — about 2 % of margin left. The tight statement about the 3D
+geometry is the *scan* cell, which uses the correct three-term expression at
+the effective positions (`0.7 % / 0.2 % / 0.3 %` at coarse/standard/fine).
+
+The merge deliberately keeps that baseline cell **verbatim** (contract
+unchanged). If a mesh or solver change ever trips it, the fix is one line:
+use the three-term expression and the same 5 % bound as the 2D case
+(measured margin then 7×). Do **not** widen the 50 % bound further.
