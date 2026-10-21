@@ -1,0 +1,156 @@
+# PARALLEL OK #
+
+# ============================================================================= #
+# Case S (3D) : Shercliff channel - induced field and current density          #
+# ============================================================================= #
+# 3D counterpart of MagneticStandalone/Shercliff2D: same one-dimensional      #
+# physics (every field depends on y only), same parabolic no-slip profile     #
+#     u(y) = U0 (1 - y^2/h^2),  U0 = 1, h = 0.5,                              #
+# prescribed as data (the module has no momentum equation - the induced      #
+# field is what is validated), and the same insulating-wall steady state     #
+#     b_x(y) = (B0 U0 / eta) (y^3 / (3 h^2) - y),                            #
+# an odd, mean-free profile from the initial state b = (0, B0, 0).            #
+# b_y = B0 stays an exact invariant (S_y = 0) and the third component        #
+# b_z is transported but stays identically zero (S_z = 0, no z-dependence),   #
+# so the state is exactly the 2D solution extruded along z. The full         #
+# vector model (nb_composantes 3 = dimension) also exercises the             #
+# courant_magnetique post-treatment in 3D: J = curl b / mu0 = (0, 0, J_z(y)) #
+# with J_z(y) = (B0 U0 / (eta mu0)) (1 - y^2/h^2).                          #
+# The mesh is whatever is needed in y (65 nodes) and coarse in x and z,      #
+# since nothing varies along them. PolyMAC_MPFA needs polyhedra in 3D ->     #
+# Polyedriser dom. The core probes compare tightly; the wall-layer probes    #
+# only against the documented bound (frozen-velocity gradient at wall       #
+# cells - see the 2D notebook and KERNEL_REUSE_NOTES).                      #
+# ============================================================================= #
+dimension 3
+Pb_MHD pb
+Domaine dom
+
+# plates at y = +/- 0.5 : walls are the two bords normal to Y #
+
+# BEGIN MESH #
+Mailler dom
+{
+    Pave cube
+    {
+        Origine              0. -0.5 0.
+        Nombre_de_Noeuds     $nx $ny $nz
+        Longueurs            1.  1.  1.
+    }
+    {
+        Bord gauche   X = 0.   -0.5 <= Y <= 0.5  0. <= Z <= 1.
+        Bord droite   X = 1.   -0.5 <= Y <= 0.5  0. <= Z <= 1.
+        Bord bas      Y = -0.5  0. <= X <= 1.  0. <= Z <= 1.
+        Bord haut     Y = 0.5   0. <= X <= 1.  0. <= Z <= 1.
+        Bord devant   Z = 0.    0. <= X <= 1.  -0.5 <= Y <= 0.5
+        Bord derriere Z = 1.    0. <= X <= 1.  -0.5 <= Y <= 0.5
+    }
+}
+
+Polyedriser dom
+# END MESH #
+
+# BEGIN PARTITION
+Partition dom
+{
+    Partition_tool metis { nb_parts 2 }
+    Larg_joint 2
+    zones_name DOM
+}
+End
+END PARTITION #
+
+# BEGIN SCATTER
+Scatter DOM.Zones dom
+END SCATTER #
+
+
+Polymac_p0 dis
+
+Associate pb dom
+
+Schema_Euler_Implicite sch
+Read sch
+{
+    tinit 0.
+    tmax 25.
+    dt_max 0.05
+    facsec 1e6
+    facsec_max 1e6
+    solveur implicite { solveur petsc cli { } }
+}
+
+Associate pb sch
+Discretize pb dis
+
+Read pb
+{
+    # full vector model: b = (b_x induced, B0 applied, 0) - required by the 3D  #
+    # courant_magnetique post-treatment (nb_composantes = dimension)             #
+    nb_composantes 3
+    fluide_incompressible
+    {
+        mu      Champ_Uniforme 1 1.0
+        rho     Champ_Uniforme 1 1.0
+        lambda  Champ_Uniforme 1 1.0
+        Cp      Champ_Uniforme 1 1.0
+        beta_th Champ_Uniforme 1 0.0
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        diffusivite_magnetique Champ_Uniforme 1 0.05
+        # parabolic no-slip velocity u = (U0(1-y^2/h^2), 0, 0) #
+        vitesse_magnetique     Champ_Fonc_xyz dom 3 1.0*(1-y*y/0.25) 0. 0.
+
+        diffusion  { }
+        convection { amont }
+
+        # M1 inductive stretching source S = (b.grad) u : S_x = B0 u'(y) #
+        sources
+        {
+            induction_stretching { }
+        }
+
+        boundary_conditions
+        {
+            # insulating walls: zero normal flux on all three components #
+            gauche   Neumann_Paroi_adiabatique
+            droite   Neumann_Paroi_adiabatique
+            bas      Neumann_Paroi_adiabatique
+            haut     Neumann_Paroi_adiabatique
+            devant   Neumann_Paroi_adiabatique
+            derriere Neumann_Paroi_adiabatique
+        }
+        # b = (0, B0, 0) initially : the induced field grows from zero #
+        initial_conditions { magnetic_field Champ_Uniforme 3 0. 1. 0. }
+    }
+
+  Postraitement
+  {
+    Sondes
+    {
+      # probes exactly on cell centres: x = z = 0.125, y_k = -0.5 + (k+1/2)/64 #
+      # core cells (|y| <= 0.07): tight comparison with the analytic profile #
+      sonde_c1  grav magnetic_field0 Periode 1e-6 Points 1 0.125 -0.0546875 0.125
+      sonde_c2  grav magnetic_field0 Periode 1e-6 Points 1 0.125 -0.0234375 0.125
+      sonde_c3  grav magnetic_field0 Periode 1e-6 Points 1 0.125  0.0078125 0.125
+      sonde_c4  grav magnetic_field0 Periode 1e-6 Points 1 0.125  0.0390625 0.125
+      sonde_c5  grav magnetic_field0 Periode 1e-6 Points 1 0.125  0.0703125 0.125
+      # wall-layer cells (|y| ~ 0.38): documented bound, not tight #
+      sonde_w1  grav magnetic_field0 Periode 1e-6 Points 1 0.125 -0.3828125 0.125
+      sonde_w2  grav magnetic_field0 Periode 1e-6 Points 1 0.125  0.3828125 0.125
+      # applied transverse field: exact invariant #
+      sonde_by  grav magnetic_field1 Periode 1e-6 Points 1 0.125  0.0078125 0.125
+      # third component: transported but identically zero (exact invariant) #
+      sonde_bz  grav magnetic_field2 Periode 1e-6 Points 1 0.125  0.0078125 0.125
+      # z-uniformity: same (x, y) at another cell centre along z #
+      sonde_z1  grav magnetic_field0 Periode 1e-6 Points 1 0.125  0.0078125 0.625
+      # current density J = curl b / mu0 = (0, 0, J_z(y)): vector probe #
+      sonde_j   grav courant_magnetique Periode 1e-6 Points 1 0.125  0.0078125 0.125
+    }
+  }
+
+}
+
+Solve pb

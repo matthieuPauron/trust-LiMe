@@ -206,7 +206,13 @@ check before `/validate`.
   sin(pi x)exp(-y), Poly_2D/3D are zero-field smoke tests (no sondes: their probe block is a
   guarded no-op). MMS_Diff3D needed a mesh refinement (5³ -> 21³ nodes): at 4 cells the P0
   projection excites higher discrete modes and a single-mode analytic check cannot hold.
-- **2D/3D twin gaps (R5)**: `Shercliff2D` has no 3D twin;
+- **2D/3D twin gaps (R5)**: closed for `Shercliff` — `MagneticStandalone3D/Shercliff3D/`
+  is the 3D twin of `Shercliff2D` (same assertion set plus the three exact
+  extrusion invariants `b_z = 0`, z-uniformity and the vector
+  `courant_magnetique`; it is the **only** 3D standalone form exercising the
+  full vector model, `nb_composantes 3`). Its standard/fine scan levels run on
+  1 rank with `execOptions="1"` — the missing argv count is a §18.2 crash
+  layout; see the form's notebook and `KERNEL_REUSE_NOTES.md` §18.2.
   `Hartmann1D` 2D/3D differ in probe sets by design. (The `MMS_Poly_2D`
   gap closed itself: the four 2D MMS forms are merged into `MMS_2D`, the
   four 3D twins into `MMS_3D`.) Fine for now, worth a sweep once the
@@ -264,10 +270,12 @@ append new findings there.
 - Kernel and module **are built** (`trust-lime`, `trust-lime_semi_opt`,
   `trust-lime_opt` exist at the repo root) — the historical `libparaconf`
   configure blocker is resolved.
-- **All 36 validation forms pass in 2-rank parallel** (checked 2026-10-20;
-  2D + 3D standalone, coupled MHD 2D + 3D, post-treatment — all
-  `nbProcs=2` + `case.partition()`) and are concatenated into a single
-  `trust-lime_validation.pdf` at the repo root by
+- **All 37 validation forms pass** (checked 2026-10-21; 2D + 3D standalone,
+  coupled MHD 2D + 3D, post-treatment — every baseline runs
+  `nbProcs=2` + `case.partition()`; the scan levels that the §18.2 kernel
+  heisenbug pins to 1 rank — `CourantMagnetique` fine, `Shercliff3D`
+  standard/fine — are the documented exceptions) and are concatenated into a
+  single `trust-lime_validation.pdf` at the repo root by
   `.opencode/scripts/run-validation-pdf.sh` (rc=0). Every positive form
   also carries an in-notebook **mesh-convergence scan** on the shared
   scale ladder (`coarse` = the baseline mesh, `standard` = cells ×2,

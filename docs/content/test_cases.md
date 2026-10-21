@@ -125,7 +125,7 @@ One validation form per test case (TRUST layout
 `Rapports_automatiques/<Category>/<FormName>/<FormName>.ipynb`): the folder
 holds `Invariance/`, `Diffusion/`, `Advection/`,
 `SteadyState/`, `VaryingVelocity/`, `SourceStretching/`, `Hartmann1D/`,
-`MMS_2D/` (the four historical MMS 2D cases fused: `MMS_Diff2D`, `MMS_Trig2D`,
+`Shercliff2D/`, `MMS_2D/` (the four historical MMS 2D cases fused: `MMS_Diff2D`, `MMS_Trig2D`,
 `MMS_ExpTrig2D`, `MMS_Poly_2D`) and the merged negative
 `ErrorInputs/` form (the historical `error_missing_eta`,
 `error_bad_nbcomposantes`, `error_bad_bc` datasets);
@@ -165,6 +165,8 @@ so no `.med` file is required and the cases can be run from a clean checkout.
 | `varying_velocity.data` | **spatially varying** velocity \f$u = (-y, x)\f$, uniform \f$b\f$ | Verification | exact invariant | `Champ_Don → Champ_Inc` transfer onto faces, wrong velocity components |
 | `source_stretching.data` | M1 source \f$S = (b\cdot\nabla)u\f$, \f$u = (x, -y)\f$ (div-free) | Validation – separate effects | \f$b(t) = B_0 e^{t}\f$ | source magnitude, sign, gradient-index order |
 | `hartmann_1d.data` | induced field of the Hartmann profile (\f$\mathrm{Ha}=5\f$), insulating walls, \f$b=(b_x,B_0)\f$ (`nb_composantes 2`) | Validation – separate effects | mean-free \f$b_x(y) = -\tfrac{B_0}{\eta}\big[\int_{-h}^{y}u - \tfrac12\int_{-h}^{h}u\big]\f$ | multi-component transport, M1 source driving \f$b_x\f$ through the applied \f$b_y\f$, insulating walls, odd symmetry, \f$b_y\equiv B_0\f$ |
+| `shercliff_2d.data` | induced field of the parabolic no-slip channel profile, insulating walls, \f$b=(b_x,B_0)\f$ (`nb_composantes 2`) | Validation – separate effects | \f$b_x(y) = \tfrac{B_0 U_0}{\eta}\big(\tfrac{y^3}{3h^2}-y\big)\f$ and \f$J_z(y) = \tfrac{B_0 U_0}{\eta\mu_0}\big(1-(y/h)^2\big)\f$ | M1 source with a no-slip shear profile, `courant_magnetique` post-treatment (interior parabola, zero at walls), \f$b_y\equiv B_0\f$ |
+| `shercliff_3d.data` | 3D twin (`MagneticStandalone3D/Shercliff3D/`): same 1D physics on a polyhedral mesh (`Polyedriser dom`), full vector \f$b=(b_x,B_0,0)\f$ (`nb_composantes 3`) | Validation – separate effects | same analytic profile, plus the exact extrusion invariants \f$b_z\equiv 0\f$, z-uniformity, and the vector \f$\mathbf{J}=(0,0,J_z(y))\f$ | full vector model in 3D, 3-component `courant_magnetique`, `Polyedriser` mesh path, probe snapping in 3D |
 | `error_missing_eta.data` | no `diffusivite_magnetique` | Verification | must fail cleanly | required-keyword diagnostics |
 | `error_bad_nbcomposantes.data` | `nb_composantes 7` in 2D (also invalid in 3D) | Verification | must fail cleanly | range validation |
 | `error_bad_bc.data` | unknown CL keyword | Verification | must fail cleanly | keyword error reporting |
@@ -176,21 +178,25 @@ did at a separate level (L1 = its mesh, now one of the scan levels).
 
 Design choices worth knowing:
 
-- **Most cases have a 3D twin** under `MagneticStandalone3D/<FormName>/`. The 3D
-  suite differs in two ways: `MMS_3D/` holds the four historical 3D MMS
-  cases fused (2D counterpart `MMS_2D/`), and `Shercliff2D` has no 3D twin
-  (R5 gap).
+- **Every standalone form has a 3D twin** under `MagneticStandalone3D/<FormName>/`
+  (the R5 gap on `Shercliff` is closed: `Shercliff3D/` twins `Shercliff2D/`).
+  The 3D suite differs in one way: `MMS_3D/` holds the four historical 3D MMS
+  cases fused (2D counterpart `MMS_2D/`). Twin
   forms keep the same physics and assertions; the datasets differ only in
   `dimension 3`, three-component vectors/probes and `Polyedriser dom` after
   `Mailler`. Meshes keep the 2D resolution only in the direction that matters
   (e.g. the diffusion mode direction) and stay coarse elsewhere, so the 3D runs
-  are affordable.
+  are affordable. `Shercliff3D` additionally asserts the exact invariants of
+  the extrusion (`b_z = 0`, z-uniformity, vector `courant_magnetique`) and is
+  the only 3D standalone form running the full vector model (`nb_composantes 3`).
 - **`nb_composantes`** — most standalone cases transport a single component
   (`nb_composantes 1`), the natural reduction of \f$\nabla\cdot b = 0\f$ for a
   purely transverse field. The multi-component (vector) unknown is exercised by
-  `hartmann_1d` (`nb_composantes 2`, so the M1 source can drive the induced
-  \f$b_x\f$ through the applied \f$b_y\f$) and by the `Postraitement_fields`
-  forms; the valid range is \f$[1, \mathrm{dimension}]\f$ (`error_bad_nbcomposantes`
+  `hartmann_1d` and `shercliff_2d` (`nb_composantes 2`, so the M1 source can
+  drive the induced \f$b_x\f$ through the applied \f$b_y\f$), by `shercliff_3d`
+  (`nb_composantes 3`, required by the 3D `courant_magnetique` post-treatment)
+  and by the `Postraitement_fields` forms; the valid range is
+  \f$[1, \mathrm{dimension}]\f$ (`error_bad_nbcomposantes`
   pins the rejection of out-of-range values).
 - **Probes use `grav`** — they are snapped to the nearest cell centre. The
   diffusion check therefore compares the *amplitude ratio* \f$b(t)/b(0)\f$,

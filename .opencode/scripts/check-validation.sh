@@ -112,6 +112,7 @@ parallel_ok=(
   "$base/MagneticStandalone3D/ErrorInputs/"
   "$base/MagneticStandalone3D/Hartmann1D/"
   "$base/MagneticStandalone3D/Invariance/"
+  "$base/MagneticStandalone3D/Shercliff3D/"
   "$base/MagneticStandalone3D/SourceStretching/"
   "$base/MagneticStandalone3D/SteadyState/"
   "$base/MagneticStandalone3D/VaryingVelocity/"
