@@ -139,13 +139,14 @@ target the magnetic induction equation solved in standalone form.
 The `force_lorentz` keyword activates a one-way coupled momentum equation
 via `J × B`. The **two-way** mode adds the `vitesse_hydraulique` keyword on
 the magnetic equation (solved NS velocity as transport velocity, bound in
-`completer()`). Five forms cover the coupled path:
+`completer()`). Six forms cover the coupled path:
 
 | Form | What it validates |
 |---|---|
 | `ForceLorentzBalance/` | hydrostatic balance with \f$b=(y,0)\f$: \f$\Delta p = -0.18 \pm 10\%\f$, \f$u \to 0\f$ |
 | `MMS_Coupled/` | MMS with \f$b=(y,-x)\f$ — **both force components**: \f$\Delta p = -0.60 \pm 5\%\f$ (its scan's standard level *is* the absorbed `MMS_CoupledRefined` twin) |
 | `Coupled_Feedback/` | both coupling modes: the baseline documents the one-way limit (\f$b\f$ frozen to machine precision with \f$u_0 \neq 0\f$), the merged `twoway_feedback.data` case (\f`vitesse_hydraulique`\f) asserts the two-way discriminator \f$10^{-3} < \max_t \|\mathbf{b}-\mathbf{b}_0\| < 0.5\f$ |
+| `HartmannTwoWay/` | the **quantitative** two-way follow-up announced by `Coupled_Feedback`: a channel driven by an imposed pressure difference with both feedbacks live — the solved \f$u\f$ relaxes to the analytic Hartmann profile (\f$\mathrm{Ha}=5\f$, centreline 12.7× below Poiseuille, core error < 1 %), the stretching source induces the analytic \f$b_x\f$ from the *solved* velocity, and the open boundaries impose the analytic magnetic-pressure profile \f$p(y) = P - b_x(y)^2/(2\mu_0)\f$ (which kills the spurious cross-flow a uniform \f$p\f$ would leave) |
 | `MMS_Coupled3D/` (in `MagneticCoupled3D/`) | 3D twin (coarse-mesh regression, ~50 % bound) |
 | `ErrorInputs/` | the four merged malformed-input datasets (`error_bad_force`, `error_missing_ps`, `error_two_way_no_ns`, `error_two_way_both_velocities`): each rejected with a non-zero exit and a readable diagnostic (also removing the historical duplicate `Error_MissingPressureSolver` row) |
 
@@ -262,5 +263,8 @@ elementwise arithmetic — which is pinned harder (layout conventions) by
 still reference the pre-rewrite dataset layout (a Navier–Stokes + energy +
 magnetic system), which is **not** what the current standalone module solves.
 The coupled low-Rm mode (`force_lorentz` + optional `Navier_Stokes_standard`)
-is now wired in `Pb_MHD` and validated by `MagneticCoupled/ForceLorentzBalance/`.
+is now wired in `Pb_MHD` and validated by `MagneticCoupled/ForceLorentzBalance/`;
+the driven-Hartmann physics the historical `HartmannFlow` case aimed at is
+now covered — quantitatively and with both feedbacks live — by
+`MagneticCoupled/HartmannTwoWay/`.
 The Shercliff 3D duct benchmark remains an open coupled-case target.

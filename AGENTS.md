@@ -270,7 +270,7 @@ append new findings there.
 - Kernel and module **are built** (`trust-lime`, `trust-lime_semi_opt`,
   `trust-lime_opt` exist at the repo root) — the historical `libparaconf`
   configure blocker is resolved.
-- **All 37 validation forms pass** (checked 2026-10-21; 2D + 3D standalone,
+- **All 38 validation forms pass** (checked 2026-10-21; 2D + 3D standalone,
   coupled MHD 2D + 3D, post-treatment — every baseline runs
   `nbProcs=2` + `case.partition()`; the scan levels that the §18.2 kernel
   heisenbug pins to 1 rank — `CourantMagnetique` fine, `Shercliff3D`
@@ -335,13 +335,21 @@ append new findings there.
   `vitesse_hydraulique`, b must deviate from the frozen field),
   `MMS_Coupled3D` (3D twin, coarse-mesh regression), and the
   `ErrorInputs` merged negative form (the historical `error_bad_force`,
-  `error_missing_ps`, `error_two_way_no_ns` and `error_two_way_both_velocities` datasets).
+  `error_missing_ps`, `error_two_way_no_ns` and `error_two_way_both_velocities` datasets),
+  **plus the quantitative two-way follow-up `HartmannTwoWay`** (the driven
+  Hartmann flow with both feedbacks live: solved u relaxes to the analytic
+  Hartmann profile at Ha=5 — 12.7× below Poiseuille —, the stretching source
+  induces the analytic b_x from the solved u, and the open pressure
+  boundaries impose the analytic magnetic-pressure profile p(y) = P −
+  b_x²/2μ₀, which kills the spurious cross-flow; this replaces the
+  qualitative `1e-3 < ‖b−b₀‖ < 0.5` band with checks at the 0.4–1 % level).
   Recipe and traps (source-typing suffix, `solveur_pression`, the static
   `trust-lime_opt` rebuild, the `Operateur_Conv` wrapper two-hop binding)
   in `KERNEL_REUSE_NOTES.md` §12bis/§12ter.
 - **Unit tests** live in `tests/UnitTests/` (GoogleTest, kernel conventions).
-  The arithmetic suite (`--arith-only`) **runs and passes** today; the rest
-  needs the full kernel.
+  The full suite **runs and passes** — 42 tests from 9 suites, including the
+  `Terme_Source_Lorentz` data-file contract (`unit_lorentz_source.cpp`); the
+  fast path is `--arith-only` (25 tests, micro + numeric kernels only).
 
 ## Sanitizers (local debugging)
 

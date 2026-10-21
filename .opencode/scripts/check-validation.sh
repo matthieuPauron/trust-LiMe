@@ -118,6 +118,7 @@ parallel_ok=(
   "$base/MagneticStandalone3D/VaryingVelocity/"
   # --- MagneticCoupled ---
   "$base/MagneticCoupled/ForceLorentzBalance/"
+  "$base/MagneticCoupled/HartmannTwoWay/"
   "$base/MagneticCoupled/MMS_Coupled/"
   "$base/MagneticCoupled/Coupled_Feedback/"
   "$base/MagneticCoupled/ErrorInputs/"
