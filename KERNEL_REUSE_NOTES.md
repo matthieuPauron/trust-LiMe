@@ -1000,6 +1000,48 @@ is green). **The underlying memory bug must be pinned by the sanitizer pass
 (ASan/UBSan, `make module_custom`)** — until then any layout shift
 (name, path, build) can flip the crash on or off for any form.
 
+**Sanitizer-pass findings 2026-10-20** (module-instrumented ASan/UBSan
+build + gdb):
+
+- Crash site localised: `Op_Diff_PolyMAC_MPFA_Elem::calculer_dt_stab()`
+  (kernel), from `Schema_Temps_base::initialize()` →
+  `Probleme_base::calculer_pas_de_temps()` → `Operateur::calculer_pas_de_temps()`.
+  FPE_FLTOVF: the `dt = min(dt, pe(e)*ve(e)*(lambda/diffu)/flux(n))` term
+  overflows because `flux(n)` is a **denormal** (~1e-316 — decoded from the
+  xmm1 divisor register at the faulting `vdivsd`): nonzero, so the
+  `flux(n)` guard passes, tiny enough that 1/flux overflows.
+- `flux` = sum over the element's faces of `nu_dot(&nu_, e, n, nf(f), nf(f))
+  / vf(f)`; `update_nu()` audited — it writes ALL rows to `nb_elem_tot`,
+  so the garbage is NOT in `nu_` itself but in one of the other reads
+  (porosite/volumes_entrelaces/joint-face data) — all kernel-side.
+- Module-only ASan does NOT fire on the crash → the uninitialized read is
+  in kernel code (uninstrumented in a module_custom build).
+- gdb heisenbug confirmed: with ASLR disabled (`set disable-randomization
+  off` missing) the run is clean; re-enabling randomization reproduces the
+  FPE — memory-layout dependence, verified at binary level.
+- Recipe for sanitizer builds (2026-10-20, works around two baltik gotchas):
+  1. `project.cfg` `ld_flags` CANNOT take `-fsanitize=...` — baltik parses
+     each ld_flags token via `find_library(<token> NAMES lib<token>.so ...)`
+     and the `=` breaks the CMake variable name. Keep project.cfg clean.
+  2. Create `$TRUST_ROOT/env/Cmake.custom` (modeled on Cmake.env) setting
+     `CMAKE_CXX_FLAGS_CUSTOM` / `CMAKE_C_FLAGS_CUSTOM` /
+     `CMAKE_EXE_LINKER_FLAGS_CUSTOM` with
+     `-fsanitize=address,undefined -fno-omit-frame-pointer -O1 -g -Wno-error`.
+  3. Third-party libs have no `_custom` builds: symlink
+     `linux_custom -> linux_opt` in `$PETSC_ROOT`, `$TRUST_KOKKOS_ROOT`,
+     `$TRUST_MEDCOUPLING_ROOT`.
+  4. Module-only instrumentation: also symlink
+     `lib/TRUST_mpi_custom.a -> TRUST_mpi_opt.a` (+ `_gfort`/micro variants)
+     then `./configure && make module_custom` (minutes); the binary is
+     `trust-lime_custom`.
+  5. Full-kernel instrumentation: run `make custom` in the TRUST checkout
+     (builds TRUST_mpi_custom.a), then `make custom` in the module —
+     hours, but the only way to instrument kernel-side reads.
+  6. `ASAN_OPTIONS=handle_sigfpe=2` makes ASan print a symbolised stack
+     for kernel FPEs even in partially instrumented builds — that is how
+     the crash site was localised; `detect_leaks=0` (TRUST's exit path is
+     not leak-clean by design).
+
 
 ### 18.3 The coupled error path segfaults after printing its diagnostic (open)
 
@@ -1010,5 +1052,11 @@ were created (the historical notebooks show the same `rc=139` tails — the
 bash wrapper's crash report, which embeds the volatile PID, is what lands
 in the `tail[0][:90]` print line); the merged `ErrorInputs` form keeps the
 behaviour and its asserts treat any non-zero exit as the pass condition.
-Same family suspicion as §18.2 (the diagnostic goes through
-`Process::exit`-adjacent cleanup paths) — fold into the sanitizer pass.
+
+**Sanitizer-pass finding 2026-10-20**: under the module-instrumented ASan
+binary the diagnostic prints COMPLETELY ("INVALID_KEYWORD not understood
+by force_lorentz_Face_PolyMAC_CDO ... TRUST caused error and will stop")
+and the segfault happens AFTER it — inside the kernel's own error-exit
+path (`Process::exit` after the interpreter error), not in the module
+(no ASan report; the path is uninstrumented). Pure-kernel defect, worth an
+upstream report regardless of what the full-kernel ASan build adds.
