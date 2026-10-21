@@ -99,10 +99,27 @@ agent mentions:
 
 | Agent / model | Use it for |
 |---|---|
-| `build` (default) — `opencode/big-pickle` | Day-to-day editing and build loops |
-| `@long` — `opencode/space-bunny-free` (1M ctx) | Large multi-file analysis; whole-file reads before edits |
-| `@quick` — `opencode/ling-3.1-flash-free` | Small one-off questions, summaries |
+| `build` (default) — `opencode/beam-free` (1M ctx) | Day-to-day editing and build loops |
+| `@long` — `opencode/beam-free` (1M ctx) | Large multi-file analysis; whole-file reads before edits |
+| `@quick` — `opencode/deepseek-v4.1-flash-free` | Small one-off questions, summaries |
 | `/models` in the TUI | Switch the model for the next message |
+
+All pins are OpenCode Zen **free** models, each on a different model id so the
+per-model rate limits stay independent. `opencode/beam-free` (Reflection Beam
+1.0 501B-A23B) is the build/long default: best free coding scores in the tier
+(SWE-bench Verified 81.6) and a 1M ctx window, which matters here — the
+session prefix alone is 100–150 k tokens, so the 200 k models
+(`big-pickle`, `deepseek-v4.1-flash-free`, `glm-5.3-flash-free`) sit at the
+compaction ceiling.
+
+Dead pins — **do not re-add**: `opencode/space-bunny-free`,
+`opencode/ling-3.1-flash-free` (both removed from the Zen catalog), and
+`opencode/flint-40b-free` / `opencode/longcat-2.5-preview-free` (listed in the
+catalog but their endpoints answer *"Endpoint is unavailable"*). Verify a new
+model from inside OpenCode before pinning it: a direct `curl` to
+`opencode.ai/inference/v1/chat/completions` is rejected with
+`FreeTierError` ("free tier can only be used from within OpenCode"), so use a
+throwaway `subagent` run instead.
 
 Build output is filtered by the `rtk` plugin, and global `tool_output` limits
 were raised so long compile errors are not clipped. Keep the primary loop:
@@ -117,9 +134,10 @@ commit per session — see `trust-lime-coding`), but **serialise the generation*
 - Keep **one heavy session** (build/plan) actively generating, plus at most one
   light one (`@quick`, `/syntax`, `/check-validation`). Stagger the rest.
 - **Different model per session**, not just different sessions: per-model limits
-  are independent. Heavy work → `big-pickle`; big-context analysis →
-  `space-bunny-free` (most expensive, reserve it); lookups →
-  `ling-3.1-flash-free`; alternate session → `deepseek-v4.1-flash-free`.
+  are independent. Heavy work → `beam-free`; big-context analysis →
+  `beam-free` (1M ctx, most expensive — reserve it); lookups →
+  `deepseek-v4.1-flash-free`; alternate session → `nemotron-3.5-lightning-free`
+  or `big-pickle`.
 - Every turn re-sends the session prefix (~100–150 k tokens, ~100 % cache-read).
   N sessions turning in the same minute-window is N large prompts — the most
   likely way to trip the ceiling. Interleaved idle sessions also lose the
@@ -155,8 +173,9 @@ Set up 2026-10-13, on the workstation only — the T430s has no Hermes install.
   `/v1/models` still answered), which also broke the OpenCode default
   (`nvidia/moonshotai/kimi-k3`). On 2026-10-17 kimi-k3 was fully
   discontinued from the NIM API, so the global default (and the build/plan
-  agent pins) moved to `opencode/big-pickle`. The cron job is pinned with
-  `--provider gemini --model gemini-3.1-flash-lite`, and any `opencode run`
+  agent pins) moved to `opencode/big-pickle`. Those pins have since moved on
+  to `opencode/beam-free` (see the model table above). The cron job is pinned
+  with `--provider gemini --model gemini-3.1-flash-lite`, and any `opencode run`
   should pass `--model google/gemini-3.1-flash-lite` while that persists.
 - `opencode` must resolve on the **gateway's** `PATH`, not just an interactive
   shell: `~/.local/bin/opencode -> ~/.opencode/bin/opencode` provides that.
