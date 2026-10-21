@@ -1,0 +1,154 @@
+# PARALLEL OK #
+
+# ============================================================================= #
+# Coupled MHD : TWO-WAY Hartmann flow - Hartmann-number scan template            #
+# ============================================================================= #
+# Same case as hartmann_two_way.data (same channel, same driving, same           #
+# contracts) with the Hartmann number as a parameter:                            #
+#     Ha = B0 h / sqrt(mu mu0 eta)  =>  eta = (B0 h / Ha)^2 / (mu mu0)          #
+# For B0 = mu = mu0 = 1, h = 0.5 and the driving G = dp/L = 1:                    #
+#     C   = G h^2 / (mu Ha^2) = 0.25/Ha^2,  and  C/eta = 1  identically,          #
+#     u_H(0)  = C (1 - 1/cosh(Ha)),      sigma(Ha) = u_P(0)/u_H(0)               #
+#             = (Ha^2/2)(1 - 1/cosh(Ha))^-1  ... the suppression factor           #
+#     b_x(y)  = sinh(Ha y/h) h/(Ha cosh(Ha)) - y   (the C/eta = 1 identity)      #
+# The notebook substitutes $eta (diffusivity, = 0.25/Ha^2), $ka (= Ha/h),         #
+# $kfac (= h/(Ha cosh(Ha))), $tmax (= h^2/eta, the magnetic diffusion time        #
+# rounded up) and the mesh counts.  The pressure boundary profiles impose        #
+# p(y) = P - b_x(y)^2/(2 mu0) with the same closed forms.                         #
+# ============================================================================= #
+dimension 2
+Pb_MHD pb
+Domaine dom
+
+# plates at y = +/- 0.5 : walls are the two bords normal to Y #
+
+# BEGIN MESH #
+Mailler dom
+{
+    Pave pave
+    {
+        Origine              0. -0.5
+        Nombre_de_Noeuds     $nx $ny
+        Longueurs            1.  1.
+    }
+    {
+        Bord gauche   X = 0.   -0.5 <= Y <= 0.5
+        Bord droite   X = 1.   -0.5 <= Y <= 0.5
+        Bord bas      Y = -0.5  0. <= X <= 1.
+        Bord haut     Y = 0.5   0. <= X <= 1.
+    }
+}
+# END MESH #
+
+# BEGIN PARTITION
+Partition dom
+{
+    Partition_tool metis { nb_parts 2 }
+    Larg_joint 2
+    zones_name DOM
+}
+End
+END PARTITION #
+
+# BEGIN SCATTER
+Scatter DOM.Zones dom
+END SCATTER #
+
+
+Polymac_p0 dis
+
+Associate pb dom
+
+Schema_Euler_Implicite sch
+Read sch
+{
+    tinit 0.
+    tmax $tmax
+    dt_max 0.05
+    facsec 1e6
+    facsec_max 1e6
+    solveur implicite { solveur petsc cli { } }
+}
+
+Associate pb sch
+Discretize pb dis
+
+Read pb
+{
+    # vector model: b = (b_x induced, B0 applied) #
+    nb_composantes 2
+    fluide_incompressible
+    {
+        mu      Champ_Uniforme 1 1.0
+        rho     Champ_Uniforme 1 1.0
+        lambda  Champ_Uniforme 1 1.0
+        Cp      Champ_Uniforme 1 1.0
+        beta_th Champ_Uniforme 1 0.0
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        diffusivite_magnetique Champ_Uniforme 1 $eta
+        vitesse_hydraulique
+
+        diffusion  { }
+        convection { amont }
+
+        sources
+        {
+            induction_stretching { }
+        }
+
+        boundary_conditions
+        {
+            gauche  Neumann_Paroi_adiabatique
+            droite  Neumann_Paroi_adiabatique
+            bas     Neumann_Paroi_adiabatique
+            haut    Neumann_Paroi_adiabatique
+        }
+        initial_conditions { magnetic_field Champ_Uniforme 2 0. 1. }
+    }
+
+    Navier_Stokes_standard
+    {
+        solveur_pression Petsc Cholesky { }
+        diffusion  { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            # open boundaries: dp = 1 over L = 1 with the analytic             #
+            # magnetic-pressure profile p(y) = P - b_x(y)^2/(2 mu0),           #
+            # b_x(y) = sinh($ka*y)*$kfac - y   (the C/eta = 1 identity)        #
+            gauche   frontiere_ouverte_pression_imposee Champ_front_fonc_txyz 1 1.-0.5*(sinh($ka*y)*$kfac-y)*(sinh($ka*y)*$kfac-y)
+            droite   frontiere_ouverte_pression_imposee Champ_front_fonc_txyz 1 -0.5*(sinh($ka*y)*$kfac-y)*(sinh($ka*y)*$kfac-y)
+            bas      paroi_fixe
+            haut     paroi_fixe
+        }
+        initial_conditions
+        {
+            vitesse Champ_Uniforme 2 0. 0.
+        }
+        sources
+        {
+            force_lorentz { }
+        }
+    }
+
+    Postraitement
+    {
+        Sondes
+        {
+            sonde_u0 grav vitesse Periode 1e-6 Points 1 0.375 0.0078125
+            sonde_u1 grav vitesse Periode 1e-6 Points 1 0.375 -0.0546875
+            sonde_u2 grav vitesse Periode 1e-6 Points 1 0.375 -0.1796875
+            sonde_u3 grav vitesse Periode 1e-6 Points 1 0.375 -0.3046875
+            sonde_b0 grav magnetic_field0 Periode 1e-6 Points 1 0.375 0.0078125
+            sonde_b3 grav magnetic_field0 Periode 1e-6 Points 1 0.375 -0.3046875
+            sonde_by grav magnetic_field1 Periode 1e-6 Points 1 0.375 0.0078125
+        }
+    }
+
+}
+
+Solve pb

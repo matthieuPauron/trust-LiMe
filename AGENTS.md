@@ -343,6 +343,10 @@ append new findings there.
   boundaries impose the analytic magnetic-pressure profile p(y) = P −
   b_x²/2μ₀, which kills the spurious cross-flow; this replaces the
   qualitative `1e-3 < ‖b−b₀‖ < 0.5` band with checks at the 0.4–1 % level).
+  Its **Hartmann-number scan** (Ha ∈ {2.5, 5, 7.9}, the parameter template
+  `hartmann_two_way_ha.data`) maps the suppression factor
+  σ(Ha) = Ha²/(2(1−1/cosh Ha)) — the low-Rm regime map of the coupled plan —
+  reproduced within 1.5 % at every point.
   Recipe and traps (source-typing suffix, `solveur_pression`, the static
   `trust-lime_opt` rebuild, the `Operateur_Conv` wrapper two-hop binding)
   in `KERNEL_REUSE_NOTES.md` §12bis/§12ter.
