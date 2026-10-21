@@ -1,5 +1,14 @@
 # Improved Work Plan — MHD Integration in trust-LiMe baltik
 
+> **STATUS (2026-10-21): SUPERSEDED — historical record.** The parts of this
+> plan that shipped are the M0/M1 formulation, the vector unknown, the
+> `induction_stretching` source and the Lorentz force (`force_lorentz`, plus
+> the two-way `vitesse_hydraulique` pathway). The divergence-free (M3)
+> formulation and the `paroi_conductrice_magnetique` boundary condition remain
+> deferred. The checkboxes below were never ticked; live status is
+> `AGENTS.md` § « Current state » and `docs/content/plans.md`. Read this file
+> as the original design intent, not as a task list.
+
 ## Overview
 
 This plan describes how to integrate Magnetohydrodynamics (MHD) models described in the
@@ -9,7 +18,8 @@ existing `PLAN_magnetic_standalone.md` plan by:
 
 - **Proper vector treatment** of the magnetic field `b` (ndim components, not scalar)
 - **Consistent sign conventions** matching the MHD literature
-- **Groundwork for Lorentz force** coupling (deferred but with infrastructure)
+- **Groundwork for Lorentz force** coupling (deferred when this plan was
+  written; **implemented** since — see the STATUS banner)
 - **Magnetic divergence control** at the discretization level
 - **Analytic validation** against classic MHD solutions from the textbooks
 - **Extended discretization options** beyond P0 while maintaining P0 fallback

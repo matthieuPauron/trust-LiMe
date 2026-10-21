@@ -19,7 +19,7 @@ with
 | Symbol | Meaning | Data keyword |
 |---|---|---|
 | \f$b\f$ | magnetic field (cell centred, `nb_composantes` components) | unknown |
-| \f$u\f$ | transporting velocity (given, face centred) | `vitesse_magnetique` |
+| \f$u\f$ | transporting velocity (face centred) | `vitesse_magnetique` (data field) or `vitesse_hydraulique` (solved NS velocity) |
 | \f$\eta\f$ | magnetic diffusivity \f$= 1/(\mu_0\sigma)\f$ | `diffusivite_magnetique` |
 
 This is the standard convection–diffusion form of the induction equation. For an
@@ -33,7 +33,7 @@ limitations* section below).
 |---|---|---|
 | **M0** | none (pure advection–diffusion) | **implemented** |
 | **M1** | \f$S = (b\cdot\nabla)u\f$ (frozen-velocity stretching) | **implemented** — kernel source term `induction_stretching` |
-| M2+ | Lorentz force \f$(\nabla\times b)\times b\f$ on momentum | deferred — needs hydrodynamics |
+| **M2+** | Lorentz force \f$(\nabla\times b)\times b\f$ on momentum | **implemented** — source term `force_lorentz` (§3ter) |
 | M3 | vector-potential / divergence-free formulation | deferred |
 
 ---
@@ -59,8 +59,8 @@ source machinery, post-processing plumbing) is inherited from the kernel:
 | `inconnue()` (×2) | return our own `Champ_Inc_base` |
 | `diffusivite_pour_transport()` | return \f$\eta\f$ instead of the fluid conductivity \f$\lambda\f$ |
 | `diffusivite_pour_pas_de_temps()` | return \f$\eta\f$ (time-step stability estimate) |
-| `vitesse_pour_transport()` | return the data velocity instead of `probleme().get_champ("vitesse")` |
-| `set_param()` | register `diffusivite_magnetique`, `vitesse_magnetique`, `nb_composantes` |
+| `vitesse_pour_transport()` | return the transport velocity instead of `probleme().get_champ("vitesse")` — the `vitesse_magnetique` data field, or the solved NS velocity once `completer()` has rebound it |
+| `set_param()` | register `diffusivite_magnetique`, `vitesse_magnetique`, `vitesse_hydraulique`, `nb_composantes` |
 | `readOn()` | fill the velocity field, rename the mass coefficient |
 | `domaine_application()` | report `"Thermique"` so kernel scalar CLs are accepted (see below) |
 
@@ -217,10 +217,12 @@ the notebook checks the pressure difference against the analytic
 \f$-0.18\f$ (within 10 %: the discrete balance carries the O(h) Green-Gauss
 wall bias) and the velocity relaxation \f$|\mathbf{u}| < 5\cdot10^{-4}\f$.
 
-The feedback \f$\mathbf{u}\f$ \f$\to\f$ magnetic convection (using the NS
-velocity as the transport velocity) is **not** wired yet: the magnetic
-equation still transports with the `vitesse_magnetique` data field, so the
-current mode is one-way \f$\mathbf{b}\f$ \f$\to\f$ momentum.
+The feedback \f$\mathbf{u}\f$ \f$\to\f$ magnetic convection **is** wired: the
+`vitesse_hydraulique` keyword on the magnetic equation makes its transport
+velocity the *solved* NS velocity, rebound in `completer()` once every equation
+is known (see §6, item 2). Without that keyword the mode stays one-way
+\f$\mathbf{b}\f$ \f$\to\f$ momentum, transporting with the `vitesse_magnetique`
+data field.
 
 ---
 
@@ -257,9 +259,10 @@ Two physics-specific magnetic BCs are now tracked:
 |---|---|---|
 | imposed field `b = b₀` | `Temperature_imposee_paroi` (Dirichlet, per component) | correct |
 | zero‑flux / `∂b/∂n = 0` | `Neumann_Paroi_adiabatique` / `Paroi` | correct |
-| insulating wall `b·n = 0` | — none — | **deferred** |
-| perfect conductor `b×n = 0` | — none — | **deferred** |
-| far‑field / vacuum outside | — none (non‑local) | **deferred** |
+| insulating wall, zero normal flux | `paroi_isolante_magnetique` (homogeneous Neumann, every component) | **implemented** (Phase B.1) |
+| strict `b·n = 0` (field tangent to the wall) | none (needs Dirichlet on the normal component only) | **deferred** |
+| perfect conductor `b×n = 0` | none (needs a per-component CL class) | **deferred** (Phase B.2) |
+| far‑field / vacuum outside | none (non‑local) | **deferred** |
 
 ---
 
@@ -280,7 +283,7 @@ Two physics-specific magnetic BCs are now tracked:
 ## 4bis. Post-treatment fields
 
 The equation exposes the following **derived MHD fields**, computed on demand
-from the solved magnetic field `b` and the frozen velocity `u` (element P0
+from the solved magnetic field `b` and the transport velocity `u` (element P0
 fields, same support as `magnetic_field`). They are registered through the
 equation's `creer_champ` / `has_champ` / `get_champ` hooks, so they are usable
 by name in `Postraitement` (`champs`, `Sondes`, `Statistiques`) like any
@@ -315,7 +318,8 @@ Conventions and deferred scope:
   *global* number is a user-supplied value (as for the hydraulic Re); supply it
   yourself with a `Definition_champs`/`Transformation` if needed.
 - **Crossed helicity** and **Poynting** need the velocity: they are computed
-  from the frozen `vitesse_magnetique` (zero if not specified).
+  from the transport velocity — the `vitesse_magnetique` data field, or the
+  solved NS velocity in two-way mode (zero if neither is specified).
 - Fields in a *vector* magnetic equation (`nb_composantes 2` or more) include
   every transported component; the untransported components act as \f$0\f$
   (scalar model: \f$b\f$ has one component).

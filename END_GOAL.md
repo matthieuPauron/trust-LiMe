@@ -147,8 +147,12 @@ Implementation approach:
   `vitesse_hydraulique` (coupled mode)
 
 **Trust-LiMe + VKS:**
-- The module currently solves the standalone induction equation
-- For full VKS, would need: two-equation coupled mode (MHD + NS)
+- The module solves the standalone induction equation **and**, in coupled mode,
+  the two-equation low-Rm MHD system (magnetic + Navier-Stokes, with both
+  feedback directions live: `force_lorentz` on momentum, `vitesse_hydraulique`
+  on the magnetic transport velocity)
+- For full VKS, would need: the high-Rm nonlinear regime — turbulent EDM,
+  a fully nonlinear (non-lagged) coupling, and unsteady dynamo saturation
 - Impeller rotation through time-dependent velocity field
 - Sodium properties parameterization
 - Parallel execution for large 3D meshes
@@ -156,7 +160,9 @@ Implementation approach:
 
 **trust-LiMe limitations for VKS:**
 - Low-Rm approximation (Rm ≪ 1) validated against breeding blanket ranges
-- One-way coupling: NS velocity does not feed magnetic convection yet
+- Two-way coupling is implemented but **lagged and explicit**: the staggered
+  scheme `bˢ⁺¹ = F(bˢ,uˢ)`, `uˢ⁺¹ = G(uˢ,bˢ)` linearizes both the Lorentz and the
+  stretching terms — not the nonlinear high-Rm MHD a dynamo needs
 - Linearized convective term `(u·\nabla)b - (b·\nabla)u - \eta\Delta b = 0`
 - No turbulent MHD models (k-ε with MHD modifications not implemented)
 - Div-b not enforced (assumed but not proven globally)
@@ -215,7 +221,9 @@ Implementation approach:
 ## 5. Roadmap for VKS Simulation
 
 ### Phase 1: Code Preparation (0-6 months)
-- Extend trust-LiMe to full two-equation coupled mode
+- Extend trust-LiMe to full two-equation coupled mode — **done** (low-Rm,
+  lagged: `force_lorentz` on momentum + `vitesse_hydraulique` on the magnetic
+  transport velocity)
 - Implement impeller rotation boundary conditions
 - Sodium property parameterization (temperature-dependent conductivity)
 - TrioCFD MHD capability assessment

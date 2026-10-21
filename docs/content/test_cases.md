@@ -24,6 +24,7 @@ The module has **two** kinds of tests:
 | `unit_induction_source.cpp` | `induction_stretching` keyword; `readOn()` consumes its own braces (regression); unknown keyword is rejected |
 | `unit_induction_kernel.cpp` | the arithmetic of \f$S = (b\cdot\nabla)u\f$: index layout, single-component case, accumulation, element-wise application |
 | `unit_mhd_postraitement_kernel.cpp` | the arithmetic of the post-treatment fields: \f$|b|^2\f$, energy, cyclotron, \f$u\cdot b\f$, Poynting, curl/helicity index order, \f$Rm\f$, \f$Pm\f$ |
+| `unit_lorentz_source.cpp` | the `force_lorentz` data-file contract: keyword registration, `readOn()` consumes its own braces, the `mu0` override and its fallback to the bound magnetic equation; rejects a non-positive `mu0`, an unknown keyword, and a problem with no magnetic equation |
 
 `unit_induction_kernel.cpp` deserves a special mention: the kernel velocity
 gradient stores component \f$i\cdot\mathrm{dim}+j\f$ for
@@ -145,22 +146,23 @@ the magnetic equation (solved NS velocity as transport velocity, bound in
 |---|---|
 | `ForceLorentzBalance/` | hydrostatic balance with \f$b=(y,0)\f$: \f$\Delta p = -0.18 \pm 10\%\f$, \f$u \to 0\f$ |
 | `MMS_Coupled/` | MMS with \f$b=(y,-x)\f$ — **both force components**: \f$\Delta p = -0.60 \pm 5\%\f$ (its scan's standard level *is* the absorbed `MMS_CoupledRefined` twin) |
-| `Coupled_Feedback/` | both coupling modes: the baseline documents the one-way limit (\f$b\f$ frozen to machine precision with \f$u_0 \neq 0\f$), the merged `twoway_feedback.data` case (\f`vitesse_hydraulique`\f) asserts the two-way discriminator \f$10^{-3} < \max_t \|\mathbf{b}-\mathbf{b}_0\| < 0.5\f$ |
+| `Coupled_Feedback/` | both coupling modes: the baseline documents the one-way limit (\f$b\f$ frozen to machine precision with \f$u_0 \neq 0\f$), the merged `twoway_feedback.data` case (`vitesse_hydraulique`) asserts the two-way discriminator \f$10^{-3} < \max_t \|\mathbf{b}-\mathbf{b}_0\| < 0.5\f$ |
 | `HartmannTwoWay/` | the **quantitative** two-way follow-up announced by `Coupled_Feedback`: a channel driven by an imposed pressure difference with both feedbacks live — the solved \f$u\f$ relaxes to the analytic Hartmann profile (\f$\mathrm{Ha}=5\f$, centreline 12.7× below Poiseuille, core error < 1 %), the stretching source induces the analytic \f$b_x\f$ from the *solved* velocity, and the open boundaries impose the analytic magnetic-pressure profile \f$p(y) = P - b_x(y)^2/(2\mu_0)\f$ (which kills the spurious cross-flow a uniform \f$p\f$ would leave); a **Hartmann-number scan** (\f$\mathrm{Ha} \in \{2.5, 5, 7.9\}\f$) maps the suppression factor \f$\sigma(\mathrm{Ha}) = \mathrm{Ha}^2/(2(1-1/\cosh\mathrm{Ha}))\f$ — the low-Rm regime map of PLAN_mhd_coupled §2.5 |
 | `MMS_Coupled3D/` (in `MagneticCoupled3D/`) | 3D twin (coarse-mesh regression, ~50 % bound) |
 | `ErrorInputs/` | the four merged malformed-input datasets (`error_bad_force`, `error_missing_ps`, `error_two_way_no_ns`, `error_two_way_both_velocities`): each rejected with a non-zero exit and a readable diagnostic (also removing the historical duplicate `Error_MissingPressureSolver` row) |
 
-Further coupled benchmarks (Shercliff 3D duct, Ha/Re parameter scan) are
-tracked as open targets.
-(see @ref TrustLiMe_model "Problems, equations and boundary conditions"). Every
-dataset is **self-contained**: the mesh is generated inline with `Mailler`/`Pave`,
+The **Ha axis** of the low-Rm regime map is covered by `HartmannTwoWay`'s
+Hartmann-number scan (above); the **Re axis** and the **Shercliff 3D duct**
+(Tassone et al. Fig. 6) remain open targets. The coupled mode itself is
+documented in @ref TrustLiMe_model "Problems, equations and boundary conditions".
+
+Every dataset is **self-contained**: the mesh is generated inline with `Mailler`/`Pave`,
 so no `.med` file is required and the cases can be run from a clean checkout.
 
 | Dataset | Physics | ASN28 category | Reference solution | What it catches |
 |---|---|---|---|---|
 | `invariance.data` | uniform \f$b\f$, \f$u = 0\f$ | Verification | exact invariant: \f$b(t)\equiv b_0\f$ | spurious sources, wrong time factor, bad CL assembly, wrong default velocity |
-| `diffusion.data` | transverse Fourier mode, \f$\eta = 0.05\f$ | Validation – separate effects | \f$b(t) = b_0\,e^{-\eta\pi^2 t}\f$ | wrong magnetic diffusivity scaling, diffusion operator, Dirichlet CL |
-| `diffusion_refined.data` | same, finer mesh | Verification (mesh convergence) | same | mesh convergence (the error must drop) |
+| `diffusion.data` | transverse Fourier mode, \f$\eta = 0.05\f$ | Validation – separate effects | \f$b(t) = b_0\,e^{-\eta\pi^2 t}\f$ | wrong magnetic diffusivity scaling, diffusion operator, Dirichlet CL; its **mesh-convergence scan** (coarse/standard/fine) now carries the refined-mesh check that the removed `DiffusionRefined` form used to provide |
 | `advection.data` | Gaussian bump advected by \f$u = (0.2, 0)\f$ | Validation – separate effects | peak conservation + transport direction | convection operator, `vitesse_magnetique` wiring |
 | `steady_state.data` | equilibrium \f$b = y\f$ with **non-uniform** \f$\eta(x) = 1+x\f$ | Validation – separate effects | exact steady state | spurious source, mis-assembled diffusion, functional-\f$\eta\f$ reading path |
 | `varying_velocity.data` | **spatially varying** velocity \f$u = (-y, x)\f$, uniform \f$b\f$ | Verification | exact invariant | `Champ_Don → Champ_Inc` transfer onto faces, wrong velocity components |

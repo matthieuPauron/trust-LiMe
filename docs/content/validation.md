@@ -17,14 +17,13 @@ share/Validation/Rapports_automatiques/
 │   ├── SteadyState/  VaryingVelocity/  SourceStretching/
 │   ├── Hartmann1D/                 # Hartmann induced field (1D physics)
 │   ├── MMS_2D/                     # the four historical MMS cases fused
-│   └── ErrorInputs/                 # the 3 malformed-input cases merged
-├── MagneticStandalone3D/           # the same 11 forms, one-to-one, in 3D
-│   └── <FormName>/…                # (Polyedriser dom after Mailler — see below)└── Postraitement_fields/           # one form per post-treatment field
-├── MagneticStandalone3D/           # the same forms, one-to-one, in 3D
+│   └── ErrorInputs/                # the 3 malformed-input cases merged
+├── MagneticStandalone3D/           # the same 10 forms, one-to-one, in 3D
 │   └── <FormName>/…                # (Polyedriser dom after Mailler — see below)
 ├── MagneticCoupled/                # coupled low-Rm MHD (2D, incl. the merged
 │   └── <FormName>/…                #   one-way + two-way feedback form)
-├── MagneticCoupled3D/              # the 3D coupled twin
+├── MagneticCoupled3D/              # the 3D coupled twins
+│   └── <FormName>/…                # (MMS_Coupled3D; ShercliffDuct3D in progress)
 └── Postraitement_fields/           # one form per post-treatment field
     └── <FormName>/…                # (∇b / |b|² / u·b based — see the table below)
 ```

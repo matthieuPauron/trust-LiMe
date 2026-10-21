@@ -8,7 +8,7 @@ this page follows them.
 
 @note Status snapshot: October 2026. Every item marked *done* below is backed
 by a green run — see @ref TrustLiMe_validation "Validation cases" for the
-36-form suite that guards it (every positive form with its mesh-convergence scan on the coarse/standard/fine ladder), and @ref TrustLiMe_testcases "Test cases" for
+38-form suite that guards it (every positive form with its mesh-convergence scan on the coarse/standard/fine ladder), and @ref TrustLiMe_testcases "Test cases" for
 the unit-test layer underneath.
 
 ---
@@ -82,9 +82,13 @@ itself lives in the kernel
 
 ### 2D/3D twin gaps (R5)
 
-A few 2D forms have no 3D twin (e.g. `Shercliff2D`), and the `Hartmann1D`
-2D/3D forms differ in probe sets by design. Worth a twin sweep once the form
-set stabilises — tracked as R5 in `AGENTS.md`.
+`Shercliff2D` is now twinned (`MagneticStandalone3D/Shercliff3D/`, which also
+carries the full vector model). The remaining untwinned forms are the
+**coupled** ones: `HartmannTwoWay/`, `ForceLorentzBalance/` and
+`Coupled_Feedback/` have no 3D counterpart yet (`MagneticCoupled3D/` holds
+`MMS_Coupled3D` only, plus the in-progress `ShercliffDuct3D`). The
+`Hartmann1D` 2D/3D forms differ in probe sets by design. Worth a twin sweep
+once the form set stabilises — tracked as R5 in `AGENTS.md`.
 
 ### \f$\nabla\cdot b = 0\f$ handling
 
@@ -125,8 +129,18 @@ The time stepping is a lagged staggered scheme,
   `Error_TwoWayBothVelocities`.
 - Still open (C2 follow-up): tightened time-step synchronisation if the
   explicit staggered scheme ever shows loose-coupling oscillations.
-- Add the tracked coupled benchmarks: the **Shercliff 3D duct** (Tassone et
-  al. Fig. 6) and a **Ha/Re regime scan**.
+- Tracked coupled benchmarks:
+  - **Ha axis — done.** `HartmannTwoWay`'s Hartmann-number scan
+    (\f$\mathrm{Ha} \in \{2.5, 5, 7.9\}\f$) maps the suppression factor
+    \f$\sigma(\mathrm{Ha}) = \mathrm{Ha}^2/(2(1-1/\cosh\mathrm{Ha}))\f$
+    within 1.5 % at every point.
+  - **Re axis — open.** The scan runs at a single Reynolds number, so the
+    \f$\mathrm{Ha}/\mathrm{Re}\f$ regime map of `PLAN_mhd_coupled.md` §2.5 is
+    only half covered.
+  - **Shercliff 3D duct — open** (Tassone et al. Fig. 6). A template
+    dataset exists (`MagneticCoupled3D/ShercliffDuct3D/src/shercliff_duct_3d.data`,
+    still untracked): full vector \f$b=(b_x,0,B_0)\f$, both feedbacks live,
+    open pressure boundaries with an imposed magnetic-pressure profile.
 
 ### C3 — advanced coupled features
 
@@ -168,7 +182,7 @@ low-Pm dynamo. The gap from the current validated mode:
 | Today | VKS needs |
 |---|---|
 | low-Rm perturbation \f$(b \sim \mathrm{Ha}^2)\f$ | high-Rm induction, dynamo threshold and saturation |
-| one-way coupling \f$b \to\f$ momentum | two-way nonlinear coupling |
+| lagged two-way coupling (low-Rm, staggered) | fully nonlinear high-Rm coupling |
 | molecular \f$\eta\f$ only | **turbulent EDM** \f$\eta_t\f$ from k-\f$\varepsilon\f$: \f$\nabla\times\overline{u'\times b'} \approx -\eta_t\,\nabla\times\bar{B}\f$ |
 | laminar / prescribed mean flow | fully turbulent flow (k-\f$\varepsilon\f$, LES, RSM) |
 | forms running at 2 ranks | large 3D spherical meshes, impeller forcing |
