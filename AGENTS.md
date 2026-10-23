@@ -298,7 +298,9 @@ append new findings there.
   prescribed velocity), `Pb_MHD` (a `Pb_Hydraulique`: `Navier_Stokes_std` at
   equation 0, magnetic at equation 1) and `Pb_MHD_Turbulent` (a
   `Pb_Hydraulique_Turbulent`: `Navier_Stokes_turbulent` first, magnetic
-  second, k-eps reused for the magnetic eddy diffusivity). The **index** is
+  second, k-eps reused for the magnetic eddy diffusivity). `Pb_MHD_Thermal`
+  (`Pb_Thermohydraulique` base) adds a temperature equation at index 1:
+  NS(0), temperature(1), magnetic(2). The **index** is
   part of the contract — equation 0 is always the momentum equation (the
   medium is discretised through it). The kernel matches data-file blocks by
   name, so either order works, but every dataset writes the momentum block
