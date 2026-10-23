@@ -98,6 +98,7 @@ else
                   src/Pb_Induction.cpp
                   src/Pb_MHD.cpp
                   src/Pb_MHD_Turbulent.cpp
+                  src/Pb_MHD_Thermal.cpp
                   src/MHD_Coupling.cpp
                   src/Terme_Source_Induction_stretching.cpp
                   src/Terme_Source_Lorentz.cpp

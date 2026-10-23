@@ -1,7 +1,9 @@
-# Sequential validation case: pure diffusion with a turbulent magnetic diffusivity. #
-# b(x,y,t) = sin(pi y) exp(-(eta+eta_t) (pi)^2 t), u = 0. #
+# ============================================================================= #
+# Turbulent magnetic diffusion: decay of a Fourier mode with eta + eta_t       #
+# (VEF, triangular mesh, nb_composantes 1, K_Epsilon hydraulic turbulence).    #
+# ============================================================================= #
 dimension 2
-Pb_Induction pb
+Pb_MHD_Turbulent pb
 Domaine dom
 
 Mailler dom
@@ -19,8 +21,10 @@ Mailler dom
         Bord haut     Y = 1.    0. <= X <= 1.
     }
 }
+Trianguler dom
+VerifierCoin dom { }
 
-Polymac_p0 dis
+VEFPreP1B dis
 
 Associate pb dom
 
@@ -50,11 +54,47 @@ Read pb
         beta_th Champ_Uniforme 1 0.0
     }
 
+    Navier_Stokes_turbulent
+    {
+        solveur_pression Petsc Cholesky { }
+        convection { negligeable }
+        diffusion { negligeable }
+        initial_conditions { vitesse Champ_Uniforme 2 0. 0. }
+        boundary_conditions
+        {
+            gauche  symetrie
+            droite  symetrie
+            bas     symetrie
+            haut    symetrie
+        }
+        modele_turbulence K_Epsilon
+        {
+            turbulence_paroi negligeable
+            Transport_equation transport_k_epsilon
+            {
+                convection { negligeable }
+                diffusion { negligeable }
+                boundary_conditions
+                {
+                    gauche symetrie
+                    droite symetrie
+                    haut   symetrie
+                    bas    symetrie
+                }
+                initial_conditions
+                {
+                    k_Eps Champ_fonc_txyz dom 2 0.5 0.5
+                }
+            }
+        }
+    }
+
     Convection_Diffusion_Magnetic_field
     {
         diffusivite_magnetique Champ_Uniforme 1 0.05
-        diffusivite_turbulente_magnetique Champ_Uniforme 1 0.05
-        # no vitesse_magnetique -> u = 0, pure diffusion #
+        vitesse_hydraulique
+        C_mu_magnetique 0.09
+        prandtl_turbulent_magnetique 1.0
 
         diffusion  { }
         convection { amont }
