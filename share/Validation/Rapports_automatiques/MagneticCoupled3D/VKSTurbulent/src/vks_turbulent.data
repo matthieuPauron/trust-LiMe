@@ -1,0 +1,142 @@
+# VKS-turbulent: 3D coupled MHD in a box, turbulent (k-eps) proxy. #
+# Two opposite faces act as rotating impellers (paroi_defilante); the other #
+# walls are insulating (Neumann) and fixed. VEF discretisation (tetrahedral). #
+# Run on 2 ranks with partitioning: make_PAR.data vks_turbulent.data 2 #
+dimension 3
+Pb_MHD_Turbulent pb
+Domaine dom
+
+# BEGIN MESH #
+Mailler dom
+{
+    Pave pave1
+    {
+        Origine 0. 0. 0.
+        Nombre_de_Noeuds 5 5 5
+        Longueurs 1. 1. 1.
+    }
+    {
+        Bord gauche X = 0.  0. <= Y <= 1.  0. <= Z <= 1.
+        Bord droite X = 1.  0. <= Y <= 1.  0. <= Z <= 1.
+        Bord bas Y = 0.  0. <= X <= 1.  0. <= Z <= 1.
+        Bord haut Y = 1.  0. <= X <= 1.  0. <= Z <= 1.
+        Bord devant Z = 0.  0. <= X <= 1.  0. <= Y <= 1.
+        Bord derriere Z = 1.  0. <= X <= 1.  0. <= Y <= 1.
+    }
+}
+
+Tetraedriser dom
+VerifierCoin dom { }
+# END MESH #
+
+# BEGIN PARTITION
+Partition dom
+{
+    Partition_tool metis { nb_parts 2 }
+    Larg_joint 2
+    zones_name DOM
+}
+End
+END PARTITION #
+# BEGIN SCATTER
+Scatter DOM.Zones dom
+END SCATTER #
+
+VEFPreP1B dis
+
+Associate pb dom
+
+Schema_Euler_Implicite sch
+Read sch
+{
+    tinit 0.
+    tmax 0.1
+    dt_max 0.05
+    facsec 1e6
+    facsec_max 1e6
+    solveur implicite { solveur petsc cli { } }
+}
+
+Associate pb sch
+Discretize pb dis
+
+Read pb
+{
+    nb_composantes 3
+    fluide_incompressible
+    {
+        mu      Champ_Uniforme 1 1.0
+        rho     Champ_Uniforme 1 1.0
+        lambda  Champ_Uniforme 1 1.0
+        Cp      Champ_Uniforme 1 1.0
+        beta_th Champ_Uniforme 1 0.0
+    }
+
+    Navier_Stokes_turbulent
+    {
+        solveur_pression Petsc Cholesky { }
+        diffusion  { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            bas     paroi_fixe
+            haut    paroi_fixe
+            gauche  paroi_fixe
+            droite  paroi_fixe
+            devant  paroi_fixe
+            derriere paroi_fixe
+        }
+        initial_conditions { vitesse Champ_Uniforme 3 0. 0. 0. }
+        modele_turbulence K_Epsilon
+        {
+            turbulence_paroi negligeable
+            Transport_equation transport_k_epsilon
+            {
+                convection { negligeable }
+                diffusion { }
+                boundary_conditions
+                {
+                    bas     paroi_fixe
+                    haut    paroi_fixe
+                    gauche  paroi_fixe
+                    droite  paroi_fixe
+                    devant  paroi_fixe
+                    derriere paroi_fixe
+                }
+                initial_conditions
+                {
+                    k_Eps Champ_Uniforme 2 0.5 0.5
+                }
+            }
+        }
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        diffusivite_magnetique Champ_Uniforme 1 0.1
+        vitesse_hydraulique
+
+        diffusion  { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            gauche   Neumann_Paroi_adiabatique
+            droite   Neumann_Paroi_adiabatique
+            bas      Neumann_Paroi_adiabatique
+            haut     Neumann_Paroi_adiabatique
+            devant   Neumann_Paroi_adiabatique
+            derriere Neumann_Paroi_adiabatique
+        }
+        initial_conditions { magnetic_field Champ_Uniforme 3 0. 0. 1. }
+    }
+
+    Postraitement
+    {
+        Champs { magnetic_field elem }
+        format lml
+    }
+}
+
+Solve pb

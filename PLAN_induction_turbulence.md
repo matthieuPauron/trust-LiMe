@@ -145,6 +145,12 @@ dissipation (ε_b), plus an eddy magnetic diffusivity η_t.
   code is not the blocker.
 - The vector (2-component) path therefore stays on the laminar PolyMAC forms;
   the k-eps grab itself is component-agnostic.
+- **VKS 3D turbulent case** (2026-10-23): new form
+  `MagneticCoupled3D/VKSTurbulent/` — VEFPreP1B on a tetrahedral mesh
+  (`Tetraedriser` + `VerifierCoin`), `Pb_MHD_Turbulent` with `K_Epsilon`,
+  `nb_composantes 3`, one-way coupling (no `force_lorentz` — VEF has no
+  implementation yet). Runs to completion and prints the grab + non-uniform fold.
+  Two-way coupling on VEF requires a VEF `force_lorentz` (new class).
 - Minimal working data-file skeleton for the smoke case (2D, 0 <= x <= 10,
   0 <= y <= 1, 11x6 nodes triangulated):
 
