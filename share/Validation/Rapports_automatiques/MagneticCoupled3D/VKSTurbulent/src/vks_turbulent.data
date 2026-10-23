@@ -1,6 +1,7 @@
 # VKS-turbulent: 3D coupled MHD in a box, turbulent (k-eps) proxy. #
 # Two opposite faces act as rotating impellers (paroi_defilante); the other #
 # walls are insulating (Neumann) and fixed. VEF discretisation (tetrahedral). #
+# Two-way coupling: force_lorentz (VEF) + vitesse_hydraulique.              #
 # Run on 2 ranks with partitioning: make_PAR.data vks_turbulent.data 2 #
 dimension 3
 Pb_MHD_Turbulent pb
@@ -88,6 +89,7 @@ Read pb
             derriere paroi_fixe
         }
         initial_conditions { vitesse Champ_Uniforme 3 0. 0. 0. }
+        sources { force_lorentz { } }
         modele_turbulence K_Epsilon
         {
             turbulence_paroi negligeable

@@ -7,6 +7,8 @@
 #include <MHD_posttraitement_kernel.h>
 #include <Domaine_PolyMAC_CDO.h>
 #include <Domaine_PolyMAC_MPFA.h>
+#include <Domaine_VEF.h>
+#include <Domaine_Cl_VEF.h>
 #include <Domaine_Cl_PolyMAC_family.h>
 #include <Champ_Face_PolyMAC_CDO.h>
 #include <Probleme_base.h>
@@ -27,6 +29,8 @@ Implemente_instanciable(Terme_Source_Lorentz, "force_lorentz_Face_PolyMAC_CDO", 
 // the whole PolyMAC family, like Terme_Boussinesq_PolyMAC_CDO_Face.
 Add_synonym(Terme_Source_Lorentz, "force_lorentz_Face_PolyMAC_MPFA");
 Add_synonym(Terme_Source_Lorentz, "force_lorentz_Face_PolyMAC_HFV");
+Add_synonym(Terme_Source_Lorentz, "force_lorentz_VEF_P1NC");
+Add_synonym(Terme_Source_Lorentz, "force_lorentz_VEF_Q1NC");
 Add_synonym(Terme_Source_Lorentz, "force_lorentz");
 // XD force_lorentz source_base force_lorentz INHERITS_BRACE Lorentz force density J x B (low-Rm MHD coupling)
 // XD_CONT applied to the momentum equation, computed from the magnetic field solved by the
@@ -117,8 +121,18 @@ void Terme_Source_Lorentz::associer_pb(const Probleme_base& pb)
 void Terme_Source_Lorentz::associer_domaines(const Domaine_dis_base& domaine_dis,
                                              const Domaine_Cl_dis_base& domaine_Cl_dis)
 {
-  le_dom_PolyMAC_ = ref_cast(Domaine_PolyMAC_CDO, domaine_dis);
-  le_dom_Cl_PolyMAC_ = ref_cast(Domaine_Cl_PolyMAC_family, domaine_Cl_dis);
+  if (sub_type(Domaine_VEF, domaine_dis))
+    {
+      is_vef_ = true;
+      le_dom_VEF_ = ref_cast(Domaine_VEF, domaine_dis);
+      le_dom_Cl_VEF_ = ref_cast(Domaine_Cl_VEF, domaine_Cl_dis);
+    }
+  else
+    {
+      is_vef_ = false;
+      le_dom_PolyMAC_ = ref_cast(Domaine_PolyMAC_CDO, domaine_dis);
+      le_dom_Cl_PolyMAC_ = ref_cast(Domaine_Cl_PolyMAC_family, domaine_Cl_dis);
+    }
 }
 
 /*! @brief Adds the Lorentz force per unit mass to the momentum second member.
@@ -140,6 +154,59 @@ void Terme_Source_Lorentz::associer_domaines(const Domaine_dis_base& domaine_dis
 void Terme_Source_Lorentz::ajouter_blocs(matrices_t matrices, DoubleTab& secmem,
                                          const tabs_t& semi_impl) const
 {
+  // VEF branch: face-based (P1NC) velocity unknown, no auxiliary element
+  // variables.  The force is computed per element (discretisation-independent)
+  // and distributed to the adjacent faces via the entrelace volumes.
+  if (is_vef_)
+    {
+      const Domaine_VEF& dom = le_dom_VEF_.valeur();
+      const int D = dimension;
+      const int ne = dom.nb_elem();
+      const int nf = dom.nb_faces();
+
+      const DoubleTab& b = eq_magnetic_->couplage_fort() ? eq_magnetic_->inconnue().futur()
+                           : eq_magnetic_->inconnue().valeurs();
+      const int nb_b = eq_magnetic_->nb_composantes();
+      DoubleTrav gb;
+      eq_magnetic_->gradient_b_elements(gb);
+
+      const DoubleTab& rho = equation().milieu().masse_volumique().valeurs();
+      const auto rho_elem = [&rho](int e) -> double
+      { return rho.dimension(0) == 1 ? rho(0, 0) : rho(e, 0); };
+
+      const double la_mu0 = mu0();
+      double w[3] = { 0., 0., 0. }, s[3] = { 0., 0., 0. };
+
+      DoubleTrav F(ne, D);
+      F = 0.;
+      for (int e = 0; e < ne; e++)
+        {
+          mhd_curl_b(&gb(e, 0), D, w);
+          mhd_force_lorentz(w, &b(e, 0), nb_b, D, la_mu0, s);
+          const double irho = 1. / rho_elem(e);
+          for (int d = 0; d < D; d++)
+            F(e, d) = s[d] * irho;
+        }
+
+      const IntTab& f_e = dom.face_voisins();
+      const DoubleVect& vol_entrelaces = dom.volumes_entrelaces();
+      const DoubleVect& poro_face = equation().milieu().porosite_face();
+
+      for (int f = 0; f < nf; f++)
+        {
+          int e1 = f_e(f, 0);
+          int e2 = f_e(f, 1);
+          for (int comp = 0; comp < D; comp++)
+            {
+              double favg = F(e1, comp);
+              if (e2 >= 0)
+                favg = 0.5 * (F(e1, comp) + F(e2, comp));
+              secmem(f, comp) += favg * vol_entrelaces(f) * poro_face(f);
+            }
+        }
+      return;
+    }
+
   const Domaine_PolyMAC_CDO& dom = le_dom_PolyMAC_.valeur();
   const int D = dimension;
   const int ne = dom.nb_elem_tot();

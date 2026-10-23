@@ -43,6 +43,8 @@
 
 class Convection_Diffusion_Magnetic_field;
 class Domaine_PolyMAC_CDO;
+class Domaine_VEF;
+class Domaine_Cl_VEF;
 class Domaine_Cl_PolyMAC_family;
 class Param;
 
@@ -103,6 +105,9 @@ protected:
   OBS_PTR(Convection_Diffusion_Magnetic_field) eq_magnetic_;
   OBS_PTR(Domaine_PolyMAC_CDO) le_dom_PolyMAC_;
   OBS_PTR(Domaine_Cl_PolyMAC_family) le_dom_Cl_PolyMAC_;
+  OBS_PTR(Domaine_VEF) le_dom_VEF_;
+  OBS_PTR(Domaine_Cl_VEF) le_dom_Cl_VEF_;
+  bool is_vef_ = false;
   double mu0_ = -1.;   // <0: use the magnetic equation's mu0
 };
 
