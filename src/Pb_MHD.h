@@ -1,63 +1,58 @@
 /****************************************************************************
- * trust-LiMe — Pb_MHD: magnetic problem, standalone or low-Rm coupled.
+ * trust-LiMe — Pb_MHD: hydro + magnetic induction, laminar momentum equation.
  *
- * Equation 0 is always the magnetic induction equation
- * Convection_Diffusion_Magnetic_field.  Any further Equation_base written in
- * the problem block (typically Navier_Stokes_std for the low-Rm coupled mode,
- * where the Lorentz force 'force_lorentz' source drives the momentum) is read
- * by the kernel's optional-equation mechanism (Probleme_base::read_optional_
- * equations) and held in eq_opt_, exactly like Pb_Hydraulique's optional
- * turbulence equations:
+ * Equation 0 is the momentum equation (Navier_Stokes_std, inherited from
+ * Pb_Hydraulique), equation 1 is the magnetic induction equation
+ * Convection_Diffusion_Magnetic_field, and any further Equation_base written
+ * in the problem block is read by the kernel's optional-equation mechanism
+ * (Probleme_base::read_optional_equations) and held in eq_opt_.
  *
  *     Pb_MHD pb
  *     {
  *         nb_composantes 2
  *         fluide_incompressible { ... }
- *         Convection_Diffusion_Magnetic_field { ... }
- *         Navier_Stokes_standard                # optional; presence => coupled
+ *         Navier_Stokes_standard
  *         {
  *             ...
- *             sources { force_lorentz { } }
+ *             sources { force_lorentz { } }    # b -> u
+ *         }
+ *         Convection_Diffusion_Magnetic_field
+ *         {
+ *             vitesse_hydraulique              # u -> b (solved velocity)
+ *             ...
  *         }
  *     }
  *
- * nombre_d_equations() is 1 standalone, 1 + eq_opt_.size() otherwise.
- * The problem shell stays deliberately thin.
+ * The equation index is part of the contract: equation(0) is always the
+ * momentum equation (the medium is discretised through it,
+ * typer_lire_milieu), equation(1) is always the magnetic one.  The kernel
+ * matches each data-file block by name (Probleme_base::getset_equation_by_name),
+ * so the two blocks may be written in either order, but the momentum block is
+ * written first by convention, as in Pb_Thermohydraulique /
+ * Pb_Thermohydraulique_Turbulent.
  *
- * ARCHITECTURE NOTE (2026-10-17) — Pb_MHD is ill-named and will be renamed.
- * This class is the *magnetic induction* problem; embedding the momentum
- * equation in it (the optional-equation trick above) is a stopgap for the
- * low-Rm coupled mode.  The target architecture follows the kernel's
- * Probleme_Couple pattern (cf. Pb_Couple_rayo_semi_transp, which couples a
- * Pb_base with a radiation problem): a hydraulics problem (Pb_Hydraulique)
- * solving Navier-Stokes on its own, a renamed magnetic problem (e.g.
- * Pb_Magnetique / Pb_Induction) holding only the induction equation, and a
- * dedicated coupled problem (a Probleme_Couple subclass — the future true
- * Pb_MHD) associating the two.  When that lands:
- *   - rename this class (data-file keyword Pb_MHD becomes the magnetic
- *     problem's new name; the coupled problem takes the Pb_MHD name);
- *   - the magnetic equation's NS locator (eq_navier_stokes(), which walks
- *     probleme().equation(i)) becomes a coupled-problem lookup instead — it
- *     is the single seam of the stopgap to revisit;
- *   - the velocity binding machinery itself (the associer_vitesse rebind in
- *     Convection_Diffusion_Magnetic_field::completer() and the
- *     vitesse_transportante() consumers) is architecture-independent and
- *     carries over unchanged.
+ * When a temperature equation is added later (thermal MHD), it must go at
+ * index 1 and the magnetic equation last: Convection_Diffusion_Magnetic_field
+ * derives from Convection_Diffusion_Temperature, so it would satisfy the
+ * sub_type() test that kernel thermal sources such as Terme_Source_inc_th
+ * apply to equation(1).
+ *
+ *  @sa Pb_Hydraulique, Pb_MHD_Turbulent, Pb_Induction,
+ *      Convection_Diffusion_Magnetic_field, Terme_Source_Lorentz
  ****************************************************************************/
 
 #ifndef PB_MHD_H_
 #define PB_MHD_H_
 
-#include <Probleme_base.h>
+#include <Pb_Hydraulique.h>
 #include <Convection_Diffusion_Magnetic_field.h>
 
-/*! @brief Magnetic problem: the magnetic induction equation, optionally
- *         followed by extra equations (e.g. Navier-Stokes for the coupled
- *         low-Rm mode with the Lorentz force).
+/*! @brief Coupled hydro + magnetic induction problem, laminar momentum
+ *         equation.
  *
- *  @sa Probleme_base, Convection_Diffusion_Magnetic_field, Terme_Source_Lorentz
+ *  @sa Pb_Hydraulique, Pb_MHD_Turbulent, Pb_Induction
  */
-class Pb_MHD : public Probleme_base
+class Pb_MHD : public Pb_Hydraulique
 {
   Declare_instanciable(Pb_MHD);
 
@@ -66,6 +61,8 @@ public:
   int nombre_d_equations() const override;
   const Equation_base& equation(int) const override;
   Equation_base& equation(int) override;
+  void associer_milieu_base(const Milieu_base&) override;
+  bool iterateTimeStep(bool& converged) override;
 
 protected:
 

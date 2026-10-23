@@ -14,7 +14,7 @@
 #   eta = 0 and no velocity: the linear field is an exact equilibrium.          #
 # ============================================================================= #
 dimension 3
-Pb_MHD pb
+Pb_Induction pb
 Domaine dom
 
 # PolyMAC_MPFA works on polyhedra: convert the Pave hexahedra (3D only) #

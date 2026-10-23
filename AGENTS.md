@@ -241,7 +241,20 @@ check before `/validate`.
   equation's `vitesse_hydraulique` keyword (the solved NS velocity becomes
   the magnetic transport velocity, bound in `completer()`); low-Rm limit
   (Rm ≪ 1) validated against Tassone et al. breeding blanket parameter ranges.
-- **Turbulent magnetic diffusivity**: the induction equation currently uses molecular magnetic diffusivity η only (constant `Champ_Uniforme`). A turbulent EDM ηₜ modeled from k‑ε would add `∇×(u'×b'̄) ≈ −ηₜ∇×B̄`. This is deferred to END_GOAL.md Phase 3 (dynamo threshold), as the present validation suite assumes laminar or prescribed‑mean‑flow velocity fields. See turbulence section of END_GOAL.md §2.2 and TRUST §3.1 for the theoretical framework.
+- **Turbulent magnetic diffusivity (Phase 4 done, 2026-10-22)**: ηₜ is built
+  three ways — a prescribed `diffusivite_turbulente_magnetique` field, an
+  explicit `k_magnetique`/`epsilon_magnetique` pair, or (with
+  `vitesse_hydraulique` on a `Pb_MHD_Turbulent`) the **hydraulic k-ε model's
+  own k and ε**. The last path logs
+  `hydraulic turbulence model detected, using its k/epsilon for the magnetic
+  eddy diffusivity (eta_t in [min, max])` and produces a genuinely
+  non-uniform ηₜ (verified: `eta_t in [0.45, 0.675]` on a sheared k profile).
+  Two discretisation limits remain upstream: `Op_Diff_VEF_Face` aborts for a
+  vector magnetic unknown on VEF, and no PolyMAC wall law exists, so a
+  turbulent *validation form* is not wired yet — see
+  `PLAN_induction_turbulence.md` Phase 4.
+- **§18.2 kernel heisenbug (guarded 2026-10-22)**: `Op_Diff_PolyMAC_MPFA_Elem::calculer_dt_stab()` now skips denormal `volumes_entrelaces`/flux contributions, so parallel forms (e.g. Champs3D fine scale) run cleanly on 2 ranks. The underlying uninitialized read in the kernel parallel init path is not pinned; the guard is robustness, not a root-cause fix.
+- **Strong (Picard) coupling (opt-in, 2026-10-22)**: `couplage_fort { }` (+ `nb_iterations_couplage`, `tolerance_couplage`) on the magnetic equation enables Picard sweeps of the two-way magnetic<->momentum coupling. Default off preserves the green baseline. See `KERNEL_REUSE_NOTES.md` §20.
 
 Authoring/running rules, trustutils API, dataset syntax, and the headless
 nbconvert recipe: **`trust-lime-notebooks` skill**. The gate for adding new
@@ -275,11 +288,21 @@ append new findings there.
 
 ## Current state
 
-- `src/Convection_Diffusion_Magnetic_field.{h,cpp}` and `src/Pb_MHD.{h,cpp}`
-  have been **rewritten from scratch**. Both pass `syntax-check.sh`.
+- `src/Convection_Diffusion_Magnetic_field.{h,cpp}` and the problem classes
+  have been **rewritten from scratch**. All pass `syntax-check.sh`.
   The historical defects (self-including `Pb_MHD.cpp`, mismatched
   `equation(int)` overloads, missing `.h` in kernel includes, missing `;`/`};`)
   are **fixed**.
+- **Three problem classes** (2026-10-22), mirroring the kernel's own family
+  layout: `Pb_Induction` (a `Probleme_base`, magnetic equation only,
+  prescribed velocity), `Pb_MHD` (a `Pb_Hydraulique`: `Navier_Stokes_std` at
+  equation 0, magnetic at equation 1) and `Pb_MHD_Turbulent` (a
+  `Pb_Hydraulique_Turbulent`: `Navier_Stokes_turbulent` first, magnetic
+  second, k-eps reused for the magnetic eddy diffusivity). The **index** is
+  part of the contract — equation 0 is always the momentum equation (the
+  medium is discretised through it). The kernel matches data-file blocks by
+  name, so either order works, but every dataset writes the momentum block
+  first. See `KERNEL_REUSE_NOTES.md` §20.
 - The module solves the **standalone** magnetic induction equation
   (see `docs/content/model.md` and `PLAN_magnetic_standalone.md`).
 - Validation cases: `share/Validation/Rapports_automatiques/MagneticStandalone/`
@@ -289,8 +312,9 @@ append new findings there.
 - Kernel and module **are built** (`trust-lime`, `trust-lime_semi_opt`,
   `trust-lime_opt` exist at the repo root) — the historical `libparaconf`
   configure blocker is resolved.
-- **All 27 validation forms pass** (checked 2026-10-21; 2D + 3D standalone,
-  coupled MHD 2D + 3D, post-treatment — every baseline runs
+- **All 28 validation forms pass** (checked 2026-10-22, after the problem-class
+  restructure; the 2026-10-21 count was 27 — the 2D + 3D standalone, coupled
+  MHD 2D + 3D and post-treatment families, every baseline running
   `nbProcs=2` + `case.partition()`; the scan levels that the §18.2 kernel
   heisenbug pins to 1 rank — `Shercliff3D` standard/fine — are the documented
   exceptions) and are concatenated into a
@@ -376,9 +400,11 @@ append new findings there.
   `trust-lime_opt` rebuild, the `Operateur_Conv` wrapper two-hop binding)
   in `KERNEL_REUSE_NOTES.md` §12bis/§12ter.
 - **Unit tests** live in `tests/UnitTests/` (GoogleTest, kernel conventions).
-  The full suite **runs and passes** — 42 tests from 9 suites, including the
-  `Terme_Source_Lorentz` data-file contract (`unit_lorentz_source.cpp`); the
+  The full suite **runs and passes** — 45 tests from 11 suites, including the
+  `Terme_Source_Lorentz` data-file contract (`unit_lorentz_source.cpp`) and the
+  `Pb_Induction` / `Pb_MHD` hierarchy checks; the
   fast path is `--arith-only` (25 tests, micro + numeric kernels only).
+  Use `UNIT_TEST_SUFFIX=_semi_opt` while the `optim` kernel archives are stale.
 
 ## Sanitizers (local debugging)
 

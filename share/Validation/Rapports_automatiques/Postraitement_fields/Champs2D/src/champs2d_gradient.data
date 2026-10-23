@@ -23,7 +23,7 @@
 #   analytic linear field holds at every time step and at every wall cell.      #
 # ============================================================================= #
 dimension 2
-Pb_MHD pb
+Pb_Induction pb
 Domaine dom
 
 # BEGIN MESH #

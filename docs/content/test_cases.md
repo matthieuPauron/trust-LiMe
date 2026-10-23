@@ -20,7 +20,7 @@ The module has **two** kinds of tests:
 
 | File | Covers |
 |---|---|
-| `unit_magnetic_field.cpp` | equation keyword, `domaine_application() == "Thermique"` (the BC-compatibility contract), `Pb_MHD` equation count, out-of-range index |
+| `unit_magnetic_field.cpp` | equation keyword, `domaine_application() == "Thermique"` (the BC-compatibility contract), the `Pb_Induction` / `Pb_MHD` problem hierarchy (equation counts, momentum-before-magnetic order), out-of-range index |
 | `unit_induction_source.cpp` | `induction_stretching` keyword; `readOn()` consumes its own braces (regression); unknown keyword is rejected |
 | `unit_induction_kernel.cpp` | the arithmetic of \f$S = (b\cdot\nabla)u\f$: index layout, single-component case, accumulation, element-wise application |
 | `unit_mhd_postraitement_kernel.cpp` | the arithmetic of the post-treatment fields: \f$|b|^2\f$, energy, cyclotron, \f$u\cdot b\f$, Poynting, curl/helicity index order, \f$Rm\f$, \f$Pm\f$ |
@@ -291,8 +291,9 @@ elementwise arithmetic — which is pinned harder (layout conventions) by
 `HartmannFlow` and `Shercliff_3D_duct` are kept for reference only: they
 still reference the pre-rewrite dataset layout (a Navier–Stokes + energy +
 magnetic system), which is **not** what the current standalone module solves.
-The coupled low-Rm mode (`force_lorentz` + optional `Navier_Stokes_standard`)
-is now wired in `Pb_MHD` and validated by `MagneticCoupled/ForceLorentzBalance/`;
+The coupled low-Rm mode (`force_lorentz` on the momentum equation) is now wired
+in `Pb_MHD` (laminar) and `Pb_MHD_Turbulent` (k-eps) and validated by
+`MagneticCoupled/ForceLorentzBalance/`;
 the driven-Hartmann physics the historical `HartmannFlow` case aimed at is
 now covered — quantitatively and with both feedbacks live — by
 `MagneticCoupled/HartmannTwoWay/`.

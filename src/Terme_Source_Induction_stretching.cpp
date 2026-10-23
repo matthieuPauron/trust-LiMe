@@ -158,7 +158,10 @@ void Terme_Source_Induction_stretching::maj_grad_u() const
     return;
   const Convection_Diffusion_Magnetic_field& eqn = equation_mag_.valeur();
   const Champ_Inc_base& vit = eqn.vitesse_transportante();
-  if (vit.temps() == temps_grad_u_)
+  // Strong coupling: the velocity changes between Picard sweeps even though
+  // its time level does not, so the time-equality shortcut is disabled and
+  // grad(u) is rebuilt every sweep.
+  if (!eqn.couplage_fort() && vit.temps() == temps_grad_u_)
     return;
 
   // Refresh the velocity's element values (auxiliary rows of the face field)
@@ -216,7 +219,8 @@ void Terme_Source_Induction_stretching::ajouter_source(DoubleTab& secmem) const
   // since the last assembly (no-op for a frozen data velocity).
   maj_grad_u();
 
-  const DoubleTab& b = equation_mag_.valeur().inconnue().valeurs();  // (nb_elem, nb_compos_b)
+  const Convection_Diffusion_Magnetic_field& eqm = equation_mag_.valeur();
+  const DoubleTab& b = eqm.couplage_fort() ? eqm.inconnue().futur() : eqm.inconnue().valeurs();  // (nb_elem, nb_compos_b)
   const DoubleTab& gu = gradient_vitesse_->valeurs();               // (nf_tot + ne*dim, comp)
 
   // Per-element gradient, laid out as the kernel expects: g(e, i*dim+j) = du_i/dx_j.

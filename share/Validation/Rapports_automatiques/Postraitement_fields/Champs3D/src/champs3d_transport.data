@@ -24,7 +24,7 @@
 # discrete equilibrium under both advection and diffusion.                      #
 # ============================================================================= #
 dimension 3
-Pb_MHD pb
+Pb_Induction pb
 Domaine dom
 
 # PolyMAC_MPFA works on polyhedra: convert the Pave hexahedra (3D only) #

@@ -102,33 +102,6 @@ Read pb
         beta_th Champ_Uniforme 1 0.0
     }
 
-    Convection_Diffusion_Magnetic_field
-    {
-        diffusivite_magnetique Champ_Uniforme 1 0.01
-        # TWO-WAY: the transporting velocity is the solved NS velocity. #
-        vitesse_hydraulique
-
-        diffusion  { }
-        convection { amont }
-
-        # M1 inductive stretching source S = (b.grad) u : S_x = B0 u'(y) #
-        sources
-        {
-            induction_stretching { }
-        }
-
-        boundary_conditions
-        {
-            # insulating walls: zero normal flux on both components #
-            gauche  Neumann_Paroi_adiabatique
-            droite  Neumann_Paroi_adiabatique
-            bas     Neumann_Paroi_adiabatique
-            haut    Neumann_Paroi_adiabatique
-        }
-        # b = (0, B0) initially : the induced field grows from zero #
-        initial_conditions { magnetic_field Champ_Uniforme 2 0. 1. }
-    }
-
     Navier_Stokes_standard
     {
         # Pressure solver: Petsc-wrapped direct solver (the Sparskit-based #
@@ -157,6 +130,33 @@ Read pb
         {
             force_lorentz { }
         }
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        diffusivite_magnetique Champ_Uniforme 1 0.01
+        # TWO-WAY: the transporting velocity is the solved NS velocity. #
+        vitesse_hydraulique
+
+        diffusion  { }
+        convection { amont }
+
+        # M1 inductive stretching source S = (b.grad) u : S_x = B0 u'(y) #
+        sources
+        {
+            induction_stretching { }
+        }
+
+        boundary_conditions
+        {
+            # insulating walls: zero normal flux on both components #
+            gauche  Neumann_Paroi_adiabatique
+            droite  Neumann_Paroi_adiabatique
+            bas     Neumann_Paroi_adiabatique
+            haut    Neumann_Paroi_adiabatique
+        }
+        # b = (0, B0) initially : the induced field grows from zero #
+        initial_conditions { magnetic_field Champ_Uniforme 2 0. 1. }
     }
 
     Postraitement

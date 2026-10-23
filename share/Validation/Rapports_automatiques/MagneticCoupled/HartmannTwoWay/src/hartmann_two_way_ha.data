@@ -86,29 +86,6 @@ Read pb
         beta_th Champ_Uniforme 1 0.0
     }
 
-    Convection_Diffusion_Magnetic_field
-    {
-        diffusivite_magnetique Champ_Uniforme 1 $eta
-        vitesse_hydraulique
-
-        diffusion  { }
-        convection { amont }
-
-        sources
-        {
-            induction_stretching { }
-        }
-
-        boundary_conditions
-        {
-            gauche  Neumann_Paroi_adiabatique
-            droite  Neumann_Paroi_adiabatique
-            bas     Neumann_Paroi_adiabatique
-            haut    Neumann_Paroi_adiabatique
-        }
-        initial_conditions { magnetic_field Champ_Uniforme 2 0. 1. }
-    }
-
     Navier_Stokes_standard
     {
         solveur_pression Petsc Cholesky { }
@@ -133,6 +110,29 @@ Read pb
         {
             force_lorentz { }
         }
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        diffusivite_magnetique Champ_Uniforme 1 $eta
+        vitesse_hydraulique
+
+        diffusion  { }
+        convection { amont }
+
+        sources
+        {
+            induction_stretching { }
+        }
+
+        boundary_conditions
+        {
+            gauche  Neumann_Paroi_adiabatique
+            droite  Neumann_Paroi_adiabatique
+            bas     Neumann_Paroi_adiabatique
+            haut    Neumann_Paroi_adiabatique
+        }
+        initial_conditions { magnetic_field Champ_Uniforme 2 0. 1. }
     }
 
     Postraitement

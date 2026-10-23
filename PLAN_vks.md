@@ -182,8 +182,8 @@ Convection_Diffusion_Magnetic_field
         wall_outer   paroi_isolante_magnetique
         wall_inner   paroi_isolante_magnetique
         # impeller surfaces: may need conducting BC (Phase B.2) #
-        impeller_top     paroi_conductrice_magnetique   # deferred
-        impeller_bottom  paroi_conductrice_magnetique   # deferred
+        impeller_top     paroi_isolante_magnetique      # conductrice deferred (Phase B.2)
+        impeller_bottom  paroi_isolante_magnetique      # conductrice deferred (Phase B.2)
     }
     initial_conditions { magnetic_field Champ_Uniforme 3 $BX $BY $BZ }
 }

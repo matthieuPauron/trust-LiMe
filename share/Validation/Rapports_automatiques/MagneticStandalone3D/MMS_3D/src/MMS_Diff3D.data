@@ -60,7 +60,7 @@ Read sch
 
 
 
-Pb_MHD pbmhd
+Pb_Induction pbmhd
 Associate pbmhd dom
 Associate pbmhd sch
 Discretize pbmhd dis

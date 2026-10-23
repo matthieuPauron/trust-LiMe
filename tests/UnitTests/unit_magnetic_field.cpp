@@ -16,6 +16,7 @@
 #pragma GCC diagnostic pop
 
 #include <Convection_Diffusion_Magnetic_field.h>
+#include <Pb_Induction.h>
 #include <Pb_MHD.h>
 #include <Probleme_base.h>
 #include <Cond_lim_base.h>
@@ -62,36 +63,64 @@ TEST(MagneticField, ComponentCountIsUnresolvedBeforeDiscretisation)
 // The problem shell
 // ---------------------------------------------------------------------------
 
-TEST(PbMHD, IsAProblemeBase)
+TEST(PbInduction, IsAProblemeBase)
 {
-  Pb_MHD pb;
+  Pb_Induction pb;
   EXPECT_NE(dynamic_cast<Probleme_base *>(&pb), nullptr);
 }
 
-/*! Decision D1: this phase is magnetic-only, the problem holds exactly one
- *  equation. Adding a second equation without revisiting Pb_MHD::equation()
- *  would silently expose a wrong accessor.
+/*! The standalone induction problem holds exactly one equation: the magnetic
+ *  induction equation. There is no momentum equation by design (the transport
+ *  velocity is prescribed), so the class derives from Probleme_base and not
+ *  from Pb_Fluide_base.
  */
-TEST(PbMHD, HoldsExactlyOneEquation)
+TEST(PbInduction, HoldsExactlyOneEquation)
 {
-  Pb_MHD pb;
+  Pb_Induction pb;
   EXPECT_EQ(pb.nombre_d_equations(), 1);
 }
 
-TEST(PbMHD, EquationZeroIsTheMagneticField)
+TEST(PbInduction, EquationZeroIsTheMagneticField)
 {
-  Pb_MHD pb;
+  Pb_Induction pb;
   const Equation_base &eqn = pb.equation(0);
   EXPECT_STREQ(eqn.le_type(), "Convection_Diffusion_Magnetic_field");
 }
 
 /*! An out-of-range index must abort loudly rather than return an arbitrary
  *  equation (the kernel's Pb_Conduction only uses assert(), which is compiled
- *  out in -O3; Pb_MHD deliberately exits instead).
+ *  out in -O3; Pb_Induction deliberately exits instead).
  */
+TEST(PbInductionDeath, RejectsAnOutOfRangeEquationIndex)
+{
+  Pb_Induction pb;
+  EXPECT_DEATH(static_cast<void>(pb.equation(1)), "");
+  EXPECT_DEATH(static_cast<void>(pb.equation(-1)), "");
+}
+
+/*! The coupled problem lays the equations out the way the kernel expects:
+ *  the momentum equation first (index 0, inherited from Pb_Hydraulique) and
+ *  the magnetic induction equation second. The order is structural: the
+ *  kernel reads data-file equation names against equation(i) in index order
+ *  and discretises the medium through equation(0).
+ */
+TEST(PbMHD, IsAHydraulicProblem)
+{
+  Pb_MHD pb;
+  EXPECT_NE(dynamic_cast<Pb_Hydraulique *>(&pb), nullptr);
+}
+
+TEST(PbMHD, HoldsMomentumThenMagneticField)
+{
+  Pb_MHD pb;
+  EXPECT_EQ(pb.nombre_d_equations(), 2);
+  EXPECT_STREQ(pb.equation(0).le_type(), "Navier_Stokes_standard");
+  EXPECT_STREQ(pb.equation(1).le_type(), "Convection_Diffusion_Magnetic_field");
+}
+
 TEST(PbMHDDeath, RejectsAnOutOfRangeEquationIndex)
 {
   Pb_MHD pb;
-  EXPECT_DEATH(static_cast<void>(pb.equation(1)), "");
+  EXPECT_DEATH(static_cast<void>(pb.equation(2)), "");
   EXPECT_DEATH(static_cast<void>(pb.equation(-1)), "");
 }

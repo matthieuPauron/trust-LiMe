@@ -35,7 +35,7 @@
 # so that a formula with a hard-coded 1.0 cannot pass.                          #
 # ============================================================================= #
 dimension 2
-Pb_MHD pb
+Pb_Induction pb
 Domaine dom
 
 # BEGIN MESH #

@@ -9,7 +9,7 @@
 # Sharp absolute check of the source magnitude and sign.                   #
 # ============================================================================= #
 dimension 2
-Pb_MHD pb
+Pb_Induction pb
 Domaine dom
 
 # BEGIN MESH #

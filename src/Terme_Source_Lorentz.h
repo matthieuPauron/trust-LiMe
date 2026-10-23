@@ -1,10 +1,9 @@
 /****************************************************************************
  * trust-LiMe — Lorentz force source term for the momentum equation.
  *
- * Terme_Source_Lorentz is a Source_base attached to the Navier-Stokes
- * equation of a Pb_MHD problem that also solves the magnetic induction
- * equation (the Navier-Stokes equation is then an optional extra equation
- * of Pb_MHD, see Pb_MHD.h).  It adds the low-Rm MHD coupling: the magnetic
+ * Terme_Source_Lorentz is a Source_base attached to the momentum equation of a
+ * Pb_MHD or Pb_MHD_Turbulent problem that also solves the magnetic induction
+ * equation.  It adds the low-Rm MHD coupling: the magnetic
  * tension-free part of the Lorentz force density
  *
  *     F = J x B,     J = curl(b) / mu0,
@@ -48,10 +47,10 @@ class Domaine_Cl_PolyMAC_family;
 class Param;
 
 /*! @brief Lorentz force source (J x B) coupling the magnetic equation to the
- *         momentum equation of the same Pb_MHD problem.
+ *         momentum equation of the same Pb_MHD / Pb_MHD_Turbulent problem.
  *
- *  Data-file usage, inside the Navier-Stokes equation block of a Pb_MHD
- *  problem that also contains Convection_Diffusion_Magnetic_field:
+ *  Data-file usage, inside the momentum equation block of a coupled problem
+ *  that also contains Convection_Diffusion_Magnetic_field:
  *
  *      Navier_Stokes_std
  *      {

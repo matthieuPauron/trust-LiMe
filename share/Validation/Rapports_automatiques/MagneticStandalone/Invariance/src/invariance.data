@@ -1,7 +1,7 @@
 # PARALLEL OK #
 
 dimension 2
-Pb_MHD pb
+Pb_Induction pb
 Domaine dom
 
 # BEGIN MESH #

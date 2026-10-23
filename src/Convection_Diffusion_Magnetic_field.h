@@ -54,8 +54,8 @@ public:
   inline int nb_composantes() const { return nb_composantes_; }
 
   /*! @brief Set the component count.  Must be called before discretiser();
-   *         Pb_MHD reads the problem-level `nb_composantes` keyword and
-   *         forwards it here.
+   *         the problem classes (Pb_Induction, Pb_MHD, Pb_MHD_Turbulent) read
+   *         the problem-level `nb_composantes` keyword and forward it here.
    */
   inline void set_nb_composantes(int nb) { nb_composantes_ = nb; }
 
@@ -68,10 +68,18 @@ public:
    *         (Probleme_base::read_optional_equations).
    */
   inline bool vitesse_hydraulique() const { return vitesse_hydraulique_; }
+  // Strong (Picard) coupling in the two-way mode: iterate the magnetic <->
+  // momentum sweeps within a time step until convergence.  Off by default
+  // (the historical fully-lagged staggered scheme is used).
+  inline bool couplage_fort() const { return couplage_fort_; }
+  inline int nb_iterations_couplage() const { return nb_iterations_couplage_ > 0 ? nb_iterations_couplage_ : 5; }
+  inline double tolerance_couplage() const { return tolerance_couplage_ > 0. ? tolerance_couplage_ : 1.e-8; }
 
-  /*! @brief The Navier-Stokes equation of the same Pb_MHD problem, if any
-   *         (nullptr in standalone problems).  The located equation is
-   *         cached; the walk is only meaningful once every equation of the
+  /*! @brief The Navier-Stokes equation of the same coupled problem, if any
+   *         (nullptr in standalone problems).  Found by walking the problem's
+   *         equations, so it works both for Pb_MHD (Navier_Stokes_std) and
+   *         Pb_MHD_Turbulent (Navier_Stokes_Turbulent).  The located equation
+   *         is cached; the walk is only meaningful once every equation of the
    *         problem has been read (call from completer() or later).
    */
   const Navier_Stokes_std* eq_navier_stokes() const;
@@ -165,6 +173,16 @@ protected:
   // (ηₜ from k‑ε → ∇×(u'×b'̄) ≈ −ηₜ∇×B̄) is deferred to END_GOAL.md Phase 3
   // (dynamo threshold); see turbulence section of END_GOAL.md §2.2 and TRUST §3.1.
   OWN_PTR(Champ_Don_base) diffusivite_magnetique_;
+  OWN_PTR(Champ_Don_base) diffusivite_turbulente_magnetique_;
+  OWN_PTR(Champ_Don_base) diffusivite_effective_;
+  // Phase 2b: operands for the turbulent magnetic diffusivity eta_t = C_mu*k^2/eps/Pm_t.
+  OWN_PTR(Champ_Don_base) k_magnetique_;
+  OWN_PTR(Champ_Don_base) epsilon_magnetique_;
+  int k_magnetique_comp_ = 0;
+  int epsilon_magnetique_comp_ = 0;
+  double C_mu_magnetique_ = 0.09;
+  double prandtl_turbulent_magnetique_ = 1.0;
+  bool realizable_C_mu_magnetique_ = false;
 
   // Transporting velocity, read from the optional `vitesse_magnetique` keyword.
   OWN_PTR(Champ_Don_base) vitesse_magnetique_;
@@ -184,6 +202,9 @@ protected:
   // (mutable: filled from the const serving path, like
   // vitesse_aux_preparees_ below).
   bool vitesse_hydraulique_ = false;
+  bool couplage_fort_ = false;
+  int nb_iterations_couplage_ = 0;
+  double tolerance_couplage_ = 0.;
   mutable OBS_PTR(Navier_Stokes_std) eq_ns_;
 
   // --- Post-treatment fields (created lazily by creer_champ()) ------------

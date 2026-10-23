@@ -8,7 +8,7 @@
 # so b must remain b0 exactly, whatever u. Velocity: vortex u = (-y, x).   #
 # ============================================================================= #
 dimension 2
-Pb_MHD pb
+Pb_Induction pb
 Domaine dom
 
 # BEGIN MESH #

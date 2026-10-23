@@ -40,14 +40,49 @@ limitations* section below).
 
 ## 2. Class map (maximum kernel reuse)
 
+Three problem classes, mirroring the kernel's own split
+(`Pb_Conduction` / `Pb_Thermohydraulique` / `Pb_Thermohydraulique_Turbulent`):
+
 ```
-Pb_MHD  (Probleme_base)                         src/Pb_MHD.{h,cpp}
+Pb_Induction     (Probleme_base)                src/Pb_Induction.{h,cpp}
   └── eq_magnetic_field
-        Convection_Diffusion_Magnetic_field     src/Convection_Diffusion_Magnetic_field.{h,cpp}
-              └── Convection_Diffusion_Temperature_base
-                    └── Convection_Diffusion_std
-                          └── Equation_base
+
+Pb_MHD           (Pb_Hydraulique)               src/Pb_MHD.{h,cpp}
+  ├── eq_hydraulique        Navier_Stokes_std   (equation 0)
+  └── eq_magnetic_field                         (equation 1)
+
+Pb_MHD_Turbulent (Pb_Hydraulique_Turbulent)     src/Pb_MHD_Turbulent.{h,cpp}
+  ├── eq_hydraulique        Navier_Stokes_turbulent (equation 0)
+  └── eq_magnetic_field                         (equation 1)
+
+Convection_Diffusion_Magnetic_field             src/Convection_Diffusion_Magnetic_field.{h,cpp}
+  └── Convection_Diffusion_Temperature_base
+        └── Convection_Diffusion_std
+              └── Equation_base
 ```
+
+| Problem | Solves | Momentum equation | Use it for |
+|---|---|---|---|
+| `Pb_Induction` | magnetic only | none (prescribed `u`) | M0/M1 with a frozen or analytic velocity |
+| `Pb_MHD` | hydro + magnetic | `Navier_Stokes_std` | coupled low-Rm with a laminar flow |
+| `Pb_MHD_Turbulent` | hydro + magnetic | `Navier_Stokes_turbulent` (k-eps) | coupled low-Rm with a RANS flow; reuses k-eps for \f$\eta_t\f$ |
+
+`Pb_Induction` deliberately derives from `Probleme_base` and not from
+`Pb_Fluide_base`: several kernel source terms treat
+`sub_type(Pb_Fluide_base, pb)` as the contract "equation(0) is a
+`Navier_Stokes_std`" and `ref_cast` it unconditionally. An induction-only
+problem has no momentum equation and must not advertise itself as one.
+
+**The equation *index* is part of the contract**, not a style choice:
+`equation(0)` is the momentum equation (the medium is discretised through it)
+and `equation(1)` is the magnetic one. The kernel matches each data-file block
+by name (`Probleme_base::getset_equation_by_name`), so the two blocks may be
+written in either order, but the momentum block is written **first** by
+convention and that is what every validation dataset does.
+Future thermal MHD must order the equations `Navier_Stokes`, `temperature`,
+`magnetic`: the kernel thermal source terms test
+`sub_type(Convection_Diffusion_Temperature, equation(1))`, which the magnetic
+equation would also satisfy — so it must stay last.
 
 Only a handful of methods are overridden; everything else (diffusion and
 convection operators, mass solver, time integration, boundary-condition and
@@ -84,6 +119,11 @@ Inside the `Convection_Diffusion_Magnetic_field` block:
 | Keyword | Type | Required | Default | Notes |
 |---|---|:--:|---|---|
 | `diffusivite_magnetique` | `Champ_Don_base` | **yes** | — | \f$\eta\f$. Must appear **before** `diffusion`. |
+| `diffusivite_turbulente_magnetique` | `Champ_Don_base` | no | — | Turbulent magnetic diffusivity \f$\eta_t\f$ (induction turbulence). Folded into \f$\eta\f$: uniform fields are summed into a uniform \f$\eta_{\rm eff}\f$ at read time; non-uniform fields are summed point-wise into an effective field in `completer()` (Phase 2a). Net effect: \f$\eta_{\rm eff} = \eta + \eta_t\f$. |
+| `k_magnetique` | `Champ_Don_base` | no | — | Turbulent kinetic energy \f$k\f$ of the magnetic fluctuations (Phase 2b operand). Used with `epsilon_magnetique` to build \f$\eta_t = C_\mu k^2/\varepsilon/Pm_t\f$. |
+| `epsilon_magnetique` | `Champ_Don_base` | no | — | Dissipation rate \f$\varepsilon\f$ of the magnetic fluctuations (Phase 2b operand). |
+| `C_mu_magnetique` | float | no | 0.09 | Constant \f$C_\mu\f$ for the magnetic eddy diffusivity. |
+| `prandtl_turbulent_magnetique` | float | no | 1.0 | Turbulent magnetic Prandtl number \f$Pm_t\f$. |
 | `vitesse_magnetique` | `Champ_Don_base` | no | zero | Transport velocity \f$u\f$ (e.g. `Champ_Uniforme 2 0.2 0.`). |
 | `nb_composantes` | int | no | space dimension | 1…dimension. Use `1` for a single magnetic component. |
 | `diffusion` | block | inherited | — | Diffusion operator keyword. |
@@ -159,19 +199,15 @@ out of scope.
 
 ## 3ter. Coupled low-Rm mode: the Lorentz force on momentum
 
-`Pb_MHD` accepts **extra equations** after the magnetic one: any
-`Equation_base` keyword written in the problem block (typically
-`Navier_Stokes_standard`) is read by the kernel's optional-equation mechanism
-(`Probleme_base::read_optional_equations`) and appended to the equation list,
-exactly like the optional turbulence equations of `Pb_Hydraulique`.
+`Pb_MHD` owns the momentum equation at index 0 and the magnetic induction
+equation at index 1. Both are written in the problem block, **momentum first**:
 
 ```c
 Pb_MHD pb
 {
     nb_composantes 2
     fluide_incompressible { ... }
-    Convection_Diffusion_Magnetic_field { ... }
-    Navier_Stokes_standard                   # presence => coupled mode
+    Navier_Stokes_standard                   # equation 0
     {
         solveur_pression Petsc Cholesky { }
         diffusion  { }
@@ -180,11 +216,21 @@ Pb_MHD pb
         initial_conditions { vitesse Champ_Uniforme 2 0. 0. }
         sources { force_lorentz { } }
     }
+    Convection_Diffusion_Magnetic_field      # equation 1
+    {
+        diffusivite_magnetique Champ_Uniforme 1 0.01
+        vitesse_hydraulique                  # u -> b, solved velocity
+        ...
+    }
 }
 ```
 
-`nombre_d_equations()` is \f$1\f$ standalone, \f$1 + \f$ (number of optional
-equations) otherwise. The coupling itself is the **`force_lorentz` source**
+`nombre_d_equations()` is \f$2\f$ plus the number of optional extra equations
+read by the kernel. Writing the momentum equation first is mandatory (see
+§2). `Pb_MHD_Turbulent` has the same layout with `Navier_Stokes_turbulent` in
+place of `Navier_Stokes_standard`; because a turbulent momentum equation is
+still a `Navier_Stokes_std` subclass, the rest of the machinery is shared
+verbatim. The coupling itself is the **`force_lorentz` source**
 (`src/Terme_Source_Lorentz.{h,cpp}`), a `Source_base` attached to the momentum
 equation:
 
@@ -361,30 +407,58 @@ framework-free `src/MHD_posttraitement_kernel.h`. Validation examples live in
    `mettre_a_jour` runs *before* the NS wheel rotates).
 4. **Boundary conditions reuse thermal CL keywords.** Functional but confusing;
    magnetic-named aliases are deferred.
-5. **`Pb_MHD` holds the magnetic equation plus optional extras.** Standalone is
-   a single equation; a Navier-Stokes equation may be appended for the coupled
-   mode (§3ter). There is no three-equation (momentum + energy + induction)
-   problem yet.
-6. **Architecture note:** `Pb_MHD` is ill-named — it is the magnetic
-   induction problem. The target is a `Pb_Hydraulique` + a renamed magnetic
-   problem associated by a `Probleme_Couple` subclass; the velocity binding
-   machinery above carries over unchanged (the NS locator
-   `eq_navier_stokes()` is the single seam to revisit).
+5. **Three problem classes, one equation.** `Pb_Induction` (magnetic only),
+   `Pb_MHD` (laminar momentum + magnetic) and `Pb_MHD_Turbulent` (turbulent
+   momentum + magnetic) share `Convection_Diffusion_Magnetic_field`. There is
+   no three-equation (momentum + energy + induction) problem yet.
+6. **Architecture note (resolved):** the historical single `Pb_MHD` was
+   ill-named — it was the induction problem, with the momentum equation bolted
+   on as an *optional* extra equation. It is now split the way the kernel
+   splits its own problem family: `Pb_Induction` (a `Probleme_base`, like
+   `Pb_Conduction`), `Pb_MHD` (a `Pb_Hydraulique`) and `Pb_MHD_Turbulent` (a
+   `Pb_Hydraulique_Turbulent`). The velocity-binding machinery carries over
+   unchanged: the magnetic equation's `eq_navier_stokes()` locator walks the
+   problem's equations, so it finds the momentum equation whatever its base
+   class.
 
 ---
 
 ## 7. Problems
 
-`Pb_MHD` derives from `Probleme_base` (same minimal pattern as the kernel's
-`Pb_Conduction`) and holds the magnetic equation, optionally followed by extra
-equations (§3ter):
+The three problem classes differ only in their base class and equation list
+(see §2). The induction-only problem keeps the minimal pattern of the kernel's
+`Pb_Conduction`:
 
 ```
-Pb_MHD pb
+Pb_Induction pb                               # induction only
 {
-    fluide_incompressible { … }              # medium (a fluid is required)
+    nb_composantes 2
+    fluide_incompressible { … }               # medium (a fluid is required)
     Convection_Diffusion_Magnetic_field { … }
-    # optional: Navier_Stokes_standard { … } for the coupled low-Rm mode
+}
+```
+
+The coupled problems add the momentum equation, which must come first:
+
+```
+Pb_MHD pb                                     # laminar hydro + induction
+{
+    nb_composantes 2
+    fluide_incompressible { … }
+    Navier_Stokes_standard { … sources { force_lorentz { } } }
+    Convection_Diffusion_Magnetic_field { vitesse_hydraulique … }
+}
+
+Pb_MHD_Turbulent pb                           # turbulent hydro + induction
+{
+    nb_composantes 2
+    fluide_incompressible { … }
+    Navier_Stokes_turbulent
+    {
+        modele_turbulence K_Epsilon { … }
+        sources { force_lorentz { } }
+    }
+    Convection_Diffusion_Magnetic_field { vitesse_hydraulique … }
 }
 ```
 

@@ -90,11 +90,21 @@ else
                 tests/UnitTests/unit_induction_kernel.cpp
                 tests/UnitTests/unit_mhd_posttraitement_kernel.cpp)
   module_sources=(src/Convection_Diffusion_Magnetic_field.cpp
+                  src/Convection_Diffusion_K_Magnetic.cpp
+                  src/Convection_Diffusion_Epsilon_Magnetic.cpp
+                  src/Modele_turbulence_magnetique.cpp
+                  src/Terme_Source_K_Magnetic.cpp
+                  src/Terme_Source_Epsilon_Magnetic.cpp
+                  src/Pb_Induction.cpp
                   src/Pb_MHD.cpp
+                  src/Pb_MHD_Turbulent.cpp
+                  src/MHD_Coupling.cpp
                   src/Terme_Source_Induction_stretching.cpp
                   src/Terme_Source_Lorentz.cpp
                   src/Paroi_isolante_magnetique.cpp
-                  src/Champ_Fonc_MHD.cpp)
+                  src/Champ_Fonc_MHD.cpp
+                  src/Champ_Fonc_Somme.cpp
+                  src/Champ_Fonc_Eta_Turbulent.cpp)
   main_source=tests/UnitTests/main_gtest.cpp
 fi
 
@@ -135,7 +145,10 @@ if [[ -f "$link_txt" ]]; then
   link_line="$(awk -v objs="${objects[*]}" '
     BEGIN { inserted = 0 }
     { for (i = 1; i <= NF; i++) {
-        if ($i ~ /^CMakeFiles\/list_obj\.dir\/.*\.o$/) {
+        # The baltik link line may list its objects either inline
+        # (CMakeFiles/list_obj.dir/*.o) or through a CMake response file
+        # (@.../objects1.rsp): both are the "module objects" slot.
+        if ($i ~ /^CMakeFiles\/list_obj\.dir\/.*\.o$/ || $i ~ /^@.*\.rsp$/) {
           if (!inserted) { printf "%s ", objs; inserted = 1 }
           continue
         }

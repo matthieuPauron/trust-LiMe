@@ -7,7 +7,7 @@
 # One-dimensional physics, plates at y = plus/minus 0.5, insulating walls. #
 # ============================================================================= #
 dimension 2
-Pb_MHD pb
+Pb_Induction pb
 Domaine dom
 
 # plates at y = +/- 0.5 : walls are the two bords normal to Y #

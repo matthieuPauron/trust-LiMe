@@ -30,7 +30,7 @@ Add_synonym(Terme_Source_Lorentz, "force_lorentz_Face_PolyMAC_HFV");
 Add_synonym(Terme_Source_Lorentz, "force_lorentz");
 // XD force_lorentz source_base force_lorentz INHERITS_BRACE Lorentz force density J x B (low-Rm MHD coupling)
 // XD_CONT applied to the momentum equation, computed from the magnetic field solved by the
-// XD_CONT Convection_Diffusion_Magnetic_field equation of the same Pb_MHD problem.
+// XD_CONT Convection_Diffusion_Magnetic_field equation of the same coupled problem.
 // XD attr mu0 floattant mu0 OPT Magnetic permeability (default: the mu0 of the magnetic equation, itself 1 by default).
 
 /*! @brief Writes the object identity (standard TRUST I/O). */
@@ -106,7 +106,7 @@ void Terme_Source_Lorentz::associer_pb(const Probleme_base& pb)
       Cerr << "Error in Terme_Source_Lorentz::associer_pb: the 'force_lorentz' source" << finl;
       Cerr << "requires a Convection_Diffusion_Magnetic_field equation in the same" << finl;
       Cerr << "problem, but problem " << pb.le_nom() << " of type " << pb.que_suis_je() << finl;
-      Cerr << "has none. Add the magnetic equation to the Pb_MHD problem block." << finl;
+      Cerr << "has none. Add the magnetic equation to the Pb_MHD / Pb_MHD_Turbulent problem block." << finl;
       Process::exit();
     }
 }
@@ -146,8 +146,10 @@ void Terme_Source_Lorentz::ajouter_blocs(matrices_t matrices, DoubleTab& secmem,
   const int nf_tot = dom.nb_faces_tot();
   const bool mpfa = sub_type(Domaine_PolyMAC_MPFA, dom);
 
-  // Lagged magnetic field and its Green-Gauss element gradient.
-  const DoubleTab& b = eq_magnetic_->inconnue().valeurs();
+  // Magnetic field: in strong-coupling mode read the latest (futur) values
+  // so the Lorentz force uses the updated field within the Picard sweep.
+  const DoubleTab& b = eq_magnetic_->couplage_fort() ? eq_magnetic_->inconnue().futur()
+                       : eq_magnetic_->inconnue().valeurs();
   const int nb_b = eq_magnetic_->nb_composantes();
   DoubleTrav gb;
   eq_magnetic_->gradient_b_elements(gb);

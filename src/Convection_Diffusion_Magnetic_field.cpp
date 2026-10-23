@@ -5,15 +5,21 @@
 
 #include <Convection_Diffusion_Magnetic_field.h>
 #include <Champ_Fonc_MHD.h>
+#include <Champ_Fonc_Somme.h>
+#include <Champ_Fonc_Eta_Turbulent.h>
 #include <Probleme_base.h>
 #include <Discret_Thyd.h>
 #include <Param.h>
 #include <Process.h>
 #include <Champ_Inc_base.h>
 #include <Champ_Don_base.h>
+#include <Champ_Uniforme.h>
 #include <Champ_Face_PolyMAC_MPFA.h>
 #include <Fluide_base.h>
 #include <Navier_Stokes_std.h>
+#include <Navier_Stokes_Turbulent.h>
+#include <Modele_turbulence_hyd_base.h>
+#include <Modele_turbulence_hyd_K_Eps.h>
 #include <Domaine_VF.h>
 #include <Domaine_Cl_dis_base.h>
 
@@ -24,6 +30,11 @@ Implemente_instanciable(Convection_Diffusion_Magnetic_field,
 // XD_CONT Standalone convection-diffusion (induction) equation for the magnetic field b:
 // XD_CONT d b / d t + (u . grad) b - div(eta grad b) = 0.
 // XD attr diffusivite_magnetique field_base diffusivite_magnetique REQ Magnetic diffusivity eta = 1/(mu0 sigma).
+// XD attr diffusivite_turbulente_magnetique field_base diffusivite_turbulente_magnetique OPT Turbulent magnetic diffusivity eta_t. Folded into eta: uniform fields are summed into a uniform eta_eff at read time (Phase 1); non-uniform fields are summed point-wise into an effective field in completer() (Phase 2a).
+// XD attr k_magnetique field_base k_magnetique OPT Turbulent kinetic energy k of the magnetic fluctuations (Phase 2b operand). Used with epsilon_magnetique to build eta_t = C_mu*k^2/eps/Pm_t.
+// XD attr epsilon_magnetique field_base epsilon_magnetique OPT Dissipation rate epsilon of the magnetic fluctuations (Phase 2b operand).
+// XD attr C_mu_magnetique floattant C_mu_magnetique OPT Constant C_mu for the magnetic eddy diffusivity (default 0.09).
+// XD attr prandtl_turbulent_magnetique floattant prandtl_turbulent_magnetique OPT Turbulent magnetic Prandtl number Pm_t (default 1.0).
 // XD attr vitesse_magnetique field_base vitesse_magnetique OPT Transporting velocity u (default: zero).
 // XD attr nb_composantes entier nb_composantes OPT Number of transported components of the magnetic field (default: the
 // XD_CONT space dimension). Use 1 for a single magnetic component.
@@ -76,6 +87,33 @@ Entree& Convection_Diffusion_Magnetic_field::readOn(Entree& is)
   if (solveur_masse)
     solveur_masse->set_name_of_coefficient_temporel("no_coeff");
 
+  // Induction turbulence: fold a turbulent magnetic diffusivity into an
+  // effective diffusivity eta_eff = eta + eta_t.
+  //   Phase 1: both fields uniform -> summed into a uniform Champ_Uniforme here.
+  //   Phase 2a: non-uniform fields -> summed point-wise in completer() into a
+  //   Champ_Fonc_Somme (eta_eff(x) = eta(x) + eta_t(x)).
+  if (diffusivite_turbulente_magnetique_)
+    {
+      const Champ_Uniforme* eta_u = dynamic_cast<const Champ_Uniforme*>(&diffusivite_magnetique_.valeur());
+      const Champ_Uniforme* etat_u = dynamic_cast<const Champ_Uniforme*>(&diffusivite_turbulente_magnetique_.valeur());
+      if (eta_u && etat_u)
+        {
+          const double eta = eta_u->valeurs()(0, 0);
+          const double etat = etat_u->valeurs()(0, 0);
+          diffusivite_effective_.typer("Champ_Uniforme");
+          Champ_Uniforme& eff = ref_cast(Champ_Uniforme, diffusivite_effective_.valeur());
+          eff.valeurs().resize(1, 1);
+          eff.valeurs()(0, 0) = eta + etat;
+          Cerr << "Convection_Diffusion_Magnetic_field: turbulent magnetic diffusivity folded, "
+               << "eta_eff = " << (eta + etat) << " (eta=" << eta << ", eta_t=" << etat << ")" << finl;
+        }
+      else
+        {
+          Cerr << "Convection_Diffusion_Magnetic_field: 'diffusivite_turbulente_magnetique' "
+               << "non-uniform case deferred to completer() (Phase 2a point-wise fold)." << finl;
+        }
+    }
+
   return is;
 }
 
@@ -86,6 +124,13 @@ void Convection_Diffusion_Magnetic_field::set_param(Param& param) const
   // NOTE: `diffusivite_magnetique` must appear before `diffusion` in the data
   // file (it is queried when the diffusion operator is read).
   param.ajouter("diffusivite_magnetique", &diffusivite_magnetique_);
+  param.ajouter("diffusivite_turbulente_magnetique", &diffusivite_turbulente_magnetique_);
+  // Phase 2b: build eta_t = C_mu*k^2/eps/Pm_t from k, eps fields.
+  param.ajouter("k_magnetique", &k_magnetique_);
+  param.ajouter("epsilon_magnetique", &epsilon_magnetique_);
+  param.ajouter("C_mu_magnetique", &C_mu_magnetique_);
+  param.ajouter("prandtl_turbulent_magnetique", &prandtl_turbulent_magnetique_);
+  param.ajouter_flag("realizable_C_mu_magnetique", &realizable_C_mu_magnetique_);
   param.ajouter("vitesse_magnetique", &vitesse_magnetique_);
   // Constants consumed by the post-treatment fields (Champ_Fonc_MHD) only;
   // they have no influence on the transport itself.  See
@@ -99,6 +144,10 @@ void Convection_Diffusion_Magnetic_field::set_param(Param& param) const
   // to completer(): the optional Navier-Stokes equation does not exist yet
   // while this block is read (Probleme_base::read_optional_equations).
   param.ajouter_flag("vitesse_hydraulique", &vitesse_hydraulique_);
+  // Strong (Picard) coupling within the two-way mode (opt-in).
+  param.ajouter_flag("couplage_fort", &couplage_fort_);
+  param.ajouter("nb_iterations_couplage", &nb_iterations_couplage_);
+  param.ajouter("tolerance_couplage", &tolerance_couplage_);
   // NOTE: `nb_composantes` is NOT an equation keyword: it must be known before
   // the equations are discretised, so it is read at the *problem* level by
   // Pb_MHD::readOn() (ahead of the medium) and pushed here via
@@ -150,6 +199,8 @@ void Convection_Diffusion_Magnetic_field::discretiser()
  */
 const Champ_Don_base& Convection_Diffusion_Magnetic_field::diffusivite_pour_transport() const
 {
+  if (diffusivite_effective_)
+    return diffusivite_effective_.valeur();
   if (!diffusivite_magnetique_)
     Process::exit("Convection_Diffusion_Magnetic_field: the keyword 'diffusivite_magnetique' "
                   "(magnetic diffusivity eta) is required and must be given before 'diffusion'.");
@@ -159,6 +210,8 @@ const Champ_Don_base& Convection_Diffusion_Magnetic_field::diffusivite_pour_tran
 /*! @brief Diffusivity used by the time-step stability estimate: eta. */
 const Champ_base& Convection_Diffusion_Magnetic_field::diffusivite_pour_pas_de_temps() const
 {
+  if (diffusivite_effective_)
+    return diffusivite_effective_.valeur();
   return diffusivite_pour_transport();
 }
 
@@ -202,11 +255,11 @@ const Navier_Stokes_std* Convection_Diffusion_Magnetic_field::eq_navier_stokes()
  *  placeholder velocity that served the read-time association is replaced by
  *  the velocity unknown of the Navier-Stokes equation of the same problem.
  *
- *  Why here and not at read time: the optional Navier-Stokes equation is
- *  created, discretised and read *after* the magnetic block
- *  (Probleme_base::read_optional_equations), so its velocity field does not
- *  exist when the 'convection' keyword fires Convection_Diffusion_std::
- *  lire_motcle_non_standard.  completer() runs once every equation is known.
+ *  Why here and not at read time: in Pb_MHD / Pb_MHD_Turbulent the momentum
+ *  equation is equation 0 and is read *before* the magnetic block, but the
+ *  binding is still deferred to completer() so that a standalone Pb_Induction
+ *  (no momentum equation at all) is handled by the same code path.  completer()
+ *  runs once every equation is known.
  *
  *  Both the equation-level pointer (associer_vitesse, used by the
  *  vitesse_transportante() consumers such as the induction_stretching
@@ -219,6 +272,107 @@ void Convection_Diffusion_Magnetic_field::completer()
 {
   Convection_Diffusion_Temperature_base::completer();
 
+  // Phase 4: if no explicit k/eps fields but a hydraulic turbulence model is
+  // present on the Navier-Stokes equation, grab its k and epsilon fields and
+  // build eta_t = C_mu*k^2/eps/Pm_t (TrioCFD k-eps).
+  if (vitesse_hydraulique_ && !k_magnetique_ && !epsilon_magnetique_ && !diffusivite_turbulente_magnetique_)
+    {
+      const Navier_Stokes_std* ns = eq_navier_stokes();
+      const Navier_Stokes_Turbulent* nst = dynamic_cast<const Navier_Stokes_Turbulent*>(ns);
+      if (nst)
+        {
+          const Modele_turbulence_hyd_base& mt = nst->modele_turbulence();
+          OBS_PTR(Champ_base) k_ref, e_ref;
+          bool has_k = mt.has_champ("k", k_ref) || mt.has_champ("K", k_ref);
+          bool has_e = mt.has_champ("epsilon", e_ref) || mt.has_champ("eps", e_ref) || mt.has_champ("Epsilon", e_ref);
+          int kc = 0, ec = 0;
+          if (!has_k || !has_e)
+            {
+              // Fall back to the 2-component K_Eps transport field.
+              OBS_PTR(Champ_base) ke;
+              if (mt.has_champ("K_Eps", ke))
+                {
+                  k_ref = ke;
+                  e_ref = ke;
+                  has_k = has_e = true;
+                  kc = 0;
+                  ec = 1;
+                }
+            }
+          if (has_k && has_e)
+            {
+              // Build the eddy field directly (operands are OBS_PTR -> Champ_base&).
+              OWN_PTR(Champ_Fonc_base) eddy;
+              eddy.typer("Champ_Fonc_Eta_Turbulent");
+              Champ_Fonc_Eta_Turbulent& e = ref_cast(Champ_Fonc_Eta_Turbulent, eddy.valeur());
+              e.configurer(*this, k_ref.valeur(), kc, e_ref.valeur(), ec,
+                           C_mu_magnetique_, prandtl_turbulent_magnetique_,
+                           realizable_C_mu_magnetique_);
+              diffusivite_turbulente_magnetique_ = eddy;
+              champs_compris_.ajoute_champ(diffusivite_turbulente_magnetique_);
+              // Evaluate the field once and report its range: a spatially
+              // varying hydraulic k/eps must show up as a non-uniform eta_t.
+              diffusivite_turbulente_magnetique_->mettre_a_jour(inconnue().temps());
+              const DoubleTab& etav = diffusivite_turbulente_magnetique_->valeurs();
+              double eta_min = 0., eta_max = 0.;
+              if (etav.size() > 0)
+                {
+                  eta_min = eta_max = etav(0, 0);
+                  for (int i = 0; i < etav.dimension(0); i++)
+                    for (int c = 0; c < etav.dimension(1); c++)
+                      {
+                        if (etav(i, c) < eta_min) eta_min = etav(i, c);
+                        if (etav(i, c) > eta_max) eta_max = etav(i, c);
+                      }
+                }
+              Cerr << "Convection_Diffusion_Magnetic_field: hydraulic turbulence model detected, "
+                   << "using its k/epsilon for the magnetic eddy diffusivity "
+                   << "(eta_t in [" << eta_min << ", " << eta_max << "])." << finl;
+            }
+        }
+    }
+
+  // Phase 2b: build eta_t = C_mu*k^2/eps/Pm_t from k, epsilon fields (if given)
+  // and store it as diffusivite_turbulente_magnetique_, so the Phase 2a fold below
+  // handles the rest.
+  if (k_magnetique_ && epsilon_magnetique_ && !diffusivite_turbulente_magnetique_)
+    {
+      OWN_PTR(Champ_Fonc_base) eddy;
+      eddy.typer("Champ_Fonc_Eta_Turbulent");
+      Champ_Fonc_Eta_Turbulent& e = ref_cast(Champ_Fonc_Eta_Turbulent, eddy.valeur());
+      e.configurer(*this, k_magnetique_.valeur(), k_magnetique_comp_,
+                   epsilon_magnetique_.valeur(), epsilon_magnetique_comp_,
+                   C_mu_magnetique_, prandtl_turbulent_magnetique_,
+                   realizable_C_mu_magnetique_);
+      diffusivite_turbulente_magnetique_ = eddy;
+      champs_compris_.ajoute_champ(diffusivite_turbulente_magnetique_);
+      Cerr << "Convection_Diffusion_Magnetic_field: built turbulent magnetic diffusivity "
+           << "eta_t = C_mu*k^2/eps/Pm_t (C_mu=" << C_mu_magnetique_
+           << ", Pm_t=" << prandtl_turbulent_magnetique_ << ")." << finl;
+    }
+
+  // Phase 2 induction turbulence: when a turbulent magnetic diffusivity was given
+  // but could not be folded at readOn (non-uniform fields), build an effective
+  // diffusivity field eta_eff(x) = eta(x) + eta_t(x) as a point-wise sum.
+  if (diffusivite_turbulente_magnetique_ && !diffusivite_effective_)
+    {
+      const Champ_Uniforme* eta_u = dynamic_cast<const Champ_Uniforme*>(&diffusivite_magnetique_.valeur());
+      const Champ_Uniforme* etat_u = dynamic_cast<const Champ_Uniforme*>(&diffusivite_turbulente_magnetique_.valeur());
+      if (!(eta_u && etat_u))
+        {
+          OWN_PTR(Champ_Fonc_base) somme;
+          somme.typer("Champ_Fonc_Somme");
+          Champ_Fonc_Somme& s = ref_cast(Champ_Fonc_Somme, somme.valeur());
+          s.configurer(*this, diffusivite_magnetique_.valeur(),
+                       diffusivite_turbulente_magnetique_.valeur());
+          diffusivite_effective_ = somme;
+          // Register so the problem-level update keeps its values fresh.
+          champs_compris_.ajoute_champ(diffusivite_effective_);
+          Cerr << "Convection_Diffusion_Magnetic_field: turbulent magnetic diffusivity folded "
+               << "(non-uniform) into eta_eff = eta + eta_t." << finl;
+        }
+    }
+
   if (!vitesse_hydraulique_)
     return;
 
@@ -226,7 +380,8 @@ void Convection_Diffusion_Magnetic_field::completer()
   if (!ns)
     {
       Cerr << "Convection_Diffusion_Magnetic_field: the keyword 'vitesse_hydraulique'" << finl;
-      Cerr << "requires a Navier_Stokes_standard equation in the same Pb_MHD problem." << finl;
+      Cerr << "requires a momentum equation in the same problem: Navier_Stokes_standard" << finl;
+      Cerr << "in Pb_MHD, or Navier_Stokes_turbulent in Pb_MHD_Turbulent." << finl;
       Process::exit();
     }
 
@@ -555,7 +710,7 @@ void Convection_Diffusion_Magnetic_field::gradient_vitesse_elements(DoubleTab& g
 void Convection_Diffusion_Magnetic_field::gradient_b_elements(DoubleTab& gb) const
 {
   const Domaine_VF& dvf = ref_cast(Domaine_VF, domaine_dis());
-  const DoubleTab& b = inconnue().valeurs();
+  const DoubleTab& b = couplage_fort() ? inconnue().futur() : inconnue().valeurs();
   // gb covers ALL elements, local and ghost: parallel consumers (the Lorentz
   // source) evaluate per-element data on ghost elements through joint faces,
   // so ghost rows must be filled with valid data, never read out of bounds.

@@ -23,7 +23,7 @@
 # cells - see the 2D notebook and KERNEL_REUSE_NOTES).                      #
 # ============================================================================= #
 dimension 3
-Pb_MHD pb
+Pb_Induction pb
 Domaine dom
 
 # plates at y = +/- 0.5 : walls are the two bords normal to Y #

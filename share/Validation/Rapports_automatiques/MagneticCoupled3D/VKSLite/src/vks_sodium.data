@@ -1,0 +1,125 @@
+# VKS-sodium: 3D coupled MHD with real sodium properties (design case). #
+# Uses the true sodium values from PLAN_vks.md (T ~ 120 C). The Reynolds  #
+# number is high (Re ~ 1e5), so this case needs a turbulent Navier-Stokes  #
+# problem type (Navier_Stokes_Turbulent) and a turbulence model (k-eps)     #
+# before it can run; kept here as a reference/template, not a runnable case. #
+# Geometry is the box proxy; replace with the spherical shell MED mesh.     #
+dimension 3
+Pb_MHD pb
+Domaine dom
+
+# BEGIN MESH #
+Mailler dom
+{
+    Pave pave1
+    {
+        Origine 0. 0. 0.
+        Nombre_de_Noeuds 5 5 5
+        Longueurs 0.412 0.412 0.412
+    }
+    {
+        Bord gauche X = 0.  0. <= Y <= 0.412  0. <= Z <= 0.412
+        Bord droite X = 0.412  0. <= Y <= 0.412  0. <= Z <= 0.412
+        Bord bas Y = 0.  0. <= X <= 0.412  0. <= Z <= 0.412
+        Bord haut Y = 0.412  0. <= X <= 0.412  0. <= Z <= 0.412
+        Bord devant Z = 0.  0. <= X <= 0.412  0. <= Y <= 0.412
+        Bord derriere Z = 0.412  0. <= X <= 0.412  0. <= Y <= 0.412
+    }
+}
+
+Polyedriser dom
+# END MESH #
+
+# BEGIN PARTITION
+Partition dom
+{
+    Partition_tool metis { nb_parts 2 }
+    Larg_joint 2
+    zones_name DOM
+}
+End
+END PARTITION #
+# BEGIN SCATTER
+Scatter DOM.Zones dom
+END SCATTER #
+
+Polymac_p0 dis
+
+Associate pb dom
+
+Schema_Euler_Implicite sch
+Read sch
+{
+    tinit 0.
+    tmax 10.
+    dt_max 1e-2
+    facsec 1e6
+    facsec_max 1e6
+    solveur implicite { solveur petsc cli { } }
+}
+
+Associate pb sch
+Discretize pb dis
+
+Read pb
+{
+    nb_composantes 3
+    fluide_incompressible
+    {
+        mu      Champ_Uniforme 1 6.9e-4     # Pa.s  (sodium, 120 C)
+        rho     Champ_Uniforme 1 929        # kg/m3 (sodium, 120 C)
+        lambda  Champ_Uniforme 1 85         # W/m/K (sodium)
+        Cp      Champ_Uniforme 1 1380       # J/kg/K (sodium)
+        beta_th Champ_Uniforme 1 0.0
+    }
+
+    Navier_Stokes_standard
+    {
+        solveur_pression Petsc Cholesky { }
+        diffusion  { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            bas     paroi_defilante Champ_Front_Fonc_xyz 3 (z-0.206)*0.5 0. -(x-0.206)*0.5
+            haut    paroi_defilante Champ_Front_Fonc_xyz 3 -(z-0.206)*0.5 0. (x-0.206)*0.5
+            gauche  paroi_fixe
+            droite  paroi_fixe
+            devant  paroi_fixe
+            derriere paroi_fixe
+        }
+        initial_conditions { vitesse Champ_Uniforme 3 0. 0. 0. }
+        sources
+        {
+            force_lorentz { }
+        }
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        diffusivite_magnetique Champ_Uniforme 1 0.078   # eta = 1/(mu0*sigma), m2/s
+        vitesse_hydraulique
+
+        diffusion  { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            gauche   paroi_isolante_magnetique
+            droite   paroi_isolante_magnetique
+            bas      paroi_isolante_magnetique
+            haut     paroi_isolante_magnetique
+            devant   paroi_isolante_magnetique
+            derriere paroi_isolante_magnetique
+        }
+        initial_conditions { magnetic_field Champ_Uniforme 3 0. 0. 1e-4 }
+    }
+
+    Postraitement
+    {
+        Champs { magnetic_field elem }
+        format lml
+    }
+}
+
+Solve pb

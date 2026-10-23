@@ -9,7 +9,7 @@
 # would destroy this equilibrium.                                          #
 # ============================================================================= #
 dimension 2
-Pb_MHD pb
+Pb_Induction pb
 Domaine dom
 
 # BEGIN MESH #

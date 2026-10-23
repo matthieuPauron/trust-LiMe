@@ -122,6 +122,10 @@ parallel_ok=(
   "$base/MagneticCoupled/MMS_Coupled/"
   "$base/MagneticCoupled/Coupled_Feedback/"
   "$base/MagneticCoupled/ErrorInputs/"
+  # --- MagneticCoupled3D (VKS smoke, runs on 2 ranks) ---
+  "$base/MagneticCoupled3D/VKSLite/"
+  # --- Industrial examples (2-rank coupled MHD smoke cases) ---
+  "$base/Industrial_Examples/"
   # --- Postraitement_fields (merged: one form per dimension) ---
   "$base/Postraitement_fields/Champs2D/"
   "$base/Postraitement_fields/Champs3D/"

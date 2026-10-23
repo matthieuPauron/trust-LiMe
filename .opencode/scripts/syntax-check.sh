@@ -101,7 +101,8 @@ for i, tok in enumerate(base):
     if tok in NOISE:
         continue
     # drop input/output file operands
-    if tok.endswith((".cpp", ".cc", ".cxx", ".c", ".C", ".o")):
+    if tok.endswith((".cpp", ".cc", ".cxx", ".c", ".C", ".o",
+                     ".f", ".f90", ".F", ".F90", ".cu")):
         continue
     out.append(tok)
 

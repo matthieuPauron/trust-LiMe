@@ -10,7 +10,7 @@
 # Exact analytic solution known; decay rate measures discretised eta.      #
 # ============================================================================= #
 dimension 2
-Pb_MHD pb
+Pb_Induction pb
 Domaine dom
 
 # BEGIN MESH #

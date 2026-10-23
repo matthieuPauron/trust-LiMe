@@ -621,7 +621,10 @@ the PDF step, versus twelve runs before.
 ## 12bis. Coupling a momentum equation: `force_lorentz` (source on Navier-Stokes)
 
 Everything learned while wiring the low-Rm Lorentz coupling
-(`src/Terme_Source_Lorentz.{h,cpp}` + optional NS equation in `Pb_MHD`):
+(`src/Terme_Source_Lorentz.{h,cpp}` + optional NS equation in `Pb_MHD`).
+*Note (2026-10-22): the coupled problems were restructured — `Pb_MHD` is now a
+`Pb_Hydraulique` with the momentum equation at index 0 (see §20). The option
+mechanism described here is unchanged; only the class holding it changed.*
 
 - **Optional extra equations are free.** `Probleme_base::read_optional_
   equations` picks up *any* `Equation_base` subtype keyword written in the
@@ -933,10 +936,12 @@ plus the `ForceLorentzBalance` hardening). Findings:
 ## 17. Two-way coupling + mesh-convergence scans + notebook merging (2026-10-17→19)
 
 Lessons from the two-way rollout (`vitesse_hydraulique`) and the
-mesh-convergence/notebook-merging session. The geometry: Pb_MHD holds the
-magnetic equation as equation 0; the optional `Navier_Stokes_standard` is
-created, discretised and read *after* the magnetic block
-(`Probleme_base::read_optional_equations`).
+mesh-convergence/notebook-merging session. The geometry *at that time*:
+Pb_MHD held the magnetic equation as equation 0 and the optional
+`Navier_Stokes_standard` was created, discretised and read *after* the
+magnetic block (`Probleme_base::read_optional_equations`). Since §20 (2026-10-22)
+the momentum equation is a first-class equation at index 0 of `Pb_MHD`; the
+`couplage_fort` behaviour described below is unchanged.
 
 - **`Operateur_Conv` is a two-hop velocity binding.** The wrapper's
   `associer_vitesse()` only stores its own `la_vitesse` observer
@@ -1058,7 +1063,15 @@ DIFFERENT MESH than its own data file.
   mesh (e.g. Coupled_Feedback's twoway twin — that is why the M3 merge never
   tripped this).
 
-### 18.2 Layout-dependent SIGFPE in the parallel path (post-treatment 3D fine scale — open)
+### 18.2 Layout-dependent SIGFPE in the parallel path (post-treatment 3D fine scale — guarded)
+
+**2026-10-22 — defensive guard applied in the kernel.** `Op_Diff_PolyMAC_MPFA_Elem::calculer_dt_stab()`
+now skips (a) face contributions whose `volumes_entrelaces(f)` is denormal/zero and
+(b) flux entries whose magnitude is below `1e-30` (the `flux(n)` truthiness guard used to
+pass denormals, causing `1/flux` to overflow to FPE). The Champs3D fine scale now runs
+cleanly on 2 ranks (`Finished correctly`). The underlying uninitialized read in the kernel's
+parallel init path (porosite/volumes_entrelaces/joint-face data) is **not** pinned; the guard
+makes the code robust to it but the root cause remains open for a future full-kernel ASan pass.
 
 The form that first exposed it was the pre-merge
 `Postraitement_fields/CourantMagnetique`, fine scale (17³ nodes), case name
@@ -1213,3 +1226,172 @@ The merge deliberately keeps that baseline cell **verbatim** (contract
 unchanged). If a mesh or solver change ever trips it, the fix is one line:
 use the three-term expression and the same 5 % bound as the 2D case
 (measured margin then 7×). Do **not** widen the 50 % bound further.
+
+### 20. Strong (Picard) coupling — opt-in `couplage_fort` (2026-10-22)
+
+`Convection_Diffusion_Magnetic_field` now accepts three optional keywords (registered in
+`set_param`, read when the equation block is parsed):
+
+- `couplage_fort` (bare flag) — enable Picard iteration of the magnetic <-> momentum
+  sweep inside a time step (two-way mode only; ignored otherwise).
+- `nb_iterations_couplage <n>` (default 5) — max sweeps per step.
+- `tolerance_couplage <eps>` (default 1e-8) — relative-change convergence threshold.
+
+When enabled, `Pb_MHD::iterateTimeStep` repeats the Gauss-Seidel sweep up to `n` times
+or until both the magnetic field and the velocity change by less than `eps`. The sources
+read the latest (`futur`) values in this mode: `gradient_b_elements`, `Terme_Source_Lorentz`
+and `Terme_Source_Induction_stretching` switch to `inconnue().futur()` / rebuild grad(u)
+every sweep. Default (flag off) preserves the historical fully-lagged staggered scheme, so
+the 27-form green baseline is untouched. The convection operator still reads the
+present slot, so this is a semi-strong coupling (Lorentz/stretching contributions are
+iterated, transport uses the time-level velocity); true monolithic coupling remains
+future work.
+
+Accessors: `eq.couplage_fort()`, `eq.nb_iterations_couplage()`, `eq.tolerance_couplage()`.
+
+## Induction turbulence (turbulent magnetic diffusivity)
+
+The induction equation accepts an optional `diffusivite_turbulente_magnetique`
+keyword (a `Champ_Don_base`, i.e. any field — `Champ_Uniforme`, `Champ_Fonc`,
+`Champ_Inc`, ...) representing the eddy diffusivity \f$\eta_t\f$. It is folded
+into the molecular diffusivity so the equation runs on \f$\eta_{\rm eff} =
+\eta + \eta_t\f$:
+
+- **Phase 1 (uniform):** if both \f$\eta\f$ and \f$\eta_t\f$ are `Champ_Uniforme`,
+  `readOn` sums them into a single `Champ_Uniforme` stored in
+  `diffusivite_effective_` (message `turbulent magnetic diffusivity folded,
+  eta_eff = ...`).
+- **Phase 2a (non-uniform):** otherwise `completer()` builds a
+  `Champ_Fonc_Somme` (`src/Champ_Fonc_Somme.{h,cpp}`) that evaluates
+  \f$\eta_{\rm eff}(x) = \eta(x) + \eta_t(x)\f$ point-wise and stores it in
+  `diffusivite_effective_`. The operands are observed (`OBS_PTR`) so a
+  \f$\eta_t\f$ that is itself a `Champ_Fonc` (e.g. derived from \f$k,\varepsilon\f$)
+  is tracked automatically.
+- `diffusivite_pour_transport()` / `diffusivite_pour_pas_de_temps()` return
+  `diffusivite_effective_` when set, else `diffusivite_magnetique_`.
+
+Phase 2b (transport equations for \f$k,\varepsilon\f$ and the realizable
+\f$C_\mu k^2/\varepsilon\f$ closure, following TrioCFD's two-layer k-\f$\varepsilon\f$
+method) is still open: the current seam only provides the *interface*; the
+turbulence model itself is not yet implemented.
+
+### Phase 2b — turbulent magnetic diffusivity from k, epsilon
+
+In addition to accepting a ready-made `diffusivite_turbulente_magnetique` field,
+the equation can build it from two operand fields:
+
+- Keywords: `k_magnetique <field>`, `epsilon_magnetique <field>`,
+  `C_mu_magnetique <float>` (default 0.09), `prandtl_turbulent_magnetique <float>`
+  (default 1.0).
+- In `completer()`, when both `k_magnetique_` and `epsilon_magnetique_` are set and
+  `diffusivite_turbulente_magnetique_` is not already given, a
+  `Champ_Fonc_Eta_Turbulent` (`src/Champ_Fonc_Eta_Turbulent.{h,cpp}`) is built:
+  `eta_t(x) = C_mu * k(x)^2 / eps(x) / Pm_t`, with a floor on eps (1e-12).
+  It is stored in `diffusivite_turbulente_magnetique_` and then folded by the
+  Phase 2a logic (uniform -> Champ_Uniforme sum at read time; non-uniform ->
+  Champ_Fonc_Somme point-wise). Operands are observed (OBS_PTR) and refreshed in
+  mettre_a_jour, so a k/eps that is itself a Champ_Fonc is tracked.
+
+Realizable C_mu and wall limiters are deferred (Phase 2b+).
+
+## Phase 3 scaffolding (magnetic fluctuation turbulence)
+
+Scaffolding classes (Objet_U subclasses with TODOs) added for the future
+magnetic-fluctuation transport model:
+
+- `Modele_turbulence_magnetique` (`src/Modele_turbulence_magnetique.{h,cpp}`) —
+  separate model class (per design decision), holds k_b/eps_b, eddy diffusivity.
+- `Convection_Diffusion_K_Magnetic`, `Convection_Diffusion_Epsilon_Magnetic`
+  (`src/Convection_Diffusion_*_Magnetic.{h,cpp}`) — transport equation shells.
+- `Terme_Source_K_Magnetic`, `Terme_Source_Epsilon_Magnetic`
+  (`src/Terme_Source_*_Magnetic.{h,cpp}`) — source term shells.
+
+Physics (convection, diffusion, production, dissipation, wall functions) is
+deferred; these are compilable placeholders establishing the design.
+
+## Phase 4 (hydraulic k-eps coupling)
+
+TrioCFD is now a baltik dependency (`project.cfg` `[dependencies]`). In
+`completer()`, when `vitesse_hydraulique_` is set and no explicit k/eps fields
+are given, the magnetic equation checks the NS equation's turbulence model
+(`Navier_Stokes_Turbulent::modele_turbulence()`) for a `K_Eps` (or separate
+`k`/`epsilon`) field and builds the `Champ_Fonc_Eta_Turbulent` from it
+(component 0 = k, component 1 = eps for the 2-component K_Eps field).
+
+## 20. Problem hierarchy: `Pb_Induction` / `Pb_MHD` / `Pb_MHD_Turbulent` (2026-10-22)
+
+The single `Pb_MHD` (a `Probleme_base` whose equation 0 was the magnetic
+equation, with the momentum equation bolted on as an *optional* extra) is
+split the way the kernel splits its own problem family:
+
+| Class | Base | equation(0) | equation(i>=2) |
+|---|---|---|---|
+| `Pb_Induction` | `Probleme_base` | magnetic | — |
+| `Pb_MHD` | `Pb_Hydraulique` | `Navier_Stokes_std` | `eq_opt_[i-2]` |
+| `Pb_MHD_Turbulent` | `Pb_Hydraulique_Turbulent` | `Navier_Stokes_turbulent` | `eq_opt_[i-2]` |
+
+Why `Pb_Induction` is **not** a `Pb_Fluide_base`: several kernel source terms
+treat `sub_type(Pb_Fluide_base, pb)` as the contract "equation(0) is a
+`Navier_Stokes_std`" and `ref_cast` it unconditionally
+(`VDF/Sources/Terme_Source_inc_VDF_Face.cpp`,
+`Terme_Source_Coriolis_VDF_Face.cpp`,
+`Terme_Source_inc_th_VDF_Face.cpp`). The kernel's own induction-only problem
+(`Pb_Conduction`) derives from `Probleme_base` for the same reason.
+
+**Equation index vs data-file order.** `Probleme_base::lire_equations` matches
+each equation keyword by *name* (`getset_equation_by_name`), so the two blocks
+can be written in either order. What is fixed is the **index**: `equation(0)`
+is the momentum equation (the medium is discretised through it,
+`typer_lire_milieu`, `ns_ou_cond_eq = 0`) and `equation(1)` the magnetic one.
+The momentum block is written first by convention and every validation dataset
+does so. A turbulent momentum equation has to stay at index 0 for the same
+reason.
+
+**Medium association.** `Pb_Hydraulique::associer_milieu_base` associates the
+medium with the momentum equation *only* (the base `Probleme_base` version
+associates with every equation). Both coupled subclasses therefore override it
+as `Pb_Hydraulique*(mil); eq_magnetic_field.associer_milieu_base(mil);`.
+
+**`nb_composantes` stays a problem-level head keyword** (read before the base
+`readOn`), because `Convection_Diffusion_Magnetic_field::discretiser()` needs it
+before the unknown is built.
+
+**The k-eps model assumes equation 1 is a scalar transport equation.**
+`Modele_turbulence_hyd_K_Eps::preparer_calcul()` (and its `_Bicephale` twin,
+in `../triocfd-code`) initialised the thermal wall law with
+`equation(1).get_modele(TURBULENCE).valeur()` whenever
+`nombre_d_equations() > 1`. In `Pb_MHD_Turbulent` equation 1 is the magnetic
+equation, which has no turbulence model, so the null reference aborted
+(`TRUST_Ref.h:134: assertion 'p_ != nullptr' failed`). Both call sites now test
+the reference before dereferencing it. This is the same ordering constraint as
+below: the thermal equation, when it lands, goes **before** the magnetic one.
+
+**Strong coupling** (`couplage_fort`) lives in one free function,
+`mhd_iterate_time_step()` (`src/MHD_Coupling.{h,cpp}`), shared by both coupled
+classes; it calls `pb.Probleme_base::iterateTimeStep()` explicitly to avoid
+re-entering the override.
+
+## 21. Two `Op_Diff_PolyMAC_MPFA` out-of-bounds reads with a vector unknown (2026-10-22)
+
+Found while validating the hierarchy above under `semi_optim` (asserts on).
+Both are **pre-existing** and were invisible in the `optim` build, where
+`NDEBUG` compiles the bounds check away and the stray read happens to hit the
+next element of a uniform field (so the results were right by luck):
+
+1. `Op_Diff_PolyMAC_MPFA_base::update_nu()` (and its `HFV` twin):
+   `nu_src(!c_nu * e, n)` with `n < N` (unknown components) while the
+   diffusivity line has `N_mil` (= `masse_volumique().line_size()`) entries.
+   With a scalar medium (`rho` = 1 component) and a vector unknown
+   (`nb_composantes = 2`) that reads past the end of the line.
+2. `Op_Diff_PolyMAC_MPFA_Elem::calculer_dt_stab()`:
+   `lambda(!cL * e, n)` / `diffu(!cD * e, n)` with the same mismatch.
+
+Both are guarded upstream in `../trust-code` (outside this repo's diff):
+a one-component source field is now broadcast to every component
+(`nu_src_scalaire`, `nl` / `nd`). Numerically identical when the field is
+uniform; defined behaviour otherwise.
+
+Symptom when unguarded: `TRUSTTab.tpp:71: Assertion 'i2 >= 0 && i2 <
+dimensions_[1]' failed` from `Op_Diff_PolyMAC_MPFA_Elem::calculer_dt_stab()`
+during `Schema_Temps_base::initialize()`, i.e. right after "Pressure increment
+computed successfully".

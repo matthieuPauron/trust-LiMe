@@ -1,0 +1,187 @@
+# PARALLEL OK #
+
+# ============================================================================= #
+# Coupled MHD : TWO-WAY Hartmann flow (TRUST-LiMe)                                #
+# ============================================================================= #
+# The Hartmann two-way follow-up announced by Coupled_Feedback: BOTH             #
+# feedbacks are live and the check is quantitative.                               #
+#                                                                                 #
+# Channel between plates at y = +/- h (h = 0.5), driven by an imposed            #
+# pressure difference dp = 1 over L = 1 (open boundaries at x = 0, 1).            #
+# The magnetic equation transports the SOLVED NS velocity ('vitesse_hydraulique') #
+# and carries the M1 stretching source; the momentum equation carries the          #
+# 'force_lorentz' source.  With B0 = 1 along y, eta = 0.01, mu = mu0 = rho = 1:   #
+#     Ha = B0 h / sqrt(mu mu0 eta) = 5                                            #
+# and the coupled steady state is EXACTLY the classical Hartmann solution:        #
+#     u(y)   = (G h^2 / (mu Ha^2)) [1 - cosh(Ha y/h)/cosh(Ha)]   (G = dp/L)       #
+#     b_x(y) = (B0 G h^2 / (eta mu Ha^2)) [sinh(Ha y/h) H/(Ha cosh(Ha)) - y]      #
+# an odd, mean-free induced profile (b_x(0) = 0).                                 #
+#                                                                                 #
+# TWO-WAY DISCRIMINATOR: without the Lorentz feedback the flow would be           #
+# Poiseuille, u_P(y) = G (h^2 - y^2)/(2 mu), whose centreline velocity is         #
+# cosh(Ha)(cosh(Ha)-1)^-1 ~ 12.7 times the Hartmann one — the Lorentz force       #
+# suppresses the flow by more than an order of magnitude at Ha = 5.               #
+#                                                                                 #
+# MAGNETIC-PRESSURE BOUNDARY PROFILES: the y-momentum balance closes with         #
+# p(y) + b_x(y)^2/(2 mu0) uniform in y, so the open pressure boundaries          #
+# impose the ANALYTIC magnetic-pressure profile p(y) = P - b_x(y)^2/(2 mu0).      #
+# (A uniform imposed p would conflict with the magnetic pressure, drive a         #
+# spurious cross-flow u_y ~ 5e-4 and pollute b_y through the stretching           #
+# source — measured: b_y drift 9.6% with uniform p, 0.75% with the profile.)       #
+#                                                                                 #
+# b_y = B0 stays a near-exact invariant (residual ~1e-2: the discrete            #
+# magnetic-pressure balance at the boundaries).                                    #
+# ============================================================================= #
+dimension 2
+Pb_MHD pb
+Domaine dom
+
+# plates at y = +/- 0.5 : walls are the two bords normal to Y #
+
+# BEGIN MESH #
+Mailler dom
+{
+    Pave pave
+    {
+        Origine              0. -0.5
+        Nombre_de_Noeuds     $nx $ny
+        Longueurs            1.  1.
+    }
+    {
+        Bord gauche   X = 0.   -0.5 <= Y <= 0.5
+        Bord droite   X = 1.   -0.5 <= Y <= 0.5
+        Bord bas      Y = -0.5  0. <= X <= 1.
+        Bord haut     Y = 0.5   0. <= X <= 1.
+    }
+}
+# END MESH #
+
+# BEGIN PARTITION
+Partition dom
+{
+    Partition_tool metis { nb_parts 2 }
+    Larg_joint 2
+    zones_name DOM
+}
+End
+END PARTITION #
+
+# BEGIN SCATTER
+Scatter DOM.Zones dom
+END SCATTER #
+
+
+Polymac_p0 dis
+
+Associate pb dom
+
+Schema_Euler_Implicite sch
+Read sch
+{
+    tinit 0.
+    tmax 10.
+    dt_max 0.05
+    facsec 1e6
+    facsec_max 1e6
+    solveur implicite { solveur petsc cli { } }
+}
+
+Associate pb sch
+Discretize pb dis
+
+Read pb
+{
+    # vector model: b = (b_x induced, B0 applied) #
+    nb_composantes 2
+    fluide_incompressible
+    {
+        mu      Champ_Uniforme 1 1.0
+        rho     Champ_Uniforme 1 1.0
+        lambda  Champ_Uniforme 1 1.0
+        Cp      Champ_Uniforme 1 1.0
+        beta_th Champ_Uniforme 1 0.0
+    }
+
+    Navier_Stokes_standard
+    {
+        # Pressure solver: Petsc-wrapped direct solver (the Sparskit-based #
+        # direct solver is deprecated and unstable here).                   #
+        # WARNING: make_PAR.data may rewrite this solver - do not edit.     #
+        solveur_pression Petsc Cholesky { }
+        diffusion  { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            # open boundaries driving the flow: imposed pressure difference #
+            # dp = 1 over L = 1, with the analytic magnetic-pressure profile #
+            # p(y) = P - b_x(y)^2/(2 mu0) (see the header):                   #
+            #   b_x(y) = sinh(10 y)/742.099 - y                                #
+            gauche   frontiere_ouverte_pression_imposee Champ_front_fonc_txyz 1 2.0-0.5*4.0*(sinh(10*y)/742.099-y)*(sinh(10*y)/742.099-y)
+            droite   frontiere_ouverte_pression_imposee Champ_front_fonc_txyz 1 -0.5*4.0*(sinh(10*y)/742.099-y)*(sinh(10*y)/742.099-y)
+            bas      paroi_fixe
+            haut     paroi_fixe
+        }
+        initial_conditions
+        {
+            vitesse Champ_Uniforme 2 0. 0.
+        }
+        sources
+        {
+            force_lorentz { }
+        }
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        diffusivite_magnetique Champ_Uniforme 1 0.01
+        diffusivite_turbulente_magnetique Champ_Uniforme 1 0.01
+        # TWO-WAY: the transporting velocity is the solved NS velocity. #
+        vitesse_hydraulique
+
+        diffusion  { }
+        convection { amont }
+
+        # M1 inductive stretching source S = (b.grad) u : S_x = B0 u'(y) #
+        sources
+        {
+            induction_stretching { }
+        }
+
+        boundary_conditions
+        {
+            # insulating walls: zero normal flux on both components #
+            gauche  Neumann_Paroi_adiabatique
+            droite  Neumann_Paroi_adiabatique
+            bas     Neumann_Paroi_adiabatique
+            haut    Neumann_Paroi_adiabatique
+        }
+        # b = (0, B0) initially : the induced field grows from zero #
+        initial_conditions { magnetic_field Champ_Uniforme 2 0. 1. }
+    }
+
+    Postraitement
+    {
+        Sondes
+        {
+            # probes exactly on cell centres: x = 0.375, y_k = -0.5 + (k+1/2)/64 #
+            # core cells: tight comparison with the analytic Hartmann profile #
+            sonde_u0 grav vitesse Periode 1e-6 Points 1 0.375 0.0078125
+            sonde_u1 grav vitesse Periode 1e-6 Points 1 0.375 -0.0546875
+            sonde_u2 grav vitesse Periode 1e-6 Points 1 0.375 -0.1796875
+            sonde_u3 grav vitesse Periode 1e-6 Points 1 0.375 -0.3046875
+            # wall-adjacent cell: documented bound, not tight (grad-u wall bias) #
+            sonde_uc grav vitesse Periode 1e-6 Points 1 0.375 -0.4453125
+            # induced field at the same core cells #
+            sonde_b0 grav magnetic_field0 Periode 1e-6 Points 1 0.375 0.0078125
+            sonde_b1 grav magnetic_field0 Periode 1e-6 Points 1 0.375 -0.0546875
+            sonde_b2 grav magnetic_field0 Periode 1e-6 Points 1 0.375 -0.1796875
+            sonde_b3 grav magnetic_field0 Periode 1e-6 Points 1 0.375 -0.3046875
+            # applied transverse field: near-exact invariant #
+            sonde_by grav magnetic_field1 Periode 1e-6 Points 1 0.375 0.0078125
+        }
+    }
+
+}
+
+Solve pb

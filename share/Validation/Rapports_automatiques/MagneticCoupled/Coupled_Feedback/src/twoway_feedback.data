@@ -90,27 +90,6 @@ Read pb
         beta_th Champ_Uniforme 1 0.0
     }
 
-    Convection_Diffusion_Magnetic_field
-    {
-        # eta = 0: the deviation of b is pure advection, no diffusion. #
-        diffusivite_magnetique Champ_Uniforme 1 0.
-        # TWO-WAY: the transporting velocity is the solved NS velocity. #
-        vitesse_hydraulique
-
-        diffusion  { }
-        convection { amont }
-
-        boundary_conditions
-        {
-            gauche  Neumann_Paroi_adiabatique
-            droite   Neumann_Paroi_adiabatique
-            bas     Neumann_Paroi_adiabatique
-            haut    Neumann_Paroi_adiabatique
-        }
-        # exactly linear vector field b = (y, -x) #
-        initial_conditions { magnetic_field Champ_Fonc_xyz dom 2 y -x }
-    }
-
     # Optional momentum equation: the solved velocity feeds back into the  #
     # magnetic convection, and b feeds the Lorentz force back into it.       #
     Navier_Stokes_standard
@@ -137,6 +116,27 @@ Read pb
         {
             force_lorentz { }
         }
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        # eta = 0: the deviation of b is pure advection, no diffusion. #
+        diffusivite_magnetique Champ_Uniforme 1 0.
+        # TWO-WAY: the transporting velocity is the solved NS velocity. #
+        vitesse_hydraulique
+
+        diffusion  { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            gauche  Neumann_Paroi_adiabatique
+            droite   Neumann_Paroi_adiabatique
+            bas     Neumann_Paroi_adiabatique
+            haut    Neumann_Paroi_adiabatique
+        }
+        # exactly linear vector field b = (y, -x) #
+        initial_conditions { magnetic_field Champ_Fonc_xyz dom 2 y -x }
     }
 
     Postraitement

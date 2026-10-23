@@ -10,7 +10,7 @@
 # message naming Navier_Stokes_standard.                                       #
 # ============================================================================= #
 dimension 2
-Pb_MHD pb
+Pb_Induction pb
 Domaine dom
 
 # BEGIN MESH #

@@ -13,14 +13,32 @@ overridden.
 
 ## Problems and equations
 
-- @ref Pb_MHD "Pb_MHD" — the magnetic problem: one Convection_Diffusion_Magnetic_field
-  equation, optionally followed by extra equations (e.g. Navier-Stokes for the
-  coupled low-Rm mode). See @ref TrustLiMe_model "the model page".
+The three problem classes share one equation and differ only in which momentum
+equation (if any) is solved alongside it — the same split the kernel uses for
+`Pb_Conduction` / `Pb_Thermohydraulique` / `Pb_Thermohydraulique_Turbulent`:
+
+| Problem | Base class | Equations (in order) |
+|---|---|---|
+| @ref Pb_Induction "Pb_Induction" | `Probleme_base` | magnetic only (prescribed velocity) |
+| @ref Pb_MHD "Pb_MHD" | `Pb_Hydraulique` | `Navier_Stokes_std`, then magnetic |
+| @ref Pb_MHD_Turbulent "Pb_MHD_Turbulent" | `Pb_Hydraulique_Turbulent` | `Navier_Stokes_turbulent` (k-eps), then magnetic |
+
+- @ref Pb_Induction "Pb_Induction" — the induction-only problem: a single
+  Convection_Diffusion_Magnetic_field equation advected by a prescribed
+  velocity. It derives from `Probleme_base`, not `Pb_Fluide_base`, because it
+  has no momentum equation to expose at index 0.
+- @ref Pb_MHD "Pb_MHD" — hydro + induction with a laminar momentum equation.
+  The momentum equation is at index 0 and the magnetic one at index 1, which
+  is the order the data file must use.
+- @ref Pb_MHD_Turbulent "Pb_MHD_Turbulent" — the same layout with
+  `Navier_Stokes_turbulent`; the hydraulic k-eps model is reused for the
+  magnetic turbulent diffusivity.
 - @ref Convection_Diffusion_Magnetic_field "Convection_Diffusion_Magnetic_field" —
   the magnetic induction equation
   \f$ \partial_t b + (u\cdot\nabla) b - \nabla\cdot(\eta \nabla b) = S \f$,
-  its keywords (`diffusivite_magnetique`, `vitesse_magnetique`, `mu0`,
-  `rapport_charge_masse`, `nb_composantes`) and its post-treatment fields.
+  its keywords (`diffusivite_magnetique`, `vitesse_magnetique`,
+  `vitesse_hydraulique`, `mu0`, `rapport_charge_masse`, `nb_composantes`,
+  `couplage_fort`) and its post-treatment fields.
 
 ## Boundary condition
 
@@ -35,7 +53,8 @@ overridden.
   a given, frozen transporting velocity.
 - @ref Terme_Source_Lorentz "Terme_Source_Lorentz" —
   `force_lorentz`: the Lorentz force density \f$ J \times B \f$ applied to the
-  momentum equation of a Pb_MHD problem (coupled low-Rm mode).
+  momentum equation of a Pb_MHD / Pb_MHD_Turbulent problem (coupled low-Rm
+  mode).
 
 ## Post-treatment fields
 

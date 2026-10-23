@@ -1,0 +1,97 @@
+Enabling error handlers catching SIGFPE and SIGABORT and giving a trace of where the fault happened.
+Custom error handlers correctly installed. SIGFPE and SIGABRT redirected.
+Kokkos initialized!
+Petsc initialization succeeded.
+Parallel engine initialized : Comm_Group_Noparallel with 1 processors
+You can run --kokkos-help option.
+Executable: /home/matthieu/Development/trust-LiMe/trust-lime_opt
+Data file name = DEC_fusion_blanket
+Sequential calculation
+feenableexcept enabled.
+Data file : DEC_fusion_blanket
+Localisation etude: /home/matthieu/Development/trust-LiMe/share/Validation/Rapports_automatiques/Industrial_Examples/Fusion_Blanket/src
+Nom du cas DEC_fusion_blanket
+ code : /home/matthieu/Development/trust-LiMe/trust-lime_opt
+ version : 1.9.8 
+Debut de l'execution 
+MAIN: Reading and executing data file
+Dimension::interpreter : dimension = 2
+Execution of the interpreter Mailler
+Association of the domain on which the interpreter applies Mailler
+Reading of the block pave
+Step of 2D mesh in progress... 
+It was created 11% of coordxIt was created 22% of coordxIt was created 33% of coordxIt was created 44% of coordxIt was created 55% of coordxIt was created 66% of coordxIt was created 77% of coordxIt was created 88% of coordxIt was created 11% of coordyIt was created 22% of coordyIt was created 33% of coordyIt was created 44% of coordyIt was created 55% of coordyIt was created 66% of coordyIt was created 77% of coordyIt was created 88% of coordy
+Step of mesh ended 
+Reading of the boundary gauche
+End of reading of the boundary : gauche
+Reading of the boundary droite
+End of reading of the boundary : droite
+Reading of the boundary bas
+End of reading of the boundary : bas
+Reading of the boundary haut
+End of reading of the boundary : haut
+Filling domain from list of domains in progress... 
+   Concatenating Domains dom and pave
+   Merging elem info for domain dom with pave
+Filling from list - End!
+Elimination of 0 unnecessary nodes in the domain dom
+Decouper: Splitting of a domain
+ Domain name to split : dom
+Association of the domain on which the interpreter applies Decouper
+==============================================
+The extreme coordinates of the domain dom are:
+x is between 0 and 1
+y is between 0 and 1
+==============================================
+==============================================
+The volume cells of the domain dom are:
+sum(volume cells)= 1
+mean(volume cells)= 0.0123457
+min(volume cells)= 0.0123457
+max(volume cells)= 0.0123457
+==============================================
+domaine = dom
+ Creation of a partitioner of type: Partitionneur_metis
+Reading of data for a Partitionneur_Metis equation
+Partitionneur_Metis_32_64<_SIZE_>::construire_partition
+ Construction of graph connectivity...
+ Construction of the som_elem connectivity
+ Construction of the elem_elem connectivity
+===============
+Call for PMETIS
+===============
+===============
+Partitioning quality : edgecut = 10
+-> It is roughly the total number of edges (faces) which will be shared by the processors.
+-> The lesser this number is, the lesser the total volume of communication between processors.
+-> You can increase nb_essais option (default 1) to try to reduce (but at a higher CPU cost) this number.
+===============
+Correction elem0 on processor 0
+Correction of the splitting to put the element 0 on processor 0.
+ No correction to be made
+The partitioner has generated 2 parts.
+Search of neighboring elements of boundary faces
+Construction of lists of elements per subdomain
+Generation of 2 parts:
+ Construction of part number 0
+  Number of nodes    : 55
+  Number of elements : 40
+  Number of joints   : 1
+  Joint 0 PeVoisin 1 NbSommets 11 NbFaces 10
+               Total:    NbSommets 11 NbFaces 10
+Writing part 0 into the binary file DOM_0000.Zones
+Writing of 55 nodes.
+Writing of 40 elements.
+ Construction of part number 1
+  Number of nodes    : 56
+  Number of elements : 41
+  Number of joints   : 1
+  Joint 0 PeVoisin 0 NbSommets 11 NbFaces 10
+               Total:    NbSommets 11 NbFaces 10
+Writing part 1 into the binary file DOM_0001.Zones
+Writing of 56 nodes.
+Writing of 41 elements.
+End of the interpreter Decouper
+End of the interpreter Decouper
+MAIN: End of data file
+Arret des processes.

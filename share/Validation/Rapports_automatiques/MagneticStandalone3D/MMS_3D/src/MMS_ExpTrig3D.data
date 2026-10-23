@@ -56,7 +56,7 @@ Read sch
     solveur implicite { solveur gmres { diag seuil 1.e-12 nb_it_max 100 } }
 }
 
-Pb_MHD pbmhd
+Pb_Induction pbmhd
 Associate pbmhd dom
 Associate pbmhd sch
 Discretize pbmhd dis

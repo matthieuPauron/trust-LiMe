@@ -89,25 +89,6 @@ Read pb
         beta_th Champ_Uniforme 1 0.0
     }
 
-    Convection_Diffusion_Magnetic_field
-    {
-        # eta = 0 and no transport velocity: b = (y,-x) is an exact equilibrium. #
-        diffusivite_magnetique Champ_Uniforme 1 0.
-
-        diffusion  { }
-        convection { amont }
-
-        boundary_conditions
-        {
-            gauche  Neumann_Paroi_adiabatique
-            droite   Neumann_Paroi_adiabatique
-            bas     Neumann_Paroi_adiabatique
-            haut    Neumann_Paroi_adiabatique
-        }
-        # exactly linear vector field b = (y, -x) #
-        initial_conditions { magnetic_field Champ_Fonc_xyz dom 2 y -x }
-    }
-
     # Optional momentum equation: presence => coupled low-Rm mode. #
     Navier_Stokes_standard
     {
@@ -131,6 +112,25 @@ Read pb
         {
             force_lorentz { }
         }
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        # eta = 0 and no transport velocity: b = (y,-x) is an exact equilibrium. #
+        diffusivite_magnetique Champ_Uniforme 1 0.
+
+        diffusion  { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            gauche  Neumann_Paroi_adiabatique
+            droite   Neumann_Paroi_adiabatique
+            bas     Neumann_Paroi_adiabatique
+            haut    Neumann_Paroi_adiabatique
+        }
+        # exactly linear vector field b = (y, -x) #
+        initial_conditions { magnetic_field Champ_Fonc_xyz dom 2 y -x }
     }
 
     Postraitement
