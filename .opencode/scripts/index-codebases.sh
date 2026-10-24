@@ -19,10 +19,12 @@ TRUST_SRC="${TRUST_SRC:-/home/matthieu/Development/trust-code/src}"
 TRIO_SRC="${TRIO_SRC:-/home/matthieu/Development/triocfd-code/src}"
 
 FORCE=0
+CHECK=0
 TARGETS=()
 for arg in "$@"; do
     case "$arg" in
         --force|-f) FORCE=1 ;;
+        --check) CHECK=1 ;;
         trust|trio|both) TARGETS+=("$arg") ;;
         *) echo "unknown arg: $arg" >&2; exit 2 ;;
     esac
@@ -69,6 +71,41 @@ build_one() {
         fi
     } > "$out.meta"
 }
+
+check_one() {
+    local name="$1"
+    local src="$2"
+    local out="$INDEX_DIR/$name.tags"
+    if [ ! -f "$out" ]; then
+        echo "[$name] NO INDEX (run index-codebases.sh)" >&2
+        return 1
+    fi
+    local stored="" current=""
+    if [ -f "$out.meta" ]; then
+        stored=$(grep '^git: ' "$out.meta" 2>/dev/null | sed 's/^git: //')
+    fi
+    if [ -d "$src/../.git" ]; then
+        current=$(cd "$src/.." && git rev-parse --short HEAD 2>/dev/null)
+    fi
+    if [ -n "$stored" ] && [ -n "$current" ] && [ "$stored" != "$current" ]; then
+        echo "[$name] STALE: index=$stored codebase=$current (run index-codebases.sh --force)" >&2
+        return 1
+    fi
+    echo "[$name] up to date (${current:-unknown})"
+    return 0
+}
+
+if [ "$CHECK" -eq 1 ]; then
+    rc=0
+    for t in "${TARGETS[@]}"; do
+        case "$t" in
+            trust) check_one trust "$TRUST_SRC" || rc=1 ;;
+            trio)  check_one trio  "$TRIO_SRC"  || rc=1 ;;
+            both)  check_one trust "$TRUST_SRC" || rc=1; check_one trio "$TRIO_SRC" || rc=1 ;;
+        esac
+    done
+    exit "$rc"
+fi
 
 for t in "${TARGETS[@]}"; do
     case "$t" in

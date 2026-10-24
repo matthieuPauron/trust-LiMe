@@ -55,9 +55,30 @@ lines around the definition), `--count`.
 - If a lookup returns nothing, fall back to ripgrep over `src/` before
   concluding the symbol doesn't exist.
 
+## Staleness
+
+`find-symbol.sh` checks the index against the source repo's current git HEAD by
+default and prints a warning to stderr if stale (disable with
+`TRUST_INDEX_NO_CHECK=1`). `index-codebases.sh --check` reports status for
+all/selected indexes (exit 1 if any stale/missing).
+
+## Auto-refresh (opt-in)
+
+Install post-commit/post-merge hooks in the source repos (run once per
+machine):
+
+```bash
+.opencode/scripts/install-git-hooks.sh            # both
+.opencode/scripts/install-git-hooks.sh --trust    # TRUST only
+.opencode/scripts/install-git-hooks.sh --remove   # uninstall
+```
+
+Hooks are appended (not overwritten) and are idempotent. They are NOT
+version-controlled, so re-run after a fresh clone.
+
 ## When to rebuild
 
-- After updating trust-code or triocfd-code.
-- If `find-symbol.sh` reports "index missing".
+- After updating trust-code or triocfd-code (or automatically via hooks).
+- If `find-symbol.sh` reports "index missing" or "STALE".
 - Indexes are gitignored, so each checkout builds its own (run once per
   machine/worktree).

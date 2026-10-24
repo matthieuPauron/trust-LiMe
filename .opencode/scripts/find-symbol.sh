@@ -39,6 +39,11 @@ if [ -z "$NAME" ]; then
     exit 2
 fi
 
+# --- staleness warning (default on) ---
+if [ "${TRUST_INDEX_NO_CHECK:-0}" != "1" ]; then
+    "$(dirname "${BASH_SOURCE[0]}")/index-codebases.sh" "$SCOPE" --check 2>&1 1>/dev/null | grep -iE 'STALE|NO INDEX' >&2 || true
+fi
+
 files=()
 case "$SCOPE" in
     trust) files=("$INDEX_DIR/trust.tags") ;;
