@@ -323,6 +323,49 @@ Do not mark Phase 3 implemented or call the closure validated until the source
 shells, restart, positivity behavior, energy-transfer check, and at least one
 mesh/time refinement test pass.
 
+## VEF porting (deferred, not implemented)
+
+The independent closure is currently **PolyMAC-only**: `Champ_Fonc_Eta_Turbulent` and
+`Champ_Fonc_Somme` derive from `Champ_Fonc_Elem_PolyMAC_CDO`. The hydraulic
+k-ε handoff is **VEF-only** (PolyMAC has no `negligeable_PolyMAC` wall law),
+so the two closures cannot run on the same mesh today. A true apples-to-apples
+comparison requires porting the closure to VEF.
+
+### What must change
+
+| File | Change |
+|---|---|
+| `src/Champ_Fonc_Eta_Turbulent.{h,cpp}` | Base class `Champ_Fonc_Elem_PolyMAC_CDO` → `Champ_Fonc_P0_VEF` (or `Champ_Fonc_P0_base`). Domain association `associer_domaine_dis_base` → VEF domain. `le_dom_VF` → VEF domain. |
+| `src/Champ_Fonc_Somme.{h,cpp}` | Same base-class swap. |
+
+Everything else is discretization-agnostic: the transport equations derive from
+`Convection_Diffusion_Temperature_base`, the sources use `Domaine_VF` (VEF
+derives from it), and `Convection_Diffusion_Magnetic_field` already works on
+VEF (used by `TurbulentDiffusion`).
+
+### Estimated effort: 3–5 days
+
+- Port `Champ_Fonc_Eta_Turbulent` to VEF: 1–2 days
+- Port `Champ_Fonc_Somme` to VEF: 0.5–1 day
+- Debug VEF-specific issues (face-based operators, gradient reconstruction,
+  P0 vs P1 field placement): 1–2 days
+
+### Risks
+
+- **VEF field placement**: PolyMAC uses element-centered P0; VEF has both P0
+  (element) and P1 (node) fields. The `valeurs()` table shape may differ.
+- **Gradient reconstruction**: `gradient_b_elements()` uses `Domaine_VF` and
+  `elem_faces`; should work on VEF but tetrahedral meshes may expose edge cases.
+- **Convection/diffusion operators**: auto-typed by `readOn`, but VEF-specific
+  behavior may surface.
+- **`Op_Diff_VEF_Face` aborts for vector unknowns** (per AGENTS.md) — but
+  K/Epsilon are scalar, so this should not bite.
+
+### Status
+
+Deferred. Not implemented. The PolyMAC-based `MagneticTurbulence` form provides
+a qualitative side-by-side comparison until this port is done.
+
 ### Phase 4 — coupling with hydraulic k-ε (IMPLEMENTED)
 - In the coupled mode (`vitesse_hydraulique`), reuse the hydraulic k, ε to
   compute η_t = ν_t / Pm_t instead of solving separate magnetic fluctuation
