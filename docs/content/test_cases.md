@@ -63,15 +63,16 @@ that form (its mesh-convergence scales `coarse`/`standard`/`fine`,
 substituted from the single template `src/<case>.data`) — and contains
 tests of **one single category**. Following the TRUST validation-form layout
 (`Rapports_automatiques/<Category>/<FormName>/<FormName>.ipynb`), the standalone
-magnetic folder ships one *form folder* per dataset, each containing
+magnetic folder ships one *form folder* per validation form, each containing
 `<FormName>.ipynb` + `src/<case>.data` (`MagneticStandalone/Invariance/`,
 `MagneticStandalone/Diffusion/`, `MagneticStandalone/GaussLaw/`, …,
-`MagneticStandalone/ErrorBadBc/`). The established forms have **2D and 3D
+`MagneticStandalone/ErrorInputs/`). The established forms have **2D and 3D
 twins**: `MagneticStandalone3D/<FormName>/` is the
 3D twin of `MagneticStandalone/<FormName>/` (same physics, same assertions;
 the dataset gains `dimension 3`, three-component vectors, and `Polyedriser dom`
-after `Mailler` — PolyMAC_MPFA needs polyhedral cells in 3D). `GaussLaw` is
-currently a 2D form without a 3D twin. The
+after `Mailler` — PolyMAC_MPFA needs polyhedral cells in 3D). `GaussLaw` now
+has a sequential 3D twin; its x-only profile keeps y/z coarse and uses three
+cells in each transverse direction to avoid a parity-sensitive null mode. The
 `.data` files are **computations**, not tests — a dataset such as `diffusion`
 feeds its validation form (`Diffusion/Diffusion.ipynb`), which carries the
 mesh-convergence scan itself (coarse = baseline, standard = ×2, fine = ×4,
@@ -132,7 +133,7 @@ holds `Invariance/`, `Diffusion/`, `Advection/`,
 `Shercliff2D/`, `MMS_2D/` (the four historical MMS 2D cases fused: `MMS_Diff2D`, `MMS_Trig2D`,
 `MMS_ExpTrig2D`, `MMS_Poly_2D`) and the merged negative
 `ErrorInputs/` form (the historical `error_missing_eta`,
-`error_bad_nbcomposantes`, `error_bad_bc` datasets);
+`error_bad_nbcomposantes`, `error_bad_bc`, and `error_incompatible_flux` datasets);
 each form folder contains its notebook + `src/<case>.data` (the single
 trustutils template with `$nx/$ny` placeholders when the form carries a
 mesh-convergence scan). These cases
@@ -176,13 +177,15 @@ so no `.med` file is required and the cases can be run from a clean checkout.
 | `steady_state.data` | equilibrium \f$b = y\f$ with **non-uniform** \f$\eta(x) = 1+x\f$ | Validation – separate effects | exact steady state | spurious source, mis-assembled diffusion, functional-\f$\eta\f$ reading path |
 | `varying_velocity.data` | **spatially varying** velocity \f$u = (-y, x)\f$, uniform \f$b\f$ | Verification | exact invariant | `Champ_Don → Champ_Inc` transfer onto faces, wrong velocity components |
 | `source_stretching.data` | M1 source \f$S = (b\cdot\nabla)u\f$, \f$u = (x, -y)\f$ (div-free) | Validation – separate effects | \f$b(t) = B_0 e^{t}\f$ | source magnitude, sign, gradient-index order |
-| `gauss_law.data` | Non-solenoidal \f$b=(\cos(2\pi x),0)\f$ with `correction_divergence` enabled | Verification | interior divergence probes below \f$10^{-8}\f$ on coarse/standard/fine meshes and two MPI ranks | `D D^T` projection, MPI ghost handling, global boundary-flux check |
+| `gauss_law.data` (2D) | Non-solenoidal \f$b=(\cos(2\pi x),0)\f$ with `correction_divergence` enabled | Verification | interior divergence probes below \f$10^{-8}\f$ on coarse/standard/fine meshes and two MPI ranks | `D D^T` projection, MPI ghost handling, global boundary-flux check |
+| `gauss_law.data` (3D twin, `MagneticStandalone3D/GaussLaw/`) | Full-vector \f$b=(x(1-x),0,0)\f$ with compatible net flux; polyhedral mesh | Verification | interior divergence probes below \f$10^{-8}\f$ on the 17/33/65-node (16/32/64-cell) ladder (sequential) | 3D projection, full-vector components, polyhedral mesh path |
 | `hartmann_1d.data` | induced field of the Hartmann profile (\f$\mathrm{Ha}=5\f$), insulating walls, \f$b=(b_x,B_0)\f$ (`nb_composantes 2`) | Validation – separate effects | mean-free \f$b_x(y) = -\tfrac{B_0}{\eta}\big[\int_{-h}^{y}u - \tfrac12\int_{-h}^{h}u\big]\f$ | multi-component transport, M1 source driving \f$b_x\f$ through the applied \f$b_y\f$, insulating walls, odd symmetry, \f$b_y\equiv B_0\f$ |
 | `shercliff_2d.data` | induced field of the parabolic no-slip channel profile, insulating walls, \f$b=(b_x,B_0)\f$ (`nb_composantes 2`) | Validation – separate effects | \f$b_x(y) = \tfrac{B_0 U_0}{\eta}\big(\tfrac{y^3}{3h^2}-y\big)\f$ and \f$J_z(y) = \tfrac{B_0 U_0}{\eta\mu_0}\big(1-(y/h)^2\big)\f$ | M1 source with a no-slip shear profile, `courant_magnetique` post-treatment (interior parabola, zero at walls), \f$b_y\equiv B_0\f$ |
 | `shercliff_3d.data` | 3D twin (`MagneticStandalone3D/Shercliff3D/`): same 1D physics on a polyhedral mesh (`Polyedriser dom`), full vector \f$b=(b_x,B_0,0)\f$ (`nb_composantes 3`) | Validation – separate effects | same analytic profile, plus the exact extrusion invariants \f$b_z\equiv 0\f$, z-uniformity, and the vector \f$\mathbf{J}=(0,0,J_z(y))\f$ | full vector model in 3D, 3-component `courant_magnetique`, `Polyedriser` mesh path, probe snapping in 3D |
 | `error_missing_eta.data` | no `diffusivite_magnetique` | Verification | must fail cleanly | required-keyword diagnostics |
 | `error_bad_nbcomposantes.data` | `nb_composantes 7` in 2D (also invalid in 3D) | Verification | must fail cleanly | range validation |
 | `error_bad_bc.data` | unknown CL keyword | Verification | must fail cleanly | keyword error reporting |
+| `error_incompatible_flux.data` | `correction_divergence` with \f$b=(x,0)\f$ and nonzero net boundary flux | Verification | nonzero exit with “Gauss law violated by boundary conditions” | global compatibility guard before projection |
 
 The category column tags the **test** (assertion set), not the dataset: e.g.
 the decay test lives in `Diffusion/Diffusion.ipynb` alone, whose
