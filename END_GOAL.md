@@ -164,7 +164,12 @@ Implementation approach:
   scheme `bˢ⁺¹ = F(bˢ,uˢ)`, `uˢ⁺¹ = G(uˢ,bˢ)` linearizes both the Lorentz and the
   stretching terms — not the nonlinear high-Rm MHD a dynamo needs
 - Linearized convective term `(u·\nabla)b - (b·\nabla)u - \eta\Delta b = 0`
-- No turbulent MHD models (k-ε with MHD modifications not implemented)
+- Turbulent magnetic diffusivity is now available on three paths: a
+  prescribed field, an explicit k/epsilon pair, and (in coupled mode) the
+  hydraulic k-ε model's own k and ε; an independent magnetic k-ε closure
+  (k_b, epsilon_b) is implemented in source but not yet validated.
+- No MHD modifications to the hydraulic turbulence model (Tassone et al.
+  §4) and no high-Rm dynamo saturation are implemented yet.
 - Div-b not enforced (assumed but not proven globally)
 
 ### 3.3 TrioCFD (Turbulence CFD Solver)

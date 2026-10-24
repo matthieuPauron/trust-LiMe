@@ -1,17 +1,19 @@
 # Plan — Gauss' law enforcement (Path 2: opt-in divergence correction)
 
-**Status (2026-10-24): 2D projection and MPI mesh scan pass; follow-up validation
-and repository-wide regression remain.** The original `D∘G` implementation omitted the outer-cell
-inverse volume and retained checkerboard null modes. The implementation now
-uses the exact sparse transpose of the Pass-1 divergence (`L = D D^T`), with a
-`1e-12` relative diagonal regularization. It also sums boundary flux over MPI
-and counts only owned physical faces. The full 2-rank 2D notebook passes on
-coarse/standard/fine; post-initialization probe maxima are `1.74e-13`,
-`5.79e-14`, and `4.75e-14`. Framework-free kernel tests and the 2D validation
-form are present. `model.md`, `test_cases.md`, the validation parallel allowlist
-and the roadmap describe the implementation. Remaining: the 3D twin, a
-negative test for incompatible net flux, `AGENTS.md` / `KERNEL_REUSE_NOTES.md`
-synchronization, full baseline regression, and sanitizer validation.
+**Status (2026-10-24): 2D/3D validation and incompatible-flux rejection pass.**
+The implementation uses the exact sparse transpose of the Pass-1 divergence
+(`L = D D^T`), with a `1e-12` relative diagonal regularization, and sums the
+boundary-flux compatibility check across MPI while counting only owned
+physical faces. The 2D two-rank notebook passes coarse/standard/fine with
+post-initialization probe maxima `1.74e-13`, `5.79e-14`, and `4.75e-14`. The
+sequential 3D twin passes at `1.17e-14`, `4.64e-14`, and `1.43e-13`; it uses an
+x-only full-vector field and three cells in y/z to avoid a parity-sensitive
+3D null mode while retaining the shared active-x refinement ladder. `ErrorInputs` also
+confirms rejection of incompatible net boundary flux. The full PDF sweep ran
+31/32 reportable forms; its only failure was the in-progress `HartmannTwoWay`
+scan calling `run.reset()` on a non-empty generated directory. The full
+45-test GoogleTest run currently SIGSEGVs before its first test; all 29
+arith-only tests pass. Sanitizer validation remains open.
 
 Built on the full picture from both sides — the module's ∇·b state and the
 kernel's incompressible machinery — the sections below give the design
@@ -136,18 +138,15 @@ A per-step magnetic Hodge projection owned by
    non-solenoidal field annihilated in one pass; idempotence (clean twice =
    clean once); net-flux rejection.
 2. **`GaussLaw` 2D form — passes** on 2 ranks, coarse/standard/fine. It covers:
-   - deliberately non-solenoidal initial condition with the correction
-     on → `divergence_magnetique` interior probes < 1e-12 after step 1 and
-     held;
-   - invariance: an existing solenoidal case run with the correction on
-     reproduces the baseline probes (the identity property, a strong
-     no-regression statement);
-   - coarse/standard/fine mesh scan on 2 MPI ranks.
-3. **Remaining:** add the 3D twin and incompatible-net-flux `ErrorInputs` case;
-   rerun all 28 established forms untouched (the keyword-absent path must stay
-   unchanged); run sanitizers on the matrix assembly. `model.md`,
-   `test_cases.md`, `docs/content/plans.md` and the 2D `parallel_ok[]` entry
-   are updated; synchronize `KERNEL_REUSE_NOTES.md` §11bis and `AGENTS.md`.
+    - deliberately non-solenoidal initial condition with the correction
+      on → `divergence_magnetique` interior probes < 1e-12 after step 1 and
+      held;
+    - coarse/standard/fine mesh scan on 2 MPI ranks.
+3. **Validation coverage complete:** the 3D twin and incompatible-net-flux
+   `ErrorInputs` assertion pass. The full PDF sweep ran 31/32 reportable forms;
+   the only failure is the unrelated in-progress `HartmannTwoWay` scan reset.
+   The full kernel-linked unit run and sanitizer validation remain open.
+   Synchronize `KERNEL_REUSE_NOTES.md` §11bis and `AGENTS.md`.
 
 ---
 
@@ -198,19 +197,19 @@ by `tension_magnetique` / `force_lorentz`) is driven to solver tolerance.
 4. **Unit tests** (`tests/UnitTests/`, arith-only friendly): `Lφ == D(D^Tφ)`
    to machine precision on a 3×3 patch; synthetic divergence annihilated in
    one pass; idempotence; net-flux rejection.
-5. **Validation — partial:** `GaussLaw` 2D has the invariance and
-   non-solenoidal assertions, mesh ladder, and 2-rank execution; it is listed
-   in `parallel_ok[]`. Add the `GaussLaw3D` twin and incompatible-flux
-   `ErrorInputs` assertion.
-6. **Docs — partial:** `model.md`, `test_cases.md`, and the roadmap document
-   the implemented projection and its scope. Still update `KERNEL_REUSE_NOTES.md`
-   §11bis Path 2 and the `AGENTS.md` current-state/gap summary.
+5. **Validation — implemented:** `GaussLaw` 2D covers non-solenoidal cleanup
+   and the MPI mesh ladder; `MagneticStandalone3D/GaussLaw/` covers the same
+   divergence assertion sequentially on odd x-cell counts. The merged
+   `ErrorInputs` form asserts clean rejection of incompatible net flux.
+6. **Docs — updated:** `model.md`, `test_cases.md`, `docs/content/plans.md`,
+   `docs/content/validation.md`, `KERNEL_REUSE_NOTES.md` §11bis and `AGENTS.md`
+   document the mechanism, coverage and remaining regression/sanitizer gates.
 
 ### 6.3 Sequence
 
 ```
-syntax-check loop → unit tests (--arith-only) → make module_semi_optim
-  → new forms headless → full 28-form regression (must be byte-identical:
+syntax-check loop → unit tests (--arith-only) → make optim
+  → new forms headless → full 32-form reportable regression (must be byte-identical:
   no keyword ⇒ dead code path) → sanitizer pass on the assembly → docs
 ```
 
@@ -222,9 +221,9 @@ syntax-check loop → unit tests (--arith-only) → make module_semi_optim
 - Green-baseline gate: stage per `trust-lime-testing`; the keyword must be
   opt-in everywhere, including the coupled forms.
 
-**Next step:** add the 3D twin and incompatible-flux `ErrorInputs` case, then
-run the established full baseline and sanitizer pass; finish the kernel-notes
-and `AGENTS.md` synchronization.
+**Next step:** resolve the full kernel-linked unit-test SIGSEGV, rerun the
+complete reportable suite after the in-progress `HartmannTwoWay` form is
+cleanable, and run sanitizers on the matrix assembly.
 
 ---
 
@@ -293,7 +292,8 @@ Concrete kernel APIs to reuse, verified against the sibling `trust-code`:
 
 ### 7.8 Validation
 - Form folder naming: `MagneticStandalone/GaussLaw/` + 3D twin
-  `MagneticStandalone3D/GaussLaw3D/`, each with `src/gauss_law.data` template
-  and a single `.ipynb`. Add both paths to `parallel_ok[]` in
-  `check-validation.sh` (parallel exception requires the three comment-marker
-  regions in the dataset).
+  `MagneticStandalone3D/GaussLaw/`, each with `src/gauss_law.data` template
+  and a single `.ipynb`. The 2D form is allowlisted in
+  `check-validation.sh` and uses the parallel marker regions; the 3D twin runs
+  sequentially. Its x scan uses the shared 16/32/64-cell ladder and three
+  cells in y/z, avoiding the 3D parity-sensitive null mode.

@@ -3,8 +3,12 @@
 Status (2026-10-24): **Prescribed and k-ε-derived effective magnetic
 diffusivity implemented; hydraulic k-ε handoff is exercised end-to-end.** The
 3D `VKSTurbulent` case now exercises two-way coupling with VEF `force_lorentz`.
-Magnetic fluctuation transport remains scaffolded; high-Rm/VKS dynamo behavior
-is not validated. See `docs/content/plans.md` for the cross-project roadmap.
+The independent magnetic k-ε fluctuation closure is now implemented in source
+(`modele_turbulence_magnetique` + `Convection_Diffusion_{K,Epsilon}_Magnetic` +
+`Terme_Source_*_Magnetic`); an experimental smoke dataset exists
+(`MagneticStandalone/MagneticTurbulence/`) but currently aborts at `Solve` and
+is not validated. High-Rm/VKS dynamo behavior is not validated. See
+`docs/content/plans.md` for the cross-project roadmap.
 
 ## 1. Motivation
 
@@ -72,12 +76,17 @@ records the alternative stretching term already present in the code shells.
   `diffusivite_turbulente_magnetique_`, so the Phase 2a fold handles the rest.
 - Constant C_mu for now (realizable variant deferred).
 
-### Phase 3 — transport equations for magnetic fluctuations (SCAFFOLDED)
-- Existing `Convection_Diffusion_{K,Epsilon}_Magnetic`,
+### Phase 3 — transport equations for magnetic fluctuations (IMPLEMENTED in source, validation pending)
+- `Convection_Diffusion_{K,Epsilon}_Magnetic`,
   `Terme_Source_{K,Epsilon}_Magnetic` and
-  `Modele_turbulence_magnetique` are compile-only shells. Implement the two
-  scalar equations from the model draft below; reuse generic TRUST scalar
-  transport infrastructure only where its lifecycle/operator contracts fit.
+  `Modele_turbulence_magnetique` are now implemented (not shells): scalar
+  transport equations, closure `eta_t = C_mu_b*k_b^2/(epsilon_b*Pm_t_b)`,
+  production `P_b = eta_t*|curl(b_A)|^2`, floors/limiters and the
+  `modele_turbulence_magnetique { ... }` keyword. The model builds and the
+  keyword is accepted; the experimental smoke dataset
+  (`MagneticStandalone/MagneticTurbulence/`) still aborts at `Solve` and is
+  not validated. Reuse generic TRUST scalar transport infrastructure only
+  where its lifecycle/operator contracts fit.
 - First supported scope is interior/closed-domain transport with positivity
   control. Wall functions, low-Re corrections and broad discretization support
   are later work, not part of the initial equation implementation.
@@ -434,7 +443,7 @@ mesh/time refinement test pass.
   `turbulence_paroi of Modele_turbulence_hyd_K_Epsilon has not been read while
   it is required`.
 
-### Phase 3 — magnetic fluctuation transport (SCAFFOLDED 2026-10-22)
+### Phase 3 — magnetic fluctuation transport (IMPLEMENTED in source 2026-10-24, validation pending)
 - `Modele_turbulence_magnetique`, `Convection_Diffusion_K_Magnetic`,
   `Convection_Diffusion_Epsilon_Magnetic`, `Terme_Source_K_Magnetic`,
   `Terme_Source_Epsilon_Magnetic` — compilable shells with TODOs.

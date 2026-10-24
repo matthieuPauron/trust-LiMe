@@ -1294,20 +1294,42 @@ the equation can build it from two operand fields:
 
 Realizable C_mu and wall limiters are deferred (Phase 2b+).
 
-## Phase 3 scaffolding (magnetic fluctuation turbulence)
+## Phase 3 — independent magnetic k-epsilon turbulence (implemented in source, validation pending)
 
-Scaffolding classes (Objet_U subclasses with TODOs) added for the future
-magnetic-fluctuation transport model:
+The independent two-equation magnetic-fluctuation closure is now implemented
+in the source tree (commit `d83a076`), wired through the
+`modele_turbulence_magnetique { ... }` block of
+`Convection_Diffusion_Magnetic_field` and the optional extra equations of the
+problem (kernel `eq_opt_` mechanism). It is mutually exclusive with the
+prescribed `diffusivite_turbulente_magnetique` and `k_magnetique`/`epsilon_magnetique`
+providers.
 
 - `Modele_turbulence_magnetique` (`src/Modele_turbulence_magnetique.{h,cpp}`) —
-  separate model class (per design decision), holds k_b/eps_b, eddy diffusivity.
+  owns the closure coefficients (`C_mu_b`, `C_eps1b`, `C_eps2b`,
+  `sigma_kb`, `sigma_epsilonb`, `Pm_t_b`), floors/caps, the Alfvén
+  normalization `field_scale = 1/sqrt(mu0*rho_ref)`, the derived `eta_t`
+  (`Champ_Fonc_Eta_Turbulent`), and the k/epsilon diffusivities
+  (`Champ_Fonc_Somme`, `eta + eta_t/sigma`). It locates the two transport
+  equations inside the hosting problem and calls their `associer_modele`.
 - `Convection_Diffusion_K_Magnetic`, `Convection_Diffusion_Epsilon_Magnetic`
-  (`src/Convection_Diffusion_*_Magnetic.{h,cpp}`) — transport equation shells.
+  (`src/Convection_Diffusion_*_Magnetic.{h,cpp}`) — real scalar transport
+  equations (inherit `Convection_Diffusion_Temperature_base`), with their own
+  unknowns `k_b`/`epsilon_b`, diffusion/convection operators bound to the
+  induction velocity, and an auto-added source term. `vitesse_pour_transport()`
+  and `diffusivite_pour_transport()` are rebound to the magnetic equation's.
 - `Terme_Source_K_Magnetic`, `Terme_Source_Epsilon_Magnetic`
-  (`src/Terme_Source_*_Magnetic.{h,cpp}`) — source term shells.
+  (`src/Terme_Source_*_Magnetic.{h,cpp}`) — production/dissipation sources:
+  `P_b = eta_t * |curl(b_A)|^2` (Alfvén-normalized), `k` source
+  `P_b - epsilon_b`, epsilon source `C_eps1b*(epsilon_b/k_b)*P_b -
+  C_eps2b*epsilon_b^2/k_b`.
 
-Physics (convection, diffusion, production, dissipation, wall functions) is
-deferred; these are compilable placeholders establishing the design.
+Status: the code builds and the keyword is accepted, and an experimental
+smoke dataset exists at
+`share/Validation/Rapports_automatiques/MagneticStandalone/MagneticTurbulence/`.
+That case still aborts at `Solve` (under investigation); the closure is
+**not** yet validated. No wall functions, low-Re corrections or restart
+handling are implemented, and the production term uses the cell-centred
+Green-Gauss curl (consistent with the induction operator).
 
 ## Phase 4 (hydraulic k-eps coupling)
 
