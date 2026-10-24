@@ -72,8 +72,8 @@ public:
   // momentum sweeps within a time step until convergence.  Off by default
   // (the historical fully-lagged staggered scheme is used).
   inline bool couplage_fort() const { return couplage_fort_; }
-  inline int nb_iterations_couplage() const { return nb_iterations_couplage_ > 0 ? nb_iterations_couplage_ : 5; }
-  inline double tolerance_couplage() const { return tolerance_couplage_ > 0. ? tolerance_couplage_ : 1.e-8; }
+  inline int nb_iterations_couplage() const { return nb_iterations_couplage_ > 0 ? nb_iterations_couplage_ : 8; }
+  inline double tolerance_couplage() const { return tolerance_couplage_ > 0. ? tolerance_couplage_ : 1.e-2; }
 
   /*! @brief The Navier-Stokes equation of the same coupled problem, if any
    *         (nullptr in standalone problems).  Found by walking the problem's

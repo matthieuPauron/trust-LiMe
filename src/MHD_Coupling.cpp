@@ -13,12 +13,6 @@
 
 namespace
 {
-/*! @brief Locates the magnetic and the momentum equations of a problem.
- *
- *  @param[in]  pb   the problem to scan.
- *  @param[out] eqb  the magnetic equation, or nullptr when there is none.
- *  @param[out] ns   the momentum equation, or nullptr when there is none.
- */
 void locate_equations(const Probleme_base& pb,
                       const Convection_Diffusion_Magnetic_field*& eqb,
                       Navier_Stokes_std*& ns)
@@ -35,20 +29,6 @@ void locate_equations(const Probleme_base& pb,
         ns = &ref_cast(Navier_Stokes_std, eqn);
     }
 }
-
-/*! @brief Relative L2 change between two fields (0 when the reference is 0). */
-double relative_change(const DoubleTab& now, const DoubleTab& before)
-{
-  double num = 0., den = 0.;
-  const int n = std::min(now.size(), before.size());
-  for (int i = 0; i < n; i++)
-    {
-      const double d = now(i) - before(i);
-      num += d * d;
-      den += before(i) * before(i);
-    }
-  return (den > 0.) ? std::sqrt(num / den) : 0.;
-}
 }
 
 bool mhd_iterate_time_step(Probleme_base& pb, bool& converged)
@@ -64,26 +44,89 @@ bool mhd_iterate_time_step(Probleme_base& pb, bool& converged)
   const int maxit = eqb->nb_iterations_couplage();
   const double tol = eqb->tolerance_couplage();
 
-  DoubleTab b_prev, u_prev;
+  // Save the state at the beginning of the time step (t = t_old).
+  DoubleTab b_old = eqb->inconnue().valeurs();
+  DoubleTab u_old = ns->vitesse().valeurs();
+
+  // Enable flags so faire_un_pas_de_temps_eqn_base does not overwrite
+  // passe (time derivative) or re-impose boundary conditions.
+  pb.schema_temps().set_skip_passe_update(true);
+  pb.schema_temps().set_skip_cond_lim(true);
+
+  DoubleTab b_prev = b_old;
+  DoubleTab u_prev = u_old;
   bool conv = false;
   for (int it = 0; it < maxit; it++)
     {
-      b_prev = eqb->inconnue().valeurs();
-      u_prev = ns->vitesse().valeurs();
+      // Restore passe to the old (t-1) values for correct time derivative.
+      const_cast<DoubleTab&>(eqb->inconnue().passe()) = b_old;
+      const_cast<DoubleTab&>(ns->vitesse().passe()) = u_old;
+
+      // Use the previous sweep's result as the initial guess (present).
+      const_cast<DoubleTab&>(eqb->inconnue().valeurs()) = b_prev;
+      const_cast<DoubleTab&>(ns->vitesse().valeurs()) = u_prev;
+
+      // Also set futur = previous sweep's result (lagged value for sources).
+      const_cast<DoubleTab&>(eqb->inconnue().futur()) = b_prev;
+      const_cast<DoubleTab&>(ns->vitesse().futur()) = u_prev;
 
       bool step_conv = false;
       if (!pb.Probleme_base::iterateTimeStep(step_conv))
         { converged = false; return false; }
 
-      const double change = std::max(
-                              relative_change(eqb->inconnue().valeurs(), b_prev),
-                              relative_change(ns->vitesse().valeurs(), u_prev));
+      // After iterateTimeStep: futur = new solution, present = old (restored
+      // by faire_un_pas_de_temps_eqn_base), passe = old (preserved by flag).
+
+      // Read the new solution from futur (dimensions_ may be -1, use addr).
+      const DoubleTab& fut_b = eqb->inconnue().futur();
+      const DoubleTab& fut_u = ns->vitesse().futur();
+
+      // Compute relative change.
+      double num_b = 0., den_b = 0.;
+      const int n_b = std::min((int)fut_b.size_array(), (int)b_prev.size_array());
+      for (int i = 0; i < n_b; i++)
+        {
+          const double d = fut_b.addr()[i] - b_prev.addr()[i];
+          num_b += d * d;
+          den_b += b_prev.addr()[i] * b_prev.addr()[i];
+        }
+      double num_u = 0., den_u = 0.;
+      const int n_u = std::min((int)fut_u.size_array(), (int)u_prev.size_array());
+      for (int i = 0; i < n_u; i++)
+        {
+          const double d = fut_u.addr()[i] - u_prev.addr()[i];
+          num_u += d * d;
+          den_u += u_prev.addr()[i] * u_prev.addr()[i];
+        }
+      const double change_b = (den_b > 0.) ? std::sqrt(num_b / den_b) : 0.;
+      const double change_u = (den_u > 0.) ? std::sqrt(num_u / den_u) : 0.;
+      const double change = std::max(change_b, change_u);
+
+      Cerr << "Picard sweep " << (it + 1) << "/" << maxit
+           << ": relative change = " << change << finl;
 
       if (it > 0 && change < tol)
         { conv = true; break; }
       if (it == maxit - 1)
         conv = (change < tol);
+
+      // Save futur values into b_prev/u_prev for next iteration.
+      for (int i = 0; i < (int)fut_b.size_array(); i++)
+        b_prev.addr()[i] = fut_b.addr()[i];
+      for (int i = 0; i < (int)fut_u.size_array(); i++)
+        u_prev.addr()[i] = fut_u.addr()[i];
     }
+
+  // Disable flags.
+  pb.schema_temps().set_skip_passe_update(false);
+  pb.schema_temps().set_skip_cond_lim(false);
+
+  // Restore passe = old (final).
+  const_cast<DoubleTab&>(eqb->inconnue().passe()) = b_old;
+  const_cast<DoubleTab&>(ns->vitesse().passe()) = u_old;
+
+  // Do NOT call validateTimeStep here — the caller (solveTimeStep/main loop)
+  // handles time advancement and media/BC updates.
 
   converged = conv;
   if (!conv)

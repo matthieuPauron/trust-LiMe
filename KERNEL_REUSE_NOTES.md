@@ -1318,6 +1318,49 @@ are given, the magnetic equation checks the NS equation's turbulence model
 `k`/`epsilon`) field and builds the `Champ_Fonc_Eta_Turbulent` from it
 (component 0 = k, component 1 = eps for the 2-component K_Eps field).
 
+## 20bis. `couplage_fort` (Picard strong coupling) — known limitation (2026-10-23)
+
+`couplage_fort { }` (+ `nb_iterations_couplage`, `tolerance_couplage`) is an
+opt-in flag on the magnetic equation that repeats the magnetic <-> momentum
+sweep inside a time step.  **It is currently non-functional**: each sweep calls
+`Probleme_base::iterateTimeStep()`, which advances the time by one step, so
+with `maxit = 5` the time advances 5 times instead of iterating 5 times within
+a single step.  The Picard convergence check always reports success (change = 0)
+because it compares values against the pre-sweep state that was never updated.
+
+Root cause: `faire_un_pas_de_temps_eqn_base` (in `Schema_Temps_base`) overwrites
+`passe = present` at the start of each solve, clobbering any restored old-value
+reference.  The `futur`/`valeurs`/`passe` wheel and `mettre_a_jour` side effects
+(media, BCs, post-processing) make a correct in-place Picard loop impossible
+from the module side.
+
+Fix requires upstream (trust-code) changes: a public method on
+`Probleme_base` or `Schema_Temps_base` that steps equations **without**
+advancing time, or a modified `faire_un_pas_de_temps_eqn_base` that accepts the
+old (t-1) values for `passe`.
+
+### What is unlocked when fixed
+
+1. **Strongly coupled two-way MHD cases** where the lagged scheme is
+   inaccurate: Hartmann flow at high Ha, MMS coupled cases with large
+   Lorentz force, and the VKS dynamo (where the magnetic field feeds back
+   on the flow strongly enough that lagging causes phase errors).
+2. **Turbulent two-way coupling**: the VKS turbulent case (VEF) currently
+   runs one-way (no `force_lorentz` on VEF). Once `couplage_fort` works, the
+   full two-way turbulent dynamo becomes testable.
+3. **Validation coverage**: a `StrongCoupling` form comparing lagged vs. Picard
+   results on a case where the coupling is strong enough to make the difference
+   measurable (currently no such form exists).
+4. **Time-accuracy improvements**: with working Picard iteration, larger time
+   steps become usable in coupled cases, reducing run times for the 3D forms.
+
+### Current status
+
+- `couplage_fort` keyword and infrastructure exist and compile.
+- Default (off) path is correct and is what all 30 validation forms use.
+- The VEF `force_lorentz` implementation (added this session) works in
+  one-way (lagged) mode, which is the only functional coupling mode.
+
 ## 20. Problem hierarchy: `Pb_Induction` / `Pb_MHD` / `Pb_MHD_Turbulent` (2026-10-22)
 
 The single `Pb_MHD` (a `Probleme_base` whose equation 0 was the magnetic
