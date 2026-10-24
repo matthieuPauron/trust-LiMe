@@ -34,8 +34,11 @@ public:
   void calculer_production(DoubleTab& production) const;
 
   const Champ_Don_base& eta_t() const;
+  Champ_Don_base& eta_t();
   const Champ_Don_base& diffusivite_k() const;
+  Champ_Don_base& diffusivite_k();
   const Champ_Don_base& diffusivite_epsilon() const;
+  Champ_Don_base& diffusivite_epsilon();
   const Convection_Diffusion_K_Magnetic& equation_k() const;
   const Convection_Diffusion_Epsilon_Magnetic& equation_epsilon() const;
   double k_min() const { return k_min_; }

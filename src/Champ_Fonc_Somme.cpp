@@ -38,7 +38,8 @@ void Champ_Fonc_Somme::mettre_a_jour(double tps)
   // Refresh operands first (they may be Champ_Fonc themselves).
   if (a_)
     {
-      Champ_Fonc_base* cf = dynamic_cast<Champ_Fonc_base*>(&a_.valeur());
+      Champ_base& av = a_.valeur();
+      Champ_Fonc_base* cf = dynamic_cast<Champ_Fonc_base*>(&av);
       if (cf) cf->mettre_a_jour(tps);
     }
   if (b_)

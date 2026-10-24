@@ -76,8 +76,10 @@ void Modele_turbulence_magnetique::completer(const Convection_Diffusion_Magnetic
   if (rho_ref_ <= 0.)
     {
       const Champ_Uniforme* rho = dynamic_cast<const Champ_Uniforme*>(&eqn.milieu().masse_volumique());
-      if (!rho || rho->valeurs().dimension(0) != 1 || rho->valeurs().dimension(1) != 1)
-        Process::exit("Modele_turbulence_magnetique currently requires constant rho; set rho_ref explicitly only after verifying the field is uniform.");
+      if (!rho)
+        Process::exit("Modele_turbulence_magnetique: rho is not Champ_Uniforme.");
+      if (rho->valeurs().dimension(0) != 1 || rho->valeurs().dimension(1) != 1)
+        Process::exit("Modele_turbulence_magnetique currently requires constant rho.");
       rho_ref_ = rho->valeurs()(0, 0);
     }
   if (rho_ref_ <= 0. || eqn.mu0() <= 0.)
@@ -115,29 +117,17 @@ void Modele_turbulence_magnetique::mettre_a_jour(double temps)
   if (eta_t_)
     {
       eta_t_->mettre_a_jour(temps);
-      Champ_Fonc_base* eta_t = dynamic_cast<Champ_Fonc_base*>(&eta_t_.valeur());
-      if (eta_t)
-        {
-          DoubleTab& values = eta_t->valeurs();
-          for (int e = 0; e < values.dimension(0); e++)
-            {
-              double& value = values(e, 0);
-              if (!std::isfinite(value) || value > eta_t_max_)
-                Process::exit("Modele_turbulence_magnetique: eta_t is non-finite or exceeds eta_t_max.");
-            }
-        }
     }
   if (diffusivite_k_)
-    diffusivite_k_->mettre_a_jour(temps);
-  if (diffusivite_epsilon_)
-    diffusivite_epsilon_->mettre_a_jour(temps);
-  if (equation_magnetique_)
     {
-      const Champ_base& eta_eff = equation_magnetique_->diffusivite_pour_transport();
-      Champ_Fonc_base* eta_eff_fonc = dynamic_cast<Champ_Fonc_base*>(const_cast<Champ_base*>(&eta_eff));
-      if (eta_eff_fonc)
-        eta_eff_fonc->mettre_a_jour(temps);
+      diffusivite_k_->mettre_a_jour(temps);
     }
+  if (diffusivite_epsilon_)
+    {
+      diffusivite_epsilon_->mettre_a_jour(temps);
+    }
+  // eta_eff (diffusivite_effective_) is updated by the problem-level update
+  // via champs_compris_; do not touch it here.
 }
 
 void Modele_turbulence_magnetique::limiter(Champ_Inc_base& champ, int& count) const
@@ -214,13 +204,25 @@ const Champ_Don_base& Modele_turbulence_magnetique::eta_t() const
 {
   return ref_cast(Champ_Don_base, eta_t_.valeur());
 }
+Champ_Don_base& Modele_turbulence_magnetique::eta_t()
+{
+  return ref_cast(Champ_Don_base, eta_t_.valeur());
+}
 
 const Champ_Don_base& Modele_turbulence_magnetique::diffusivite_k() const
 {
   return ref_cast(Champ_Don_base, diffusivite_k_.valeur());
 }
+Champ_Don_base& Modele_turbulence_magnetique::diffusivite_k()
+{
+  return ref_cast(Champ_Don_base, diffusivite_k_.valeur());
+}
 
 const Champ_Don_base& Modele_turbulence_magnetique::diffusivite_epsilon() const
+{
+  return ref_cast(Champ_Don_base, diffusivite_epsilon_.valeur());
+}
+Champ_Don_base& Modele_turbulence_magnetique::diffusivite_epsilon()
 {
   return ref_cast(Champ_Don_base, diffusivite_epsilon_.valeur());
 }

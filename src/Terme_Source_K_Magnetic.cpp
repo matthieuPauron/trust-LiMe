@@ -27,22 +27,23 @@ void Terme_Source_K_Magnetic::associer_pb(const Probleme_base& pb)
     if (sub_type(Convection_Diffusion_Magnetic_field, pb.equation(i)))
       {
         equation_magnetique_ = ref_cast(Convection_Diffusion_Magnetic_field, pb.equation(i));
-        if (const Modele_turbulence_magnetique* modele = equation_magnetique_->modele_turbulence_magnetique())
-          modele_ = *modele;
         break;
       }
-  if (!equation_magnetique_ || !modele_)
+  if (!equation_magnetique_)
     Process::exit("Terme_Source_K_Magnetic requires a magnetic equation with an active magnetic turbulence model.");
 }
 
 void Terme_Source_K_Magnetic::ajouter_source(DoubleTab& secmem) const
 {
-  if (!equation_magnetique_ || !modele_)
+  if (!equation_magnetique_)
     Process::exit("Terme_Source_K_Magnetic is not associated with the magnetic turbulence model.");
+  const Modele_turbulence_magnetique* modele = equation_magnetique_->modele_turbulence_magnetique();
+  if (!modele)
+    Process::exit("Terme_Source_K_Magnetic requires an active magnetic turbulence model.");
 
   DoubleTab production;
-  modele_->calculer_production(production);
-  const DoubleTab& eps = modele_->equation_epsilon().inconnue().valeurs();
+  modele->calculer_production(production);
+  const DoubleTab& eps = modele->equation_epsilon().inconnue().valeurs();
   const Domaine_VF& domaine_vf = ref_cast(Domaine_VF, equation_magnetique_->domaine_dis());
   const DoubleVect& volumes = domaine_vf.volumes();
   const DoubleVect& porosite = equation_magnetique_->milieu().porosite_elem();

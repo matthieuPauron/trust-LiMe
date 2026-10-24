@@ -48,6 +48,7 @@ Implemente_instanciable(Convection_Diffusion_Magnetic_field,
 // XD_CONT pulsation_cyclotronique post-treatment field. Default: e/m_e = 1.75882001076e11 C/kg
 // XD_CONT (electron mass, positron charge).
 // XD attr correction_divergence rien correction_divergence OPT Opt-in per-step Hodge projection of b
+// XD attr modele_turbulence_magnetique rien modele_turbulence_magnetique OPT Independent magnetic k-epsilon turbulence model block.
 // XD_CONT enforcing Gauss' law (div b = 0) to solver tolerance. Block: correction_divergence {
 // XD_CONT solveur_divergence ... frequence_correction n seuil_divergence s }.
 // XD attr vitesse_hydraulique rien vitesse_hydraulique OPT Two-way coupled mode: take the transporting
@@ -449,6 +450,13 @@ void Convection_Diffusion_Magnetic_field::completer()
       s.configurer(*this, diffusivite_magnetique_.valeur(), modele_turbulence_magnetique_->eta_t());
       diffusivite_effective_ = somme;
       champs_compris_.ajoute_champ(diffusivite_effective_);
+      champs_compris_.ajoute_champ(modele_turbulence_magnetique_->eta_t());
+      champs_compris_.ajoute_champ(modele_turbulence_magnetique_->diffusivite_k());
+      champs_compris_.ajoute_champ(modele_turbulence_magnetique_->diffusivite_epsilon());
+      // Populate the derived fields before the time-step stability estimate.
+      modele_turbulence_magnetique_->eta_t().mettre_a_jour(inconnue().temps());
+      modele_turbulence_magnetique_->diffusivite_k().mettre_a_jour(inconnue().temps());
+      modele_turbulence_magnetique_->diffusivite_epsilon().mettre_a_jour(inconnue().temps());
       diffusivite_effective_->mettre_a_jour(inconnue().temps());
       terme_diffusif.associer_diffusivite(diffusivite_effective_.valeur());
       terme_diffusif.associer_diffusivite_pour_pas_de_temps(diffusivite_effective_.valeur());
