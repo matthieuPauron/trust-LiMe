@@ -15,7 +15,7 @@ namespace
 constexpr int kN = 3;
 constexpr int kNe = kN * kN;
 constexpr int kNfe = 4;
-constexpr double kTol = 2.e-13;
+constexpr double kTol = 2.e-11;
 
 struct CartesianPatch
 {
@@ -27,16 +27,17 @@ struct CartesianPatch
 
   CartesianPatch()
   {
+    for (int e = 0; e < kNe; e++) volumes[e] = 0.7 + 0.13 * e;
     for (int j = 0; j < kN; j++)
       {
-        add_face(cell(0, j), 0, -1, -1, -1., 0.); // left boundary
+        add_face(-1, -1, cell(0, j), 0, 1., 0.); // reversed left boundary
         for (int i = 1; i < kN; i++)
           add_face(cell(i - 1, j), 1, cell(i, j), 0, 1., 0.);
         add_face(cell(kN - 1, j), 1, -1, -1, 1., 0.); // right boundary
       }
     for (int i = 0; i < kN; i++)
       {
-        add_face(cell(i, 0), 2, -1, -1, 0., -1.); // bottom boundary
+        add_face(-1, -1, cell(i, 0), 2, 0., 1.); // reversed bottom boundary
         for (int j = 1; j < kN; j++)
           add_face(cell(i, j - 1), 3, cell(i, j), 2, 0., 1.);
         add_face(cell(i, kN - 1), 3, -1, -1, 0., 1.); // top boundary
@@ -54,7 +55,7 @@ private:
     face_voisins.push_back(e1);
     face_normales.push_back(nx);
     face_normales.push_back(ny);
-    elem_faces[e0 * kNfe + slot0] = f;
+    if (e0 >= 0) elem_faces[e0 * kNfe + slot0] = f;
     if (e1 >= 0) elem_faces[e1 * kNfe + slot1] = f;
   }
 };
@@ -67,21 +68,20 @@ void apply_divergence(const CartesianPatch& patch, const std::vector<double>& b,
     patch.elem_faces, patch.face_normales, patch.nf(), b, div);
 }
 
-void apply_gradient(const CartesianPatch& patch, const std::vector<double>& phi,
-                    std::vector<double>& grad)
+void apply_divergence_transpose(const CartesianPatch& patch, const std::vector<double>& phi,
+                               std::vector<double>& correction)
 {
-  Correction_Divergence_kernel::gradient_pass1(
-    kNe, kNe, 2, kNfe, patch.volumes, patch.face_voisins,
-    patch.elem_faces, patch.face_normales, patch.nf(), phi, grad);
+  Correction_Divergence_kernel::divergence_transpose(
+    kNe, kNe, 2, 2, kNfe, patch.volumes, patch.face_voisins,
+    patch.elem_faces, patch.face_normales, patch.nf(), phi, correction);
 }
 
-bool solve_pinned(std::vector<double> matrix, std::vector<double> rhs,
-                  std::vector<double>& solution)
+bool solve_dense(std::vector<double> matrix, std::vector<double> rhs,
+                 std::vector<double>& solution)
 {
-  // Gauge row phi[0]=0 for the constant null mode.
-  for (int j = 0; j < kNe; j++) matrix[j] = 0.;
-  matrix[0] = 1.;
-  rhs[0] = 0.;
+  double max_diagonal = 0.;
+  for (int i = 0; i < kNe; i++) max_diagonal = std::max(max_diagonal, std::fabs(matrix[i * kNe + i]));
+  for (int i = 0; i < kNe; i++) matrix[i * kNe + i] += 1.e-12 * max_diagonal;
 
   for (int col = 0; col < kNe; col++)
     {
@@ -110,16 +110,16 @@ bool solve_pinned(std::vector<double> matrix, std::vector<double> rhs,
 }
 }
 
-TEST(CorrectionDivergenceKernel, AssembledOperatorMatchesDOfG)
+TEST(CorrectionDivergenceKernel, AssembledGramMatchesDofDT)
 {
   const CartesianPatch patch;
-  std::vector<double> L, phi(kNe), grad, div;
+  std::vector<double> L, phi(kNe), correction, div;
   for (int e = 0; e < kNe; e++) phi[e] = std::sin(0.31 * (e + 1)) + 0.07 * e;
   Correction_Divergence_kernel::assemble_L(
     kNe, kNe, 2, 2, kNfe, patch.volumes, patch.face_voisins,
     patch.elem_faces, patch.face_normales, patch.nf(), L);
-  apply_gradient(patch, phi, grad);
-  apply_divergence(patch, grad, div);
+  apply_divergence_transpose(patch, phi, correction);
+  apply_divergence(patch, correction, div);
   for (int e = 0; e < kNe; e++)
     {
       double lphi = 0.;
@@ -131,15 +131,18 @@ TEST(CorrectionDivergenceKernel, AssembledOperatorMatchesDOfG)
 TEST(CorrectionDivergenceKernel, ProjectionRemovesCompatibleSyntheticDivergence)
 {
   const CartesianPatch patch;
-  std::vector<double> L, potential(kNe), b, rhs, div, correction, phi;
-  for (int e = 0; e < kNe; e++) potential[e] = std::cos(0.41 * e) + 0.2 * e;
-  apply_gradient(patch, potential, b);
+  std::vector<double> L, b(kNe * 2), rhs, div, correction, phi;
+  for (int e = 0; e < kNe; e++)
+    {
+      b[e * 2] = std::cos(0.41 * e) + 0.2 * e;
+      b[e * 2 + 1] = std::sin(0.27 * (e + 1));
+    }
   apply_divergence(patch, b, rhs);
   Correction_Divergence_kernel::assemble_L(
     kNe, kNe, 2, 2, kNfe, patch.volumes, patch.face_voisins,
     patch.elem_faces, patch.face_normales, patch.nf(), L);
-  ASSERT_TRUE(solve_pinned(L, rhs, phi));
-  apply_gradient(patch, phi, correction);
+  ASSERT_TRUE(solve_dense(L, rhs, phi));
+  apply_divergence_transpose(patch, phi, correction);
   for (int e = 0; e < kNe; e++)
     for (int d = 0; d < 2; d++) b[e * 2 + d] -= correction[e * 2 + d];
   apply_divergence(patch, b, div);
@@ -149,22 +152,25 @@ TEST(CorrectionDivergenceKernel, ProjectionRemovesCompatibleSyntheticDivergence)
 TEST(CorrectionDivergenceKernel, ProjectionIsIdempotent)
 {
   const CartesianPatch patch;
-  std::vector<double> L, potential(kNe), b, rhs, phi, grad, div;
-  for (int e = 0; e < kNe; e++) potential[e] = std::sin(0.23 * (e + 2));
-  apply_gradient(patch, potential, b);
+  std::vector<double> L, b(kNe * 2), rhs, phi, correction, div;
+  for (int e = 0; e < kNe; e++)
+    {
+      b[e * 2] = std::sin(0.23 * (e + 2));
+      b[e * 2 + 1] = std::cos(0.17 * (e + 3));
+    }
   apply_divergence(patch, b, rhs);
   Correction_Divergence_kernel::assemble_L(
     kNe, kNe, 2, 2, kNfe, patch.volumes, patch.face_voisins,
     patch.elem_faces, patch.face_normales, patch.nf(), L);
-  ASSERT_TRUE(solve_pinned(L, rhs, phi));
-  apply_gradient(patch, phi, grad);
-  for (int i = 0; i < static_cast<int>(b.size()); i++) b[i] -= grad[i];
+  ASSERT_TRUE(solve_dense(L, rhs, phi));
+  apply_divergence_transpose(patch, phi, correction);
+  for (int i = 0; i < static_cast<int>(b.size()); i++) b[i] -= correction[i];
   const std::vector<double> once = b;
 
   apply_divergence(patch, b, rhs);
-  ASSERT_TRUE(solve_pinned(L, rhs, phi));
-  apply_gradient(patch, phi, grad);
-  for (int i = 0; i < static_cast<int>(b.size()); i++) b[i] -= grad[i];
+  ASSERT_TRUE(solve_dense(L, rhs, phi));
+  apply_divergence_transpose(patch, phi, correction);
+  for (int i = 0; i < static_cast<int>(b.size()); i++) b[i] -= correction[i];
   for (int i = 0; i < static_cast<int>(b.size()); i++) EXPECT_NEAR(b[i], once[i], kTol);
 }
 

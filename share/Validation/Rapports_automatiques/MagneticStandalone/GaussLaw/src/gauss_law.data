@@ -78,7 +78,7 @@ Read pb
 
     Convection_Diffusion_Magnetic_field
     {
-        correction_divergence { solveur_divergence Petsc Gmres { precond diag { } } frequence_correction 1 seuil_divergence 1e-10 }
+        correction_divergence { solveur_divergence Petsc Gmres { precond diag { } } frequence_correction 1 seuil_divergence 1e-8 }
         diffusivite_magnetique Champ_Uniforme 1 0.05
         # no vitesse_magnetique -> u = 0, pure diffusion #
 

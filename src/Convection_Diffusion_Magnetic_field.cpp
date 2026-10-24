@@ -910,7 +910,7 @@ int Convection_Diffusion_Magnetic_field::preparer_calcul()
   return ret;
 }
 
-/*! @brief Builds the L = D . G matrix once (cached). */
+/*! @brief Builds the L = D . D^T matrix once (cached). */
 void Convection_Diffusion_Magnetic_field::assembler_correction()
 {
   if (L_assembled_)
@@ -927,9 +927,6 @@ void Convection_Diffusion_Magnetic_field::assembler_correction()
   const int nf = dvf.nb_faces_tot();
   std::vector<int> fv_flat((size_t)nf * 2);
   for (int f = 0; f < nf; f++) { fv_flat[f*2+0] = face_voisins(f, 0); fv_flat[f*2+1] = face_voisins(f, 1); }
-  std::vector<int> ef_flat((size_t)ne * nfe);
-  for (int e = 0; e < ne; e++)
-    for (int j = 0; j < nfe; j++) ef_flat[e*nfe+j] = elem_faces(e, j);
   std::vector<double> fn_flat((size_t)nf * dim);
   for (int f = 0; f < nf; f++)
     for (int d = 0; d < dim; d++) fn_flat[f*dim+d] = face_normales(f, d);
@@ -948,8 +945,7 @@ void Convection_Diffusion_Magnetic_field::assembler_correction()
   Stencil stencil(0, 2);
   for (int e = 0; e < ne; e++)
     {
-      // Preserve zero diagonal entries in the sparse pattern: the solver and
-      // the gauge pin below address these entries directly.
+      // Preserve diagonal entries in the sparse pattern for regularization.
       stencil.append_line(e, e);
       for (int eb = 0; eb < ne_tot; eb++)
         if (L_flat[e * ne_tot + eb] != 0.)
@@ -963,21 +959,17 @@ void Convection_Diffusion_Magnetic_field::assembler_correction()
       if (L_flat[e * ne_tot + eb] != 0.)
         L_matrix_(e, eb) = L_flat[e * ne_tot + eb];
 
-  // Pure-Neumann gauge: replace the first real row on the first non-empty
-  // rank by phi=0. Merely doubling its diagonal does not remove the nullspace.
-  const bool is_first = ne > 0 && Process::me() == Process::mp_min(ne ? Process::me() : 1e8);
-  if (is_first)
-    {
-      auto& tab1 = L_matrix_.get_set_tab1();
-      auto& coeff = L_matrix_.get_set_coeff();
-      const int begin = tab1(0) - 1, end = tab1(1) - 1;
-      for (int k = begin; k < end; k++) coeff(k) = 0.;
-      L_matrix_(0, 0) = 1.;
-    }
+  // The cell-centred divergence can have redundant rows (e.g. on symmetric
+  // meshes). A tiny diagonal shift regularizes those null modes without
+  // materially changing the projected divergence.
+  double max_diagonal = 0.;
+  for (int e = 0; e < ne; e++) max_diagonal = std::max(max_diagonal, std::fabs(L_matrix_(e, e)));
+  const double regularization = 1.e-12 * max_diagonal;
+  for (int e = 0; e < ne; e++) L_matrix_(e, e) += regularization;
   L_assembled_ = true;
 }
 
-/*! @brief Projects b in place: b <- b - G phi, with L phi = D b. */
+/*! @brief Projects b in place: b <- b - D^T phi, with L phi = D b. */
 void Convection_Diffusion_Magnetic_field::corriger_divergence(DoubleTab& b)
 {
   if (!correction_divergence_)
@@ -994,17 +986,12 @@ void Convection_Diffusion_Magnetic_field::corriger_divergence(DoubleTab& b)
   const DoubleVect& volumes = dvf.volumes();
 
   const int nf = dvf.nb_faces_tot();
+  const int nf_real = dvf.nb_faces();
   std::vector<int> fv_flat((size_t)nf * 2);
   for (int f = 0; f < nf; f++) { fv_flat[f*2+0] = face_voisins(f, 0); fv_flat[f*2+1] = face_voisins(f, 1); }
-  std::vector<int> ef_flat((size_t)ne * nfe);
-  for (int e = 0; e < ne; e++)
-    for (int j = 0; j < nfe; j++) ef_flat[e*nfe+j] = elem_faces(e, j);
   std::vector<double> fn_flat((size_t)nf * dim);
   for (int f = 0; f < nf; f++)
     for (int d = 0; d < dim; d++) fn_flat[f*dim+d] = face_normales(f, d);
-  std::vector<double> vol_flat(ne);
-  for (int e = 0; e < ne; e++) vol_flat[e] = volumes(e);
-
   // Flatten b into a plain vector (ne_tot * nb_composantes) for D.
   const int nb_b = nb_composantes();
   std::vector<double> b_flat((size_t)ne_tot * nb_b);
@@ -1012,8 +999,10 @@ void Convection_Diffusion_Magnetic_field::corriger_divergence(DoubleTab& b)
     for (int c = 0; c < nb_b; c++) b_flat[e*nb_b+c] = b(e, c);
 
   double flux_scale = 0.;
-  const double net_flux = Correction_Divergence_kernel::net_boundary_flux(
-    ne_tot, nb_b, dim, fv_flat, fn_flat, nf, b_flat, flux_scale);
+  const double local_net_flux = Correction_Divergence_kernel::net_boundary_flux(
+                                  ne_tot, nb_b, dim, fv_flat, fn_flat, nf_real, b_flat, flux_scale);
+  const double net_flux = Process::mp_sum(local_net_flux);
+  flux_scale = Process::mp_sum(flux_scale);
   if (!Correction_Divergence_kernel::compatible_net_flux(net_flux, flux_scale))
     {
       Cerr << "correction_divergence: Gauss law violated by boundary conditions; "
@@ -1035,45 +1024,32 @@ void Convection_Diffusion_Magnetic_field::corriger_divergence(DoubleTab& b)
   MD_Vector_tools::creer_tableau_distribue(inconnue().valeurs().get_md_vector(), secmem);
   for (int e = 0; e < ne; e++) secmem(e) = rhs[e];
 
-  // Dirichlet Neumann data: at magnetic_field_impose faces, add (b* - b_cl).n.
-  // (Handled implicitly: the CL values are already in b* at those rows for the
-  //  homogeneous-wall measure; the residual is reported, not fatal.)
-
-  // Net-flux Gauss check (fatal only when active).
-  // The pinned gauge equation is phi(0)=0, so its RHS must be zero.
-  const bool is_first = ne > 0 && Process::me() == Process::mp_min(ne ? Process::me() : 1e8);
-  if (is_first) secmem(0) = 0.;
-
   DoubleVect phi;
   MD_Vector_tools::creer_tableau_distribue(inconnue().valeurs().get_md_vector(), phi);
   phi = 0.;
   solveur_divergence_.resoudre_systeme(L_matrix_, secmem, phi);
-  // Pin the constant (modifier_solution pattern).
-  double mn = phi.mp_min_vect();
-  for (int i = 0; i < ne; i++) phi(i) -= mn;
   phi.echange_espace_virtuel();
 
-  // Re-build connectivity for ALL elements (ghosts included) for the gradient.
+  // Re-build connectivity for ALL elements (ghosts included) for D^T.
   std::vector<int> ef_all((size_t)ne_tot * nfe);
   for (int e = 0; e < ne_tot; e++)
     for (int j = 0; j < nfe; j++) ef_all[e*nfe+j] = elem_faces(e, j);
   std::vector<double> vol_all(ne_tot);
   for (int e = 0; e < ne_tot; e++) vol_all[e] = volumes(e);
 
-  // G phi -> correction (cell-centred gradient, all elements).
+  // D^T phi -> correction of the owned magnetic field cells.
   std::vector<double> phi_flat(ne_tot, 0.);
   for (int e = 0; e < ne_tot; e++) phi_flat[e] = phi(e);
-  std::vector<double> g_flat((size_t)ne_tot * dim, 0.);
-  Correction_Divergence_kernel::gradient_pass1(ne, ne_tot, dim, nfe, vol_all, fv_flat, ef_all, fn_flat, nf, phi_flat, g_flat);
-  // gradient_pass1 only fills `ne` rows (local); ghost rows stay 0.
+  std::vector<double> g_flat((size_t)ne_tot * nb_b, 0.);
+  Correction_Divergence_kernel::divergence_transpose(ne, ne_tot, nb_b, dim, nfe,
+                                                     vol_all, fv_flat, ef_all, fn_flat,
+                                                     nf, phi_flat, g_flat);
 
-  // Apply correction: b <- b - G phi (local elements, matching components).
+  // Apply correction: b <- b - D^T phi (local elements, matching components).
   for (int e = 0; e < ne; e++)
     for (int c = 0; c < nb_b && c < dim; c++)
-      b(e, c) -= g_flat[e * dim + c];
+      b(e, c) -= g_flat[e * nb_b + c];
 
-  // Re-impose Dirichlet values at Dirichlet rows.
-  domaine_Cl_dis().imposer_cond_lim(inconnue(), schema_temps().temps_courant());
   b.echange_espace_virtuel();
 
   // Watchdog.
@@ -1083,7 +1059,7 @@ void Convection_Diffusion_Magnetic_field::corriger_divergence(DoubleTab& b)
       std::vector<double> bflat2((size_t)ne_tot * nb_b);
       for (int e = 0; e < ne_tot; e++)
         for (int c = 0; c < nb_b; c++)
-          bflat2[e*nb_b+c] = (e < (int)b.dimension(0)) ? b(e, c) : b_flat[e*nb_b+c];
+          bflat2[e*nb_b+c] = b(e, c);
       Correction_Divergence_kernel::divergence_pass1(ne, ne_tot, nb_b, dim, nfe, vol_all, fv_flat, ef_all, fn_flat, nf, bflat2, div_after);
       double mx = 0.;
       for (int e = 0; e < ne; e++)

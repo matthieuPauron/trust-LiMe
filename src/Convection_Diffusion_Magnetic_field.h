@@ -111,10 +111,10 @@ public:
   /*! @brief Post-correction divergence watchdog threshold (0 = disabled). */
   inline double seuil_divergence() const { return seuil_divergence_; }
 
-  /*! @brief Projects `b` in place: b <- b - G phi, L phi = D b. */
+  /*! @brief Projects `b` in place: b <- b - D^T phi, L phi = D b. */
   void corriger_divergence(DoubleTab& b);
 
-  /*! @brief Builds the L = D . G matrix once (cached). */
+  /*! @brief Builds the L = D . D^T matrix once (cached). */
   void assembler_correction();
 
   // --- Physical closures used by the inherited operators ------------------

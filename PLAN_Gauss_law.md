@@ -1,11 +1,14 @@
 # Plan — Gauss' law enforcement (Path 2: opt-in divergence correction)
 
-**Status: implementation and first validation in progress (2026-10-24).** §6.2
-items 1–4 (projection kernel, equation/Picard hooks, and arith-only unit tests)
-are in the tree; `make module_semi_optim` builds cleanly. The 2D `GaussLaw`
-form is present, but its two-rank run exposed a ghost-potential bug that must be
-fixed and revalidated. Remaining: the 3D twin, `ErrorInputs` additions, full
-validation, and docs. Reserves the M3 milestone
+**Status: projection operator corrected; mesh-scan revalidation in progress
+(2026-10-24).** The original `D∘G` implementation omitted the outer-cell
+inverse volume and retained checkerboard null modes. The implementation now
+uses the exact sparse transpose of the Pass-1 divergence (`L = D D^T`), with a
+`1e-12` relative diagonal regularization. It also sums boundary flux over MPI
+and counts only owned physical faces. The full 2-rank 2D notebook passes on
+coarse/standard/fine; post-initialization probe maxima are `1.74e-13`,
+`5.79e-14`, and `4.75e-14`. Remaining: the 3D twin, `ErrorInputs` additions,
+full baseline regression, and docs. Reserves the M3 milestone
 (Gauss' law enforcement) already earmarked in `docs/content/model.md` and
 `KERNEL_REUSE_NOTES.md` §11bis.
 
@@ -62,41 +65,32 @@ they are built for the face-centred velocity unknown (`B·u` from face
 fluxes, `L = B M⁻¹Bᵀ`). `b` is cell-centred, so we must build the analogous
 triplet ourselves.
 
-## 3. Proposed design — `correction_divergence { }` (opt-in Path 2)
+## 3. Implemented design — `correction_divergence { }` (opt-in Path 2)
 
 A per-step magnetic Hodge projection owned by
 `Convection_Diffusion_Magnetic_field`, mirroring `projeter()` step for step:
 
-1. **Consistent operator triplet (the core requirement).** Build
-   module-side, in a new `src/Correction_Divergence.{h,cpp}`:
-   - `D` = exactly the Pass-1 Green–Gauss divergence (centred averages
-     interior, element value at wall faces) — the same operator that defines
-     the reported `divergence_magnetique`;
-   - `G` = its adjoint-shaped gradient of the scalar `φ`;
-   - `L = D∘G` assembled once as a `Matrice_Morse` (face-graph stencil,
-     `Matrix_tools::allocate_morse_matrix`).
+1. **Exact discrete projection.** `D` is the Pass-1 Green–Gauss divergence
+   (centred face averages inside, adjacent element value at physical walls),
+   implemented in `src/Correction_Divergence_kernel.h`. The correction is the
+   exact algebraic transpose `D^T`, not another cell-centred Green–Gauss
+   reconstruction. Assemble `L = D D^T` once as a `Matrice_Morse` and solve
+   `Lφ = D b*`; then `b ← b − D^Tφ` gives `D b_new = D b* − D D^Tφ` up to
+   solver tolerance and the documented diagonal regularization. The initial
+   `D∘G` design developed checkerboard null modes and did not consistently
+   reproduce the reported divergence operator.
 
-   Solving `Lφ = D b*` then correcting `b ← b − Gφ` gives
-   `D b_new = D b* − Lφ` = solver residual ≈ 1e-12 — machine-precision
-   Gauss' law in the module's own divergence measure (and the B2 boundary
-   report borrows interior gradients, so wall cells report ≈ 0 too).
-   Reusing e.g. the MPFA diffusion operator as `L` instead would only
-   *reduce* divergence, not annihilate it — that's why the triplet must be
-   self-built and self-consistent.
+2. **Boundary conditions.** TRUST applies equation boundary conditions before
+   the per-step projection. Re-imposing them after projection changed the
+   field and reintroduced divergence, so the projection does not call
+   `imposer_cond_lim()` afterward. The current validation uses homogeneous
+   Neumann walls. Preserving non-homogeneous Dirichlet magnetic data remains
+   unsupported and needs a constrained operator.
 
-2. **Boundary conditions.** At `magnetic_field_impose` (Dirichlet) faces:
-   Neumann data `∂φ/∂n = (b* − b_cl)·n` into the secmem (the
-   pressure-secmem trick), then re-impose Dirichlet element values after
-   correction via `solveur_masse->corriger_solution(b, b)` — the same call
-   NS uses on velocity. At Neumann walls the zero-normal-gradient convention
-   is already part of `D`.
-
-3. **Compatibility = Gauss' law as an input contract.** A pure-Neumann `φ`
-   problem is solvable iff `∮ b_cl·n dS = 0`. Net prescribed magnetic flux
-   ≠ 0 is a genuine Gauss-law violation, so: pin the constant
-   (`φ -= mp_min_vect(φ)`, the `modifier_solution` pattern) and
-   `Process::exit` with a clear message when the net flux is non-zero — a
-   physics check NS never needs but we do.
+3. **Net-flux contract.** The implementation checks global boundary-flux
+   compatibility before projection. It counts owned physical faces only and
+   MPI-sums net flux and its absolute scale; joint/ghost faces are excluded.
+   Nonzero net flux exits with a clear Gauss-law message.
 
 4. **Hooks (three):**
    - `mettre_a_jour(temps)` override → clean `inconnue().valeurs()` after
@@ -121,21 +115,21 @@ A per-step magnetic Hodge projection owned by
 
 ## 4. Honest scope statement
 
-- "Machine-precision ∇·b = 0" means: the module's Green–Gauss divergence of
-  the state `b` is driven to solver tolerance, everywhere including wall
-  cells. It does **not** make every discrete divergence notion (e.g. the
+- "Small ∇·b" means: the module's Pass-1 Green–Gauss divergence of the state
+  `b` is driven to solver tolerance, plus the `1e-12` relative operator
+  regularization, including physical boundary cells. It does **not** make every discrete divergence notion (e.g. the
   MPFA diffusive fluxes) vanish — that requires a face-centred /
   vector-potential (CT) reformulation of the unknown, which is a
   discretization rewrite, out of scope. The M3 doc row would be satisfied by
   this projection variant, and the docs should say so plainly.
-- Residual divergence can persist at Dirichlet elements if the CL data are
-  locally incompatible — reported by the bilan print, not fatal (only the
-  global net-flux violation is fatal).
+- Non-homogeneous Dirichlet magnetic data are not preserved by this
+  unconstrained projection and are not yet supported.
 
 ## 5. Validation & testing (staged per the ASN 28 gate)
 
 1. **Unit tests** (`tests/UnitTests/`, `--arith-only-fast`): hand-built 3×3
-   Cartesian patch — `Lφ == D(Gφ)` to machine precision; synthetic
+   Cartesian patch — `Lφ == D(D^Tφ)` with reversed boundary orientations and
+   nonuniform volumes; synthetic
    non-solenoidal field annihilated in one pass; idempotence (clean twice =
    clean once); net-flux rejection.
 2. **New form `GaussLaw` + 3D twin:**
@@ -161,7 +155,7 @@ A per-step magnetic Hodge projection owned by
 
 **Mechanism:** opt-in per-step Hodge projection of `b` (the
 `Navier_Stokes_std::projeter()` pattern, adapted to a cell-centred unknown),
-with the self-consistent Galerkin triplet `D` / `G` / `L = D∘G` so that the
+with the exact discrete operator `D` / `D^T` / `L = D D^T` so that the
 module's reported divergence (`divergence_magnetique`, and the `∇b` consumed
 by `tension_magnetique` / `force_lorentz`) is driven to solver tolerance.
 
@@ -175,25 +169,22 @@ by `tension_magnetique` / `force_lorentz`) is driven to solver tolerance.
 
 ### 6.2 New / modified files
 
-1. **`src/Correction_Divergence.{h,cpp}` (new)** — owns the operator
-   triplet and the projection step:
+1. **`src/Correction_Divergence_kernel.h` (new)** — framework-free sparse
+   rows for the Pass-1 divergence and its transpose:
    - `D` = Pass-1 Green–Gauss divergence (centred averages, element value at
      wall faces) — byte-identical definition to `gradient_b_elements`;
-   - `G` = the matching scalar gradient; `L = D∘G` assembled once into a
+   - `D^T` = exact algebraic transpose; `L = D D^T` assembled once into a
      `Matrice_Morse` via `Stencil` + `Matrix_tools::allocate_morse_matrix`;
    - `projeter()`-style flow:
 
      ```
      secmem = D b*
-       → Dirichlet-face Neumann data ∂φ/∂n = (b* − b_cl)·n
-       → SolveurSys (default Gmres)
-       → pin constant φ -= mp_min_vect(φ)
-       → b ← b − Gφ
-       → solveur_masse->corriger_solution(b, b)   # re-imposes Dirichlet
+        → SolveurSys (default Gmres)
+        → b ← b − D^Tφ
        → bilan print before/after
      ```
 
-   - net-flux check: `∮ b_cl·n dS ≠ 0` → `Process::exit` with a "Gauss law
+    - global net-flux check: `∮ b·n dS ≠ 0` → `Process::exit` with a "Gauss law
      violated by boundary conditions" message.
 2. **`src/Convection_Diffusion_Magnetic_field.{h,cpp}`** — read
    `correction_divergence { solveur_divergence / frequence_correction / seuil_divergence }`
@@ -204,7 +195,7 @@ by `tension_magnetique` / `force_lorentz`) is driven to solver tolerance.
 3. **`src/MHD_Coupling.cpp`** — in the `couplage_fort` loop, clean `futur()`
    explicitly after each sweep (convergence measured on solenoidal
    iterates; `mettre_a_jour` alone targets the wrong slot there).
-4. **Unit tests** (`tests/UnitTests/`, arith-only friendly): `Lφ == D(Gφ)`
+4. **Unit tests** (`tests/UnitTests/`, arith-only friendly): `Lφ == D(D^Tφ)`
    to machine precision on a 3×3 patch; synthetic divergence annihilated in
    one pass; idempotence; net-flux rejection.
 5. **Validation forms `GaussLaw` (2D) + `GaussLaw3D` twin + `ErrorInputs`
@@ -235,7 +226,7 @@ syntax-check loop → unit tests (--arith-only) → make module_semi_optim
 - Green-baseline gate: stage per `trust-lime-testing`; the keyword must be
   opt-in everywhere, including the coupled forms.
 
-**Next step:** rerun `GaussLaw` after the parallel ghost-potential fix, then add
+**Next step:** finish the full notebook scan and its probe assertions, then add
 the 3D twin and `ErrorInputs` coverage, then finish the docs.
 
 ---
@@ -259,30 +250,22 @@ Concrete kernel APIs to reuse, verified against the sibling `trust-code`:
   `lire_motcle_non_standard` (return 1), reading `solveur_divergence`,
   `frequence_correction`, `seuil_divergence` in order, then the closing brace.
 
-### 7.2 Matrix assembly (`Correction_Divergence`)
+### 7.2 Matrix assembly (`D D^T`)
 - Stencil pattern (from `Assembleur_P_PolyMAC_MPFA::assembler_mat`):
   `Stencil stencil(0, 2); stencil.append_line(e, eb); tableau_trier_retirer_doublons(stencil); Matrix_tools::allocate_morse_matrix(ne, ne_tot, stencil, mat, false);`
 - Rows: local elements only (`e < ne = domaine.nb_elem()`); columns may reach
   `ne_tot = domaine.nb_elem_tot()` (ghosts), so the matrix is `ne × ne_tot`.
-- Singularity handling (pure-Neumann φ): `mat(0, 0) *= 2` on the first proc
-  with real elements (see `is_first_proc_with_real_elems` pattern), plus
-  `φ -= mp_min_vect(φ)` after the solve (the `modifier_solution` pattern).
-  Use `Process::me() == Process::mp_min(domaine.nb_elem() ? Process::me() : 1e8)`.
+- The operator can have redundant rows. Add a `1e-12` relative diagonal
+  regularization; do not pin a row or shift `φ` afterward.
 - `Matrice_Morse::operator()(e, eb) += coeff` for filling; `mat.sort_stencil()`
   is optional — the PolyMAC assembler calls it; mirror it for solver stability.
 - Solve with `solveur_divergence_.resoudre_systeme(mat, secmem, phi)`.
 
-### 7.3 Mass-solver re-imposition of Dirichlet values
-- `Solveur_Masse_base::corriger_solution(tab_x, tab_y)` copies `y` into `x`
-  only where the inverse-mass diagonal is `< 1e-12` (i.e. Dirichlet rows, where
-  the mass matrix coefficient was zeroed). So it re-imposes the values passed
-  in `y` at Dirichlet rows. Call it as
-  `solveur_masse->corriger_solution(b, b_cl_values)` — the second argument must
-  be the *target* field (the CL values), not the current field. For our case
-  the current `b*` already carries the Dirichlet values at those rows from the
-  convection/diffusion solve, so passing the (possibly untouched) current `b`
-  is acceptable; the plan's `solveur_masse->corriger_solution(b, b)` form is
-  the NS pattern and is kept for consistency.
+### 7.3 Boundary limitation
+- Reapplying `imposer_cond_lim()` after projection changed the field and
+  reintroduced divergence in the Neumann-wall validation. The code therefore
+  does not re-impose boundary conditions afterward; non-homogeneous Dirichlet
+  magnetic data need a constrained projection before being supported.
 
 ### 7.4 Equation hooks
 - `Convection_Diffusion_Temperature_base` overrides available: `mettre_a_jour(temps)`
@@ -301,20 +284,14 @@ Concrete kernel APIs to reuse, verified against the sibling `trust-code`:
   call on `futur()`), since `mettre_a_jour` targets `valeurs()`.
 
 ### 7.6 Net-flux / compatibility
-- The reported divergence uses the B2-corrected gradient (boundary cells borrow
-  an interior neighbour), so the reported wall-cell divergence ≈ the interior
-  value. Hence the projection only needs to annihilate the Pass-1 divergence at
-  *interior* cells; wall rows are extra equations (kept for a square system).
-- The compatibility condition (Σ V·rhs = 0) is satisfied by the same telescoping
-  as the pressure solver *provided* the boundary-face fluxes enter the RHS via
-  the Dirichlet Neumann data (the "secmem trick"); pure-Neumann walls contribute
-  their element-value fluxes, which telescope identically with L's wall rows.
-  Validated numerically in the unit tests (stage 1).
+- Only owned physical faces (`f < domaine.nb_faces()`) contribute to the
+  boundary-flux check. MPI-sum local net flux and absolute scale before testing
+  compatibility; ghost/joint faces are not physical boundary contributions.
 
 ### 7.7 Unit tests
 - Framework-free kernels live in `tests/UnitTests/` with arith-only builds.
   Existing pattern: `MHD_posttraitement_kernel.h` + `unit_mhd_posttraitement_kernel.cpp`.
-  The new D/G/L kernel should follow the same pattern (plain IntTab/DoubleTab
+  The D/D^T/L kernel follows the same pattern (plain connectivity vectors
   fixtures, no mesh, no solver) so it runs under `--arith-only`.
 
 ### 7.8 Validation
