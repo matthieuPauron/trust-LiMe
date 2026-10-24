@@ -1,0 +1,121 @@
+{
+  "quantities": [
+    {
+      "id": "sodium_density",
+      "symbol": "rho",
+      "value": 929.0,
+      "unit": "kg m^-3",
+      "source": "Monchaux2009",
+      "location": "Sec. I.B: density rho approx. 930 kg m^-3",
+      "notes": "Bourgoin2002 uses 930 kg m^-3 in dimensionless groups; value varies with temperature."
+    },
+    {
+      "id": "sodium_dynamic_viscosity",
+      "symbol": "mu",
+      "value": 6.9e-4,
+      "unit": "Pa s",
+      "source": "Monchaux2007",
+      "location": "Sec. I.B / properties table: mu = 6.9e-4 Pa s at about 120 C",
+      "notes": "Temperature-dependent; Bourgoin2002 reports a similar value for the operating range."
+    },
+    {
+      "id": "sodium_kinematic_viscosity",
+      "symbol": "nu",
+      "value": 7.4e-7,
+      "unit": "m^2 s^-1",
+      "source": "Monchaux2007",
+      "location": "Properties table: nu approx. 7.4e-7 m^2 s^-1",
+      "notes": "Consistent with rho and mu at the reference temperature."
+    },
+    {
+      "id": "sodium_electrical_conductivity_formula",
+      "symbol": "sigma(T)",
+      "value": null,
+      "unit": "S m^-1",
+      "source": "Monchaux2009",
+      "location": "Sec. I.C, Eq. (1): sigma(T) = 108 / (6.225 + 0.0345 T)",
+      "notes": "T in degrees Celsius; valid for T in [100, 200] C. Example: sigma(120 C) approx. 1.03e7 S m^-1."
+    },
+    {
+      "id": "sodium_thermal_conductivity",
+      "symbol": "lambda",
+      "value": 85.0,
+      "unit": "W m^-1 K^-1",
+      "source": "Monchaux2007",
+      "location": "Properties table: thermal conductivity",
+      "notes": "Used in the thermal property table of PLAN_vks.md."
+    },
+    {
+      "id": "sodium_specific_heat",
+      "symbol": "Cp",
+      "value": 1380.0,
+      "unit": "J kg^-1 K^-1",
+      "source": "Monchaux2007",
+      "location": "Properties table: specific heat",
+      "notes": "Used in the thermal property table of PLAN_vks.md."
+    },
+    {
+      "id": "sodium_magnetic_diffusivity",
+      "symbol": "eta",
+      "value": 0.078,
+      "unit": "m^2 s^-1",
+      "source": "Monchaux2007",
+      "location": "Properties table: eta = 1/(mu0 sigma) approx. 0.078 m^2 s^-1",
+      "notes": "Molecular magnetic diffusivity; turbulent effective diffusivity is separate."
+    },
+    {
+      "id": "magnetic_prandtl_number",
+      "symbol": "Pm",
+      "value": 1.0e-5,
+      "unit": "dimensionless",
+      "source": "Monchaux2009",
+      "location": "Sec. I.B: Pm about 1e-5 for sodium",
+      "notes": "Ratio of kinematic viscosity to magnetic diffusivity."
+    },
+    {
+      "id": "operating_temperature_range",
+      "symbol": "T_op",
+      "value": null,
+      "unit": "deg C",
+      "source": "Monchaux2009",
+      "location": "Sec. I.B: regulated temperature range 110-160 C",
+      "notes": "Bourgoin2002 reports operation in 130-170 C for the earlier device."
+    },
+    {
+      "id": "impeller_efficiency_coefficient",
+      "symbol": "K",
+      "value": 0.6,
+      "unit": "dimensionless",
+      "source": "Monchaux2009",
+      "location": "Sec. I.C: K = 0.6 for exact counter-rotation",
+      "notes": "Used in Re = K 2 pi R_c^2 F / nu and Rm = K mu0 sigma 2 pi R_c^2 F. For opposite rotation direction Monchaux2009 uses K_- = 0.7."
+    },
+    {
+      "id": "max_impeller_frequency",
+      "symbol": "F_max",
+      "value": 27.0,
+      "unit": "Hz",
+      "source": "Monchaux2009",
+      "location": "Sec. I.C: impellers driven up to typically 27 Hz",
+      "notes": "Maximum mechanical driving frequency."
+    },
+    {
+      "id": "max_magnetic_reynolds_number",
+      "symbol": "Rm_max",
+      "value": 49.0,
+      "unit": "dimensionless",
+      "source": "Monchaux2009",
+      "location": "Sec. I.C: maximum Rm = 49 at 120 C",
+      "notes": "Ravelet2008 reports Rm up to 52 at 120 C with a slightly different convention."
+    },
+    {
+      "id": "max_kinetic_reynolds_number",
+      "symbol": "Re_max",
+      "value": 5.0e6,
+      "unit": "dimensionless",
+      "source": "Monchaux2009",
+      "location": "Sec. I.C: Re can be increased up to 5e6",
+      "notes": "Integral Reynolds number based on impeller frequency."
+    }
+  ]
+}

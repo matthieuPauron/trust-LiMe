@@ -8,6 +8,13 @@ are also implemented, but only low-Rm validation exists. No spherical VKS
 geometry, rotating impellers, high-Rm threshold or saturated dynamo has been
 validated. This remains a design plan, not a runnable VKS case.
 
+## 0. Experimental reference data
+
+Experimental measurements and analysis extracted from the VKS papers are stored
+in `share/VKS_experiment_data/` (Markdown plus JSON). See
+`share/VKS_experiment_data/README.md` and `validation_targets.md` for the
+mapping between experimental observables and future simulation targets.
+
 ## 1. Overview
 
 The VKS experiment (CEA-DAM / CNRS) studies the dynamo effect in turbulent

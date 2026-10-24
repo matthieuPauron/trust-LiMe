@@ -1,0 +1,125 @@
+{
+  "regimes": [
+    {
+      "id": "Stat1",
+      "theta_range": [0.0, 0.09],
+      "source": "Monchaux2009",
+      "location": "Sec. III.B",
+      "notes": "Stationary dynamos similar to exact counter-rotation; supercritical threshold around Rm = 31."
+    },
+    {
+      "id": "LimitCycle",
+      "theta_range": [0.09, 0.11],
+      "source": "Monchaux2009",
+      "location": "Sec. III.B / Fig. 28",
+      "notes": "Relaxation cycle from interaction of dipolar and quadrupolar modes."
+    },
+    {
+      "id": "Stat2",
+      "theta_range": [0.11, 0.13],
+      "source": "Monchaux2009",
+      "location": "Sec. III.B / Sec. III.C",
+      "notes": "Stationary regime with more asymmetric forcing."
+    },
+    {
+      "id": "Reversals",
+      "theta_range": [0.15, 0.18],
+      "source": "Monchaux2009",
+      "location": "Sec. III.D / Fig. 21",
+      "notes": "Random magnetic-field reversals; temperature can make them nearly periodic."
+    },
+    {
+      "id": "BurstsExtinctions",
+      "theta_range": [0.18, 0.22],
+      "source": "Monchaux2009",
+      "location": "Sec. III.E / Fig. 23",
+      "notes": "Intermittent bursts up to more than 100 G; extinctions also observed."
+    },
+    {
+      "id": "Stat3",
+      "theta_range": [0.2, 0.4],
+      "source": "Monchaux2009",
+      "location": "Sec. III.C / Sec. III.G",
+      "notes": "Stationary regime with slow oscillations; amplitude maximum around |Theta| = 0.27 and minimum around 0.37."
+    },
+    {
+      "id": "Oscillatory",
+      "theta_range": [0.4, 0.6],
+      "source": "Monchaux2009",
+      "location": "Sec. III.G / Fig. 27",
+      "notes": "Oscillatory dynamos; secondary bifurcation threshold Theta_o approx. 0.41."
+    },
+    {
+      "id": "Stat4",
+      "theta_range": [1.0, 1.0],
+      "source": "Monchaux2009",
+      "location": "Sec. III.C",
+      "notes": "Single-impeller stationary dynamo; amplitude decreases after about 23 Hz."
+    }
+  ],
+  "quantities": [
+    {
+      "id": "hydrodynamic_one_two_cell_transition",
+      "symbol": "Theta_c (flow topology)",
+      "value": 0.16,
+      "unit": "dimensionless",
+      "source": "Monchaux2009",
+      "location": "Sec. III.A / Fig. 17",
+      "notes": "Sudden transition between one-cell and two-cell flow topologies."
+    },
+    {
+      "id": "oscillatory_threshold",
+      "symbol": "Theta_o",
+      "value": 0.41,
+      "unit": "dimensionless",
+      "source": "Monchaux2009",
+      "location": "Sec. III.G / Fig. 27",
+      "notes": "Threshold for oscillatory dynamo bifurcation."
+    },
+    {
+      "id": "reversal_mean_positive_duration",
+      "symbol": "<T_+>",
+      "value": 120.0,
+      "unit": "s",
+      "source": "Monchaux2009",
+      "location": "Sec. III.D",
+      "notes": "F1 = 22 Hz, F2 = 16 Hz (Theta approx. 0.158)."
+    },
+    {
+      "id": "reversal_mean_negative_duration",
+      "symbol": "<T_->",
+      "value": 50.0,
+      "unit": "s",
+      "source": "Monchaux2009",
+      "location": "Sec. III.D",
+      "notes": "Same run as <T_+>; asymmetry attributed partly to ambient field."
+    },
+    {
+      "id": "burst_most_probable_azimuthal_field",
+      "symbol": "B_theta (bursts)",
+      "value": 20.0,
+      "unit": "G",
+      "source": "Monchaux2009",
+      "location": "Sec. III.E",
+      "notes": "Most probable azimuthal field in burst regime; bursts exceed 100 G."
+    },
+    {
+      "id": "ravelet_critical_frequency_equal_rotation",
+      "symbol": "F_c",
+      "value": 16.0,
+      "unit": "Hz",
+      "source": "Ravelet2008",
+      "location": "Sec. II",
+      "notes": "Stationary dynamo onset for exact counter-rotation; corresponds to Rm_c approx. 30."
+    },
+    {
+      "id": "ravelet_reversal_decay_example",
+      "symbol": "tau_rev_decay",
+      "value": null,
+      "unit": "s",
+      "source": "Ravelet2008",
+      "location": "Sec. III.D",
+      "notes": "Reversal duration about 5 s, longer than flow integral time (0.05 s) and Ohmic diffusion time (0.4 s)."
+    }
+  ]
+}

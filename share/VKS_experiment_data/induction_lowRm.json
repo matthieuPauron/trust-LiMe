@@ -1,0 +1,112 @@
+{
+  "quantities": [
+    {
+      "id": "omega_effect_rm_i_8hz",
+      "symbol": "Rm^i (Omega effect)",
+      "value": 0.5,
+      "unit": "dimensionless",
+      "source": "Bourgoin2002",
+      "location": "Sec. III.B: axial applied field, azimuthal induced field slope",
+      "notes": "At disk rotation rate 8 Hz (Rm = 20), probe 10 cm from axis in the midplane."
+    },
+    {
+      "id": "omega_effect_rm_i_17hz",
+      "symbol": "Rm^i (Omega effect)",
+      "value": 1.0,
+      "unit": "dimensionless",
+      "source": "Bourgoin2002",
+      "location": "Sec. III.B",
+      "notes": "At 17 Hz (Rm = 43); induced toroidal field equals applied axial field."
+    },
+    {
+      "id": "transverse_alpha_type_ratio_8hz",
+      "symbol": "b_x / B0 (transverse applied field)",
+      "value": 0.5,
+      "unit": "dimensionless",
+      "source": "Bourgoin2002",
+      "location": "Sec. III.B",
+      "notes": "Axial induced field for transverse applied field at 8 Hz (Rm = 20)."
+    },
+    {
+      "id": "transverse_alpha_type_ratio_17hz",
+      "symbol": "b_x / B0 (transverse applied field)",
+      "value": 1.0,
+      "unit": "dimensionless",
+      "source": "Bourgoin2002",
+      "location": "Sec. III.B",
+      "notes": "At 17 Hz (Rm = 43)."
+    },
+    {
+      "id": "induced_field_fluctuation_level",
+      "symbol": "b_rms / b_mean",
+      "value": null,
+      "unit": "dimensionless",
+      "source": "Bourgoin2002",
+      "location": "Sec. III.C",
+      "notes": "Reported as 20-50% of the mean for all components; isotropic at all rotation rates."
+    },
+    {
+      "id": "pressure_induction_cross_correlation",
+      "symbol": "chi_{p-b_x}",
+      "value": -0.2,
+      "unit": "dimensionless",
+      "source": "Bourgoin2002",
+      "location": "Sec. III.D.2, Eq. (15)",
+      "notes": "At zero time lag; probes separated by about 15 cm in a Re > 1e6 flow."
+    },
+    {
+      "id": "magnetic_diffusion_time_pulse_decay",
+      "symbol": "tau_eta",
+      "value": 0.15,
+      "unit": "s",
+      "source": "Bourgoin2002",
+      "location": "Sec. III.D.1",
+      "notes": "Pulse-decay measurement. Dimensional estimate mu0 sigma R_c^2 is about 0.5 s."
+    },
+    {
+      "id": "velocity_fluctuation_intensity",
+      "symbol": "K_u",
+      "value": 0.42,
+      "unit": "dimensionless",
+      "source": "Bourgoin2002",
+      "location": "Sec. II.C, Eq. (8)",
+      "notes": "rms velocity fluctuation divided by disk rim speed."
+    },
+    {
+      "id": "power_number_low_rm",
+      "symbol": "K_P",
+      "value": 34.0,
+      "unit": "dimensionless",
+      "source": "Bourgoin2002",
+      "location": "Sec. II.C, Eq. (9)",
+      "notes": "Power scaling P = K_P rho R_c^5 Omega^3 for sodium; water prototype gave 31."
+    },
+    {
+      "id": "velocity_spectrum_high_frequency_exponent",
+      "symbol": "alpha_b_high",
+      "value": -3.6667,
+      "unit": "dimensionless",
+      "source": "Bourgoin2002",
+      "location": "Sec. III.D.3",
+      "notes": "Spectrum ~ f^-11/3 for f > Omega, attributed to Kolmogorov passive-vector induction."
+    },
+    {
+      "id": "velocity_spectrum_intermediate_exponent",
+      "symbol": "alpha_b_mid",
+      "value": -1.0,
+      "unit": "dimensionless",
+      "source": "Bourgoin2002",
+      "location": "Sec. III.D.3",
+      "notes": "Spectrum ~ f^-1 for Omega/10 < f < Omega."
+    },
+    {
+      "id": "magnetic_field_peak_to_peak_log_slope",
+      "symbol": "delta_b(Delta_t)",
+      "value": null,
+      "unit": "G",
+      "source": "Bourgoin2002",
+      "location": "Sec. III.D.3, Eq. (18)",
+      "notes": "delta_b(Delta_t) ~ B0 log(Omega Delta_t) for Delta_t > Omega^-1."
+    }
+  ]
+}

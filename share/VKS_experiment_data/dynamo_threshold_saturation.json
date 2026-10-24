@@ -1,0 +1,130 @@
+{
+  "quantities": [
+    {
+      "id": "dynamo_threshold_rm_c_monchaux2007",
+      "symbol": "Rm_c",
+      "value": 31.0,
+      "unit": "dimensionless",
+      "source": "Monchaux2007",
+      "location": "Sec. II.B / Fig. 3",
+      "notes": "Critical Rm from linear fits of mean component hB_yi and rms fluctuations."
+    },
+    {
+      "id": "dynamo_threshold_rm_0_monchaux2007",
+      "symbol": "Rm_0",
+      "value": 35.0,
+      "unit": "dimensionless",
+      "source": "Monchaux2007",
+      "location": "Sec. II.B / Fig. 3 inset",
+      "notes": "Critical Rm from linear fit of hB^2i; preferred for a supercritical pitchfork bifurcation."
+    },
+    {
+      "id": "dynamo_threshold_rm_c_monchaux2009_plus_w",
+      "symbol": "Rm_c",
+      "value": 32.0,
+      "unit": "dimensionless",
+      "source": "Monchaux2009",
+      "location": "Sec. II.B",
+      "notes": "Symmetric +w configuration with thin annulus."
+    },
+    {
+      "id": "dynamo_threshold_rm_c_monchaux2009_minus_w",
+      "symbol": "Rm_c",
+      "value": 43.0,
+      "unit": "dimensionless",
+      "source": "Monchaux2009",
+      "location": "Sec. II.B",
+      "notes": "-w configuration without annulus; no dynamo observed up to Rm approx. 49 for -w/o."
+    },
+    {
+      "id": "dynamo_threshold_rm_c_stat1",
+      "symbol": "Rm_c (Stat1)",
+      "value": 31.0,
+      "unit": "dimensionless",
+      "source": "Monchaux2009",
+      "location": "Sec. III.C",
+      "notes": "Asymmetric stationary regime at low |Theta|; threshold similar to symmetric case."
+    },
+    {
+      "id": "mean_field_at_boundary_30_percent_above_threshold",
+      "symbol": "B_mean",
+      "value": 40.0,
+      "unit": "G",
+      "source": "Monchaux2007",
+      "location": "Abstract / Sec. II",
+      "notes": "Mean azimuthal field at the lateral boundary about 30% above threshold."
+    },
+    {
+      "id": "rms_fluctuation_near_threshold",
+      "symbol": "B_rms",
+      "value": null,
+      "unit": "G",
+      "source": "Monchaux2007",
+      "location": "Sec. II.B / Fig. 3",
+      "notes": "Reported as 3-8 G at about 30% above threshold; fluctuations larger than the mean for two components."
+    },
+    {
+      "id": "azimuthal_scaling_exponent",
+      "symbol": "B_theta ~ (Rm - Rm_c)^a",
+      "value": 0.77,
+      "unit": "dimensionless",
+      "source": "Monchaux2009",
+      "location": "Sec. II.B / Fig. 3",
+      "notes": "Empirical fit; canonical supercritical bifurcation would give 0.5."
+    },
+    {
+      "id": "ohmic_excess_power_30_percent_above_threshold",
+      "symbol": "P_excess",
+      "value": null,
+      "unit": "percent",
+      "source": "Monchaux2007",
+      "location": "Sec. II.D",
+      "notes": "15-20% excess power consumption relative to about 100 kW driving power."
+    },
+    {
+      "id": "power_number_nondynamo",
+      "symbol": "Kp",
+      "value": 0.045,
+      "unit": "dimensionless",
+      "source": "Monchaux2009",
+      "location": "Sec. II.E / Fig. 10",
+      "notes": "For Rm < 30 in nondynamo turbulent runs."
+    },
+    {
+      "id": "power_number_high_rm",
+      "symbol": "Kp",
+      "value": 0.065,
+      "unit": "dimensionless",
+      "source": "Monchaux2009",
+      "location": "Sec. II.E / Fig. 10",
+      "notes": "For Rm > 40; dynamo runs are typically about 10% higher."
+    },
+    {
+      "id": "saturation_scaling_turbulent",
+      "symbol": "B_sat^2",
+      "value": null,
+      "unit": "T^2",
+      "source": "Monchaux2009",
+      "location": "Sec. II.D, Eq. (6)",
+      "notes": "Turbulent scaling: B_sat^2 proportional to rho/(mu0 sigma^2 R_c^2) (Rm - Rm_c). Favored by the authors over the laminar scaling."
+    },
+    {
+      "id": "iron_impeller_relative_permeability",
+      "symbol": "mu_r",
+      "value": 100.0,
+      "unit": "dimensionless",
+      "source": "Monchaux2009",
+      "location": "Sec. I.C",
+      "notes": "Soft-iron impellers; stainless-steel impellers did not self-generate in the same range."
+    },
+    {
+      "id": "first_run_threshold_increase_due_to_iron",
+      "symbol": "delta_Rm_c",
+      "value": 0.2,
+      "unit": "fraction",
+      "source": "Monchaux2007",
+      "location": "Sec. II.B / discussion",
+      "notes": "First run threshold about 20% larger because of impeller magnetization; subsequent runs reproducible."
+    }
+  ]
+}

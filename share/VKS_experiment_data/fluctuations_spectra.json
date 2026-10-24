@@ -1,0 +1,112 @@
+{
+  "quantities": [
+    {
+      "id": "fluctuation_pdf_shape",
+      "symbol": "PDF(B_i)",
+      "value": null,
+      "unit": "dimensionless",
+      "source": "Monchaux2007",
+      "location": "Sec. II.B / Fig. 3 discussion",
+      "notes": "Fluctuation PDFs are roughly Gaussian below and above threshold."
+    },
+    {
+      "id": "rms_to_second_moment_ratio_transition",
+      "symbol": "B_rms / <B^2>^(1/2)",
+      "value": null,
+      "unit": "dimensionless",
+      "source": "Monchaux2009",
+      "location": "Sec. II.F / Fig. 12",
+      "notes": "Sharp nonlinear increase near onset; can be used as a practical threshold indicator."
+    },
+    {
+      "id": "low_frequency_peak",
+      "symbol": "f_low",
+      "value": 0.14,
+      "unit": "F (impeller frequency units)",
+      "source": "Monchaux2009",
+      "location": "Sec. II.F / Fig. 15-16",
+      "notes": "Broad low-frequency peak around 0.14 F."
+    },
+    {
+      "id": "stationary_regime_spectrum_low_exponent_boundary",
+      "symbol": "alpha_1",
+      "value": null,
+      "unit": "dimensionless",
+      "source": "Monchaux2009",
+      "location": "Sec. II.F / Fig. 16",
+      "notes": "Changes from about 0 below threshold to about -0.5 above threshold for f < f_low."
+    },
+    {
+      "id": "stationary_regime_spectrum_mid_exponent_boundary",
+      "symbol": "alpha_2",
+      "value": null,
+      "unit": "dimensionless",
+      "source": "Monchaux2009",
+      "location": "Sec. II.F / Fig. 16",
+      "notes": "Changes from about -2 below threshold to about -2.5 above threshold for f_low < f < F."
+    },
+    {
+      "id": "high_frequency_exponential_cutoff",
+      "symbol": "f_exp",
+      "value": 1.4,
+      "unit": "F (impeller frequency units)",
+      "source": "Monchaux2009",
+      "location": "Sec. II.F / Fig. 16",
+      "notes": "High-frequency spectra are better described by exp(-f/f_exp)."
+    },
+    {
+      "id": "bulk_spectrum_axial_exponent_mid",
+      "symbol": "alpha_Bx_bulk",
+      "value": -1.6667,
+      "unit": "dimensionless",
+      "source": "Monchaux2009",
+      "location": "Sec. II.F / Fig. 14",
+      "notes": "For F/10 < f < 4F, axial component ~ f^-5/3."
+    },
+    {
+      "id": "bulk_spectrum_azimuthal_radial_exponent_mid",
+      "symbol": "alpha_Btheta_Br_bulk",
+      "value": -1.0,
+      "unit": "dimensionless",
+      "source": "Monchaux2009",
+      "location": "Sec. II.F / Fig. 14",
+      "notes": "For F/10 < f < 4F, azimuthal and radial components ~ f^-1."
+    },
+    {
+      "id": "bulk_spectrum_high_frequency_exponent",
+      "symbol": "alpha_bulk_high",
+      "value": -3.6667,
+      "unit": "dimensionless",
+      "source": "Monchaux2009",
+      "location": "Sec. II.F / Fig. 14",
+      "notes": "Possible f^-11/3 range for 4F < f < 8F."
+    },
+    {
+      "id": "burst_correlation_time",
+      "symbol": "tau_burst",
+      "value": 2.5,
+      "unit": "s",
+      "source": "Monchaux2009",
+      "location": "Sec. III.E / Fig. 24",
+      "notes": "Characteristic decay time of magnetic-field autocorrelation in burst regimes."
+    },
+    {
+      "id": "burst_spectrum_exponent",
+      "symbol": "alpha_burst",
+      "value": -2.0,
+      "unit": "dimensionless",
+      "source": "Monchaux2009",
+      "location": "Sec. III.E / Fig. 24",
+      "notes": "Lorentzian-like spectrum ~ f^-2."
+    },
+    {
+      "id": "reversal_decay_rate",
+      "symbol": "lambda_rev",
+      "value": 0.8,
+      "unit": "s^-1",
+      "source": "Monchaux2009",
+      "location": "Sec. III.D / Fig. 21",
+      "notes": "Exponential decay rate of field amplitude at the start of a reversal."
+    }
+  ]
+}

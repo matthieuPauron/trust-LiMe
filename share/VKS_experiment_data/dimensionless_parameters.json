@@ -1,0 +1,84 @@
+{
+  "definitions": [
+    {
+      "id": "magnetic_reynolds_number_symmetric",
+      "symbol": "Rm",
+      "definition": "K mu0 sigma 2 pi R_c^2 F",
+      "unit": "dimensionless",
+      "source": "Monchaux2009",
+      "location": "Sec. I.C",
+      "notes": "F = (F1 + F2)/2. K = 0.6 for exact counter-rotation."
+    },
+    {
+      "id": "kinetic_reynolds_number_symmetric",
+      "symbol": "Re",
+      "definition": "K 2 pi R_c^2 F / nu",
+      "unit": "dimensionless",
+      "source": "Monchaux2009",
+      "location": "Sec. I.C",
+      "notes": "Integral Reynolds number."
+    },
+    {
+      "id": "normalized_frequency_difference",
+      "symbol": "Theta",
+      "definition": "(F1 - F2)/(F1 + F2)",
+      "unit": "dimensionless",
+      "source": "Monchaux2009",
+      "location": "Sec. III.A",
+      "notes": "Measures relative importance of global rotation to shear."
+    },
+    {
+      "id": "reduced_torque_difference",
+      "symbol": "gamma",
+      "definition": "(Gamma1 - Gamma2)/(Gamma1 + Gamma2)",
+      "unit": "dimensionless",
+      "source": "Monchaux2009",
+      "location": "Sec. III.A / Fig. 17",
+      "notes": "Used to identify one-cell/two-cell hydrodynamic transition."
+    },
+    {
+      "id": "interaction_parameter",
+      "symbol": "N",
+      "definition": "sigma B0^2 L / (rho U)",
+      "unit": "dimensionless",
+      "source": "Bourgoin2002",
+      "location": "Sec. I, Eq. (5)",
+      "notes": "Small in the reported induction experiments; N ~ 1e-5 in Bourgoin2002."
+    },
+    {
+      "id": "magnetic_prandtl_number",
+      "symbol": "Pm",
+      "definition": "nu / eta = nu mu0 sigma",
+      "unit": "dimensionless",
+      "source": "Bourgoin2002",
+      "location": "Sec. I, Eq. (6)",
+      "notes": "About 1e-5 for sodium."
+    }
+  ],
+  "typical_ranges": [
+    {
+      "id": "vks_rm_range",
+      "symbol": "Rm",
+      "range": [0.0, 52.0],
+      "unit": "dimensionless",
+      "source": "Ravelet2008",
+      "notes": "Laboratory range; high-Rm dynamo regime is far beyond current trust-LiMe validation."
+    },
+    {
+      "id": "vks_re_range",
+      "symbol": "Re",
+      "range": [0.0, 5.0e6],
+      "unit": "dimensionless",
+      "source": "Monchaux2009",
+      "notes": "Turbulent flow; velocity fluctuations are of order 40-50% of the mean."
+    },
+    {
+      "id": "vks_temperature_range",
+      "symbol": "T",
+      "range": [110.0, 160.0],
+      "unit": "deg C",
+      "source": "Monchaux2009",
+      "notes": "Regulated operating range."
+    }
+  ]
+}
