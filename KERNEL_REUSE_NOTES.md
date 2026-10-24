@@ -1501,3 +1501,219 @@ localised the §18.2 kernel FPE. A full-kernel instrumented pass
 kernel-side reads; until then, the coupled paths are validated by the
 analytic notebooks (ForceLorentzBalance, MMS_Coupled, HartmannTwoWay,
 Coupled_Feedback) and the 29-test arith-only unit suite, not by ASan.
+
+## Archive: AGENTS.md status history (moved 2026-10-24)
+
+The following sections were trimmed from AGENTS.md and relocated here to
+preserve history. They are status reports, not live guidance.
+
+## Known gaps / open items
+
+- **`ForceLorentzBalance` parallel pressure-solver mangling (solved)**: `make_PAR.data` rewrites
+  `Cholesky` -> `GCP { precond ssor }` whenever any line contains "Cholesky" without "PETSc" —
+  its detection was tripped by a `# … #` comment line, mangling
+  `solveur_pression Petsc Cholesky { }` into `Petsc GCP { … }`, which diverged
+  (`KSP_DIVERGED_NANORINF`). The comment now mentions PETSc on every line. See
+  `KERNEL_REUSE_NOTES.md` §15 (make_PAR.data text-processing traps).
+- **MMS forms (2D + 3D twins, all parallel-ported and passing)**: the MMS notebooks now carry
+  asserts — Diff2D/Trig2D and Poly_3D/Trig3D pin the invariance of the uniform (0, 1) field
+  (the datasets as written are invariance cases, not decaying modes), Diff2D…3D pin the
+  eta·pi² decay of the sin(pi y) eigenmode, ExpTrig2D/3D the local-rate decay of
+  sin(pi x)exp(-y), Poly_2D/3D are zero-field smoke tests (no sondes: their probe block is a
+  guarded no-op). MMS_Diff3D needed a mesh refinement (5³ -> 21³ nodes): at 4 cells the P0
+  projection excites higher discrete modes and a single-mode analytic check cannot hold.
+- **2D/3D twin gaps (R5)**: closed for `Shercliff` — `MagneticStandalone3D/Shercliff3D/`
+  is the 3D twin of `Shercliff2D` (same assertion set plus the three exact
+  extrusion invariants `b_z = 0`, z-uniformity and the vector
+  `courant_magnetique`; it is the **only** 3D standalone form exercising the
+  full vector model, `nb_composantes 3`). Its standard/fine scan levels run on
+  1 rank with `execOptions="1"` — the missing argv count is a §18.2 crash
+  layout; see the form's notebook and `KERNEL_REUSE_NOTES.md` §18.2.
+  `Hartmann1D` 2D/3D differ in probe sets by design. (The `MMS_Poly_2D`
+  gap closed itself: the four 2D MMS forms are merged into `MMS_2D`, the
+  four 3D twins into `MMS_3D`.) Fine for now, worth a sweep once the
+  form set stabilises.
+- **`force_lorentz` coupling is one-way in the `force_lorentz` source
+  itself**: the full two-way coupling is available with the magnetic
+  equation's `vitesse_hydraulique` keyword (the solved NS velocity becomes
+  the magnetic transport velocity, bound in `completer()`); low-Rm limit
+  (Rm ≪ 1) validated against Tassone et al. breeding blanket parameter ranges.
+- **Turbulent magnetic diffusivity (Phase 4 done, 2026-10-22; Phase 3
+  implemented in source 2026-10-24)**: ηₜ is built four ways — (1) a
+  prescribed `diffusivite_turbulente_magnetique` field, (2) an explicit
+  `k_magnetique`/`epsilon_magnetique` pair, (3) (with `vitesse_hydraulique`
+  on a `Pb_MHD_Turbulent`) the **hydraulic k-ε model's** own k and ε, or
+  (4) an **independent magnetic k-ε closure** via the
+  `modele_turbulence_magnetique { ... }` block plus
+  `Convection_Diffusion_K_Magnetic`/`Convection_Diffusion_Epsilon_Magnetic`
+  transport equations (Alfvén-normalized k_b, epsilon_b; `eta_t =
+  C_mu_b*k_b^2/(epsilon_b*Pm_t_b)`). Paths (1)-(3) are exercised; path (4)
+  is implemented in source and its keyword is accepted, but the experimental
+  smoke dataset `MagneticStandalone/MagneticTurbulence/` still aborts at
+  `Solve` and the closure is not validated. Two discretisation limits remain
+  upstream: `Op_Diff_VEF_Face` aborts for a vector magnetic unknown on VEF,
+  and no PolyMAC wall law exists, so a turbulent *validation form* is not
+  wired yet — see `PLAN_induction_turbulence.md` Phases 3-4.
+- **§18.2 kernel heisenbug (guarded 2026-10-22)**: `Op_Diff_PolyMAC_MPFA_Elem::calculer_dt_stab()` now skips denormal `volumes_entrelaces`/flux contributions, so parallel forms (e.g. Champs3D fine scale) run cleanly on 2 ranks. The underlying uninitialized read in the kernel parallel init path is not pinned; the guard is robustness, not a root-cause fix.
+- **Strong (Picard) coupling (opt-in, 2026-10-22)**: `couplage_fort { }` (+ `nb_iterations_couplage`, `tolerance_couplage`) on the magnetic equation enables Picard sweeps of the two-way magnetic<->momentum coupling. Default off preserves the green baseline. See `KERNEL_REUSE_NOTES.md` §20.
+
+Authoring/running rules, trustutils API, dataset syntax, and the headless
+nbconvert recipe: **`trust-lime-notebooks` skill**. The gate for adding new
+cases and the ASN 28 stage sequence: **`trust-lime-testing` skill**.
+
+## Compiler & style constraints
+
+- **C++20**, `-mavx`, `-O3`, `-Werror` with `-Wall -Wextra -Wconversion -Wshadow
+  -Woverloaded-virtual -Wnon-virtual-dtor -pedantic`. **Warnings are errors** —
+  keep them at zero. `-Wconversion` is the usual trap (implicit `double`→`int`,
+  sign mismatch).
+- Kernel headers are included **with** the `.h` extension:
+  `#include <Convection_Diffusion_Temperature.h>`.
+- A `.clang-format` is provided, but automatic formatting on write is **off**
+  (see `opencode.jsonc`); turn it on deliberately.
+
+Full idioms (`Declare_instanciable`, `Param`, `REF(...)`, Doxygen mandates,
+`// XD` tags, the class-extension recipe): **`trust-lime-coding` skill**.
+
+## Extending the kernel from trust-LiMe
+
+Reuse kernel base classes (e.g. subclass `Convection_Diffusion_Temperature`)
+rather than reimplementing; see the recipe in the `trust-lime-coding` skill.
+Kernel sources are available as the `trust-kernel` / `trust-include` references.
+
+**`KERNEL_REUSE_NOTES.md` (repository root) is the accumulated knowledge base**:
+kernel class choices, keyword-reading order, CL compatibility rules, the
+`Champ_Inc_base` requirement for the transporting velocity, field factories, and
+pointers to the exact kernel sources. Read it before extending the module, and
+append new findings there.
+
+## Current state
+
+- `src/Convection_Diffusion_Magnetic_field.{h,cpp}` and the problem classes
+  have been **rewritten from scratch**. All pass `syntax-check.sh`.
+  The historical defects (self-including `Pb_MHD.cpp`, mismatched
+  `equation(int)` overloads, missing `.h` in kernel includes, missing `;`/`};`)
+  are **fixed**.
+- **Three problem classes** (2026-10-22), mirroring the kernel's own family
+  layout: `Pb_Induction` (a `Probleme_base`, magnetic equation only,
+  prescribed velocity), `Pb_MHD` (a `Pb_Hydraulique`: `Navier_Stokes_std` at
+  equation 0, magnetic at equation 1) and `Pb_MHD_Turbulent` (a
+  `Pb_Hydraulique_Turbulent`: `Navier_Stokes_turbulent` first, magnetic
+  second, k-eps reused for the magnetic eddy diffusivity). `Pb_MHD_Thermal`
+  (`Pb_Thermohydraulique` base) adds a temperature equation at index 1:
+  NS(0), temperature(1), magnetic(2). The **index** is
+  part of the contract — equation 0 is always the momentum equation (the
+  medium is discretised through it). The kernel matches data-file blocks by
+  name, so either order works, but every dataset writes the momentum block
+  first. See `KERNEL_REUSE_NOTES.md` §20.
+- The module solves the **standalone** magnetic induction equation
+  (see `docs/content/model.md` and `PLAN_magnetic_standalone.md`).
+- Validation cases: `share/Validation/Rapports_automatiques/MagneticStandalone/`
+  (2D) and `MagneticStandalone3D/` (the 3D twins, same form names) —
+  self-contained `Mailler`/`Pave` meshes (3D uses `Polyedriser dom`),
+  analytic + invariant checks. See `docs/content/test_cases.md`.
+- Kernel and module **are built** (`trust-lime`, `trust-lime_semi_opt`,
+  `trust-lime_opt` exist at the repo root) — the historical `libparaconf`
+  configure blocker is resolved.
+- **The reportable suite has 32 forms**. The latest full PDF sweep (2026-10-24)
+  completed 31/32; `HartmannTwoWay` is in progress and failed at `run.reset()`
+  on a non-empty generated scan directory. The 2D + 3D standalone, coupled MHD
+  2D + 3D and post-treatment families are covered. Most baselines run on two
+  ranks; `GaussLaw` 3D is sequential, and the §18.2 kernel heisenbug also pins
+  `Shercliff3D` standard/fine to one rank. Successful PDFs are concatenated into
+  `trust-lime_validation.pdf` at the repo root by
+  `.opencode/scripts/run-validation-pdf.sh`. An experimental
+  `MagneticStandalone/MagneticTurbulence/` form (independent magnetic k-ε
+  closure) is in development and is not part of the reportable suite. Every positive form
+  also carries an in-notebook **mesh-convergence scan** on the shared
+  scale ladder (`coarse` = the baseline mesh, `standard` = cells ×2,
+  `fine` = ×4 in the active directions): a single template dataset
+  `src/<case>.data` with `$nx/$ny[$nz]` placeholders, substituted per
+  scale via `run.addCaseFromTemplate` into `build/<scale>/` — the same
+  data-file name in every scale; error forms (`ErrorInputs`, merged per
+  category) are excluded by design. Notebook operations are gated by the
+  **RULE harness** (`notebook-baseline.sh execute|compare` +
+  `nb-compare.py`): unchanged cells must print identically and the
+  baseline probes must be reproduced exactly. Multi-component
+  `nb_composantes` works and is exercised by the post-treatment forms
+  (`vecteur_poynting`, `helicite_croisee`) and by `Hartmann1D`
+  (`nb_composantes 2`); the old `VectorComponents` form remains removed.
+- **Post-treatment fields** (cyclotron pulsation, magnetic energy, Poynting
+  vector, crossed/kinetic helicity, magnetic Reynolds and Prandtl numbers,
+  magnetic tension) are exposed by the equation via
+  `creer_champ`/`has_champ`/`get_champ` with a field class
+  `src/Champ_Fonc_MHD.{h,cpp}` — validation forms live in
+  `share/Validation/Rapports_automatiques/Postraitement_fields/`, **merged by
+  dimension**: `Champs2D/` (eleven 2D fields, two datasets — the `η = 0`
+  gradient family and the `η > 0` transport family) and `Champs3D/` (the two
+  fields with no meaningful 2D image, plus the `nb_composantes 1` scalar
+  branch of the `|b|²` fields). The recipe lives in `KERNEL_REUSE_NOTES.md`
+  §11.
+- The `induction_stretching` source needs the velocity face field's
+  **auxiliary element variables** or `grad_u` reads garbage — see
+  `KERNEL_REUSE_NOTES.md` ("Getting a velocity gradient for free"). Its element
+  gradient is also **biased in the two cells adjacent to a wall** (the kernel
+  averages face gradients and a boundary face only gets a Dirichlet
+  contribution; measured exactly halved for a linear velocity). `Hartmann1D`
+  documents and bounds that effect — see `KERNEL_REUSE_NOTES.md`.
+- **Divergence of the magnetic field** `∇·b`: by default it remains an
+  assumption (as for the thermalhydraulics velocity), but the magnetic equation
+  now has an opt-in `correction_divergence { }` Hodge projection. It assembles
+  the exact transpose of the module's Pass-1 Green–Gauss operator (`L = D D^T`)
+  and corrects the initial field and each completed step; incompatible net
+  boundary flux is rejected before the solve. Validation: 2D MPI and 3D
+  sequential coarse/standard/fine scans, plus the `ErrorInputs` compatibility
+  failure. The 3D scan uses the shared x-cell ladder and three cells in y/z to
+  avoid a parity-sensitive null mode in this operator. The `∇b`
+  reconstruction remains exact for linear fields at interior cells; boundary
+  cells with homogeneous Neumann walls have O(h) accuracy from the zero-normal-
+  gradient trace (`bf = b(e0)`). Non-homogeneous Dirichlet magnetic data are
+  not preserved, and the projection does not cover every flux-based divergence
+  notion used by other discretizations. See `KERNEL_REUSE_NOTES.md` §11bis and
+  `PLAN_Gauss_law.md`.
+- **Coupled low-Rm mode (Lorentz force) is wired**: `Pb_MHD` accepts optional
+  extra equations (kernel `eq_opt_` mechanism) — adding
+  `Navier_Stokes_standard` to the problem block gives a two-equation coupled
+  problem, and the `force_lorentz` source (`src/Terme_Source_Lorentz.{h,cpp}`,
+  J×B per unit mass, lagged b, Boussinesq-PolyMAC face/element assembly)
+  couples b → momentum. **Two-way coupling is implemented**: with the
+  magnetic equation's `vitesse_hydraulique` keyword the solved NS velocity
+  becomes the magnetic transport velocity (rebound in `completer()`, once
+  every equation is known) and `induction_stretching` rebuilds grad(u)
+  per step — a fully-lagged staggered scheme, bˢ⁺¹=F(bˢ,uˢ), uˢ⁺¹=G(uˢ,bˢ).
+  Five validation forms cover the coupled path: `ForceLorentzBalance`
+  (hydrostatic Δp, b=(y,0)), `MMS_Coupled` (MMS with both force
+  components, b=(y,-x), Δp=−0.60 ± 5 %; its scan's standard level *is* the historical
+  `MMS_CoupledRefined` twin, absorbed — and the form also carries its **3D
+  twin** as a second dataset, `mms_coupled_3d`, so the retired
+  `MMS_Coupled3D` form lives on here), `Coupled_Feedback` (one-way
+  control + the merged two-way case `twoway_feedback.data`:
+  `vitesse_hydraulique`, b must deviate from the frozen field),
+  and the
+  `ErrorInputs` merged negative form (the historical `error_bad_force`,
+  `error_missing_ps`, `error_two_way_no_ns` and `error_two_way_both_velocities` datasets),
+  **plus the quantitative two-way follow-up `HartmannTwoWay`** (the driven
+  Hartmann flow with both feedbacks live: solved u relaxes to the analytic
+  Hartmann profile at Ha=5 — 12.7× below Poiseuille —, the stretching source
+  induces the analytic b_x from the solved u, and the open pressure
+  boundaries impose the analytic magnetic-pressure profile p(y) = P −
+  b_x²/2μ₀, which kills the spurious cross-flow; this replaces the
+  qualitative `1e-3 < ‖b−b₀‖ < 0.5` band with checks at the 0.4–1 % level).
+  Its **Re_H × Ha scan** (`hartmann_two_way_reha.data`) checks all 12 pairs
+  Re_H ∈ {0.01, 0.1, 1, 10} × Ha ∈ {2.5, 5, 7.9} at fixed Rm=0.1,
+  including the requested dimensionless numbers and exact velocity / induced-field profiles.
+  The normalized Hartmann solution is Re-independent because `u·grad(u)=0`
+  in this fully developed channel: this closes the exact-solution parameter
+  grid, but not an inertial-Re regime map, which needs a non-fully-developed
+  benchmark. The Ha scan reproduces σ(Ha) = Ha²/(2(1−1/cosh Ha)) within 1.5 %.
+  Recipe and traps (source-typing suffix, `solveur_pression`, the static
+  `trust-lime_opt` rebuild, the `Operateur_Conv` wrapper two-hop binding)
+  in `KERNEL_REUSE_NOTES.md` §12bis/§12ter.
+- **Unit tests** live in `tests/UnitTests/` (GoogleTest, kernel conventions).
+  The recorded full suite has 45 tests from 11 suites, including the
+  `Terme_Source_Lorentz` data-file contract (`unit_lorentz_source.cpp`) and the
+  `Pb_Induction` / `Pb_MHD` hierarchy checks. The latest full run (2026-10-24)
+  SIGSEGVed at the first kernel-linked registration test, with both default and
+  `_semi_opt` suffixes; the 29-test `--arith-only` path passes. Use
+  `UNIT_TEST_SUFFIX=_semi_opt` while the `optim` kernel archives are stale.
+

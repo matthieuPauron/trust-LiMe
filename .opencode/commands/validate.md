@@ -12,19 +12,18 @@ Build the module, then execute the validation notebook $ARGUMENTS (default:
 the MagneticStandalone one, see below), headlessly via `jupyter nbconvert`.
 
 The notebooks must run inside the TRUST Python environment (venv_trust plus the
-TRUST env), NOT the OpenCode MCP venv. Run everything in one shell invocation:
+TRUST env), NOT the OpenCode MCP venv. Use the env wrapper to source everything
+in one invocation (see `.opencode/scripts/with-trust-env.sh`):
 
-    source ../trust-code/env_TRUST.sh
-    source ../trust-code/env_for_python.sh
-    source ~/Development/venv_trust/bin/activate
-    source env_trust_LiMe.sh        # sets $exec to the MODULE binary (trust-lime_opt)
-    make module_semi_optim
-    # Guard: trustutils runs the binary named in $exec. It MUST be trust-lime,
-    # otherwise every case fails with "PB_MHD is not a recognized keyword".
-    [[ "$exec" == *trust-lime* ]] || { echo "WRONG exec: $exec" >&2; exit 1; }
-    jupyter nbconvert --to notebook --execute \
-      --output-dir /tmp/opencode/trust-lime-notebooks \
-      "<notebook>"
+    .opencode/scripts/with-trust-env.sh bash -c '
+      make module_semi_optim
+      # Guard: trustutils runs the binary named in $exec. It MUST be trust-lime,
+      # otherwise every case fails with "PB_MHD is not a recognized keyword".
+      [[ "$exec" == *trust-lime* ]] || { echo "WRONG exec: $exec" >&2; exit 1; }
+      jupyter nbconvert --to notebook --execute \
+        --output-dir /tmp/opencode/trust-lime-notebooks \
+        "<notebook>"
+    '
 
 Notebooks (under share/Validation/Rapports_automatiques/): one
 `Rapports_automatiques/<Category>/<FormName>/<FormName>.ipynb` per test case.
