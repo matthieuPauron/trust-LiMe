@@ -259,8 +259,8 @@ check before `/validate`.
   transport equations (Alfvén-normalized k_b, epsilon_b; `eta_t =
   C_mu_b*k_b^2/(epsilon_b*Pm_t_b)`). Paths (1)-(3) are exercised; path (4)
   is implemented in source and its keyword is accepted, but the experimental
-  smoke dataset `MagneticStandalone/MagneticTurbulence/` still aborts at
-  `Solve` and the closure is not validated. Two discretisation limits remain
+  smoke dataset `MagneticStandalone/MagneticTurbulence/` now runs end-to-end
+  (smoke) after a full rebuild; the closure is not validated. Two discretisation limits remain
   upstream: `Op_Diff_VEF_Face` aborts for a vector magnetic unknown on VEF,
   and no PolyMAC wall law exists, so a turbulent *validation form* is not
   wired yet — see `PLAN_induction_turbulence.md` Phases 3-4.
