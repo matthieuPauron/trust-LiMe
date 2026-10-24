@@ -248,18 +248,22 @@ check before `/validate`.
   equation's `vitesse_hydraulique` keyword (the solved NS velocity becomes
   the magnetic transport velocity, bound in `completer()`); low-Rm limit
   (Rm ≪ 1) validated against Tassone et al. breeding blanket parameter ranges.
-- **Turbulent magnetic diffusivity (Phase 4 done, 2026-10-22)**: ηₜ is built
-  three ways — a prescribed `diffusivite_turbulente_magnetique` field, an
-  explicit `k_magnetique`/`epsilon_magnetique` pair, or (with
-  `vitesse_hydraulique` on a `Pb_MHD_Turbulent`) the **hydraulic k-ε model's
-  own k and ε**. The last path logs
-  `hydraulic turbulence model detected, using its k/epsilon for the magnetic
-  eddy diffusivity (eta_t in [min, max])` and produces a genuinely
-  non-uniform ηₜ (verified: `eta_t in [0.45, 0.675]` on a sheared k profile).
-  Two discretisation limits remain upstream: `Op_Diff_VEF_Face` aborts for a
-  vector magnetic unknown on VEF, and no PolyMAC wall law exists, so a
-  turbulent *validation form* is not wired yet — see
-  `PLAN_induction_turbulence.md` Phase 4.
+- **Turbulent magnetic diffusivity (Phase 4 done, 2026-10-22; Phase 3
+  implemented in source 2026-10-24)**: ηₜ is built four ways — (1) a
+  prescribed `diffusivite_turbulente_magnetique` field, (2) an explicit
+  `k_magnetique`/`epsilon_magnetique` pair, (3) (with `vitesse_hydraulique`
+  on a `Pb_MHD_Turbulent`) the **hydraulic k-ε model's** own k and ε, or
+  (4) an **independent magnetic k-ε closure** via the
+  `modele_turbulence_magnetique { ... }` block plus
+  `Convection_Diffusion_K_Magnetic`/`Convection_Diffusion_Epsilon_Magnetic`
+  transport equations (Alfvén-normalized k_b, epsilon_b; `eta_t =
+  C_mu_b*k_b^2/(epsilon_b*Pm_t_b)`). Paths (1)-(3) are exercised; path (4)
+  is implemented in source and its keyword is accepted, but the experimental
+  smoke dataset `MagneticStandalone/MagneticTurbulence/` still aborts at
+  `Solve` and the closure is not validated. Two discretisation limits remain
+  upstream: `Op_Diff_VEF_Face` aborts for a vector magnetic unknown on VEF,
+  and no PolyMAC wall law exists, so a turbulent *validation form* is not
+  wired yet — see `PLAN_induction_turbulence.md` Phases 3-4.
 - **§18.2 kernel heisenbug (guarded 2026-10-22)**: `Op_Diff_PolyMAC_MPFA_Elem::calculer_dt_stab()` now skips denormal `volumes_entrelaces`/flux contributions, so parallel forms (e.g. Champs3D fine scale) run cleanly on 2 ranks. The underlying uninitialized read in the kernel parallel init path is not pinned; the guard is robustness, not a root-cause fix.
 - **Strong (Picard) coupling (opt-in, 2026-10-22)**: `couplage_fort { }` (+ `nb_iterations_couplage`, `tolerance_couplage`) on the magnetic equation enables Picard sweeps of the two-way magnetic<->momentum coupling. Default off preserves the green baseline. See `KERNEL_REUSE_NOTES.md` §20.
 
@@ -321,14 +325,16 @@ append new findings there.
 - Kernel and module **are built** (`trust-lime`, `trust-lime_semi_opt`,
   `trust-lime_opt` exist at the repo root) — the historical `libparaconf`
   configure blocker is resolved.
-- **All 28 validation forms pass** (checked 2026-10-22, after the problem-class
-  restructure; the 2026-10-21 count was 27 — the 2D + 3D standalone, coupled
-  MHD 2D + 3D and post-treatment families, every baseline running
-  `nbProcs=2` + `case.partition()`; the scan levels that the §18.2 kernel
-  heisenbug pins to 1 rank — `Shercliff3D` standard/fine — are the documented
-  exceptions) and are concatenated into a
-  single `trust-lime_validation.pdf` at the repo root by
-  `.opencode/scripts/run-validation-pdf.sh` (rc=0). Every positive form
+- **The reportable suite has 32 forms**. The latest full PDF sweep (2026-10-24)
+  completed 31/32; `HartmannTwoWay` is in progress and failed at `run.reset()`
+  on a non-empty generated scan directory. The 2D + 3D standalone, coupled MHD
+  2D + 3D and post-treatment families are covered. Most baselines run on two
+  ranks; `GaussLaw` 3D is sequential, and the §18.2 kernel heisenbug also pins
+  `Shercliff3D` standard/fine to one rank. Successful PDFs are concatenated into
+  `trust-lime_validation.pdf` at the repo root by
+  `.opencode/scripts/run-validation-pdf.sh`. An experimental
+  `MagneticStandalone/MagneticTurbulence/` form (independent magnetic k-ε
+  closure) is in development and is not part of the reportable suite. Every positive form
   also carries an in-notebook **mesh-convergence scan** on the shared
   scale ladder (`coarse` = the baseline mesh, `standard` = cells ×2,
   `fine` = ×4 in the active directions): a single template dataset
@@ -360,19 +366,21 @@ append new findings there.
   averages face gradients and a boundary face only gets a Dirichlet
   contribution; measured exactly halved for a linear velocity). `Hartmann1D`
   documents and bounds that effect — see `KERNEL_REUSE_NOTES.md`.
-- **Divergence of the magnetic field** `∇·b`: the module assumes `∇·b = 0`
-  but does **not enforce** it (same pattern as the thermalhydraulics velocity
-  field). The `∇b` is reconstructed via Green–Gauss (`gradient_b_elements`)
-  — this reconstruction is **exact for linear fields at interior cells** (all
-  faces have neighbours). Boundary cells (walls with homogeneous Neumann CLs)
-  have O(h) accuracy due to the "zero normal gradient" approximation (`bf =
-  b(e0)` at walls). **Validation probes must target interior cells** when
-  comparing against an analytic field.  A lightweight divergence-correc-
-  tion at interior cells can be added post-hoc (see Path 2 below), but the
-  raw Green-Gauss value is already correct for the intended validation use
-  case.  Path 2 (pressure-correction approach, detailed below) would achieve
-  machine‑precision ∇·b = 0 globally but requires new solver infrastructure
-  beyond the M0/M1 standalone scope.
+- **Divergence of the magnetic field** `∇·b`: by default it remains an
+  assumption (as for the thermalhydraulics velocity), but the magnetic equation
+  now has an opt-in `correction_divergence { }` Hodge projection. It assembles
+  the exact transpose of the module's Pass-1 Green–Gauss operator (`L = D D^T`)
+  and corrects the initial field and each completed step; incompatible net
+  boundary flux is rejected before the solve. Validation: 2D MPI and 3D
+  sequential coarse/standard/fine scans, plus the `ErrorInputs` compatibility
+  failure. The 3D scan uses the shared x-cell ladder and three cells in y/z to
+  avoid a parity-sensitive null mode in this operator. The `∇b`
+  reconstruction remains exact for linear fields at interior cells; boundary
+  cells with homogeneous Neumann walls have O(h) accuracy from the zero-normal-
+  gradient trace (`bf = b(e0)`). Non-homogeneous Dirichlet magnetic data are
+  not preserved, and the projection does not cover every flux-based divergence
+  notion used by other discretizations. See `KERNEL_REUSE_NOTES.md` §11bis and
+  `PLAN_Gauss_law.md`.
 - **Coupled low-Rm mode (Lorentz force) is wired**: `Pb_MHD` accepts optional
   extra equations (kernel `eq_opt_` mechanism) — adding
   `Navier_Stokes_standard` to the problem block gives a two-equation coupled
@@ -401,19 +409,23 @@ append new findings there.
   boundaries impose the analytic magnetic-pressure profile p(y) = P −
   b_x²/2μ₀, which kills the spurious cross-flow; this replaces the
   qualitative `1e-3 < ‖b−b₀‖ < 0.5` band with checks at the 0.4–1 % level).
-  Its **Hartmann-number scan** (Ha ∈ {2.5, 5, 7.9}, the parameter template
-  `hartmann_two_way_ha.data`) maps the suppression factor
-  σ(Ha) = Ha²/(2(1−1/cosh Ha)) — the low-Rm regime map of the coupled plan —
-  reproduced within 1.5 % at every point.
+  Its **Re_H × Ha scan** (`hartmann_two_way_reha.data`) checks all 12 pairs
+  Re_H ∈ {0.01, 0.1, 1, 10} × Ha ∈ {2.5, 5, 7.9} at fixed Rm=0.1,
+  including the requested dimensionless numbers and exact velocity / induced-field profiles.
+  The normalized Hartmann solution is Re-independent because `u·grad(u)=0`
+  in this fully developed channel: this closes the exact-solution parameter
+  grid, but not an inertial-Re regime map, which needs a non-fully-developed
+  benchmark. The Ha scan reproduces σ(Ha) = Ha²/(2(1−1/cosh Ha)) within 1.5 %.
   Recipe and traps (source-typing suffix, `solveur_pression`, the static
   `trust-lime_opt` rebuild, the `Operateur_Conv` wrapper two-hop binding)
   in `KERNEL_REUSE_NOTES.md` §12bis/§12ter.
 - **Unit tests** live in `tests/UnitTests/` (GoogleTest, kernel conventions).
-  The full suite **runs and passes** — 45 tests from 11 suites, including the
+  The recorded full suite has 45 tests from 11 suites, including the
   `Terme_Source_Lorentz` data-file contract (`unit_lorentz_source.cpp`) and the
-  `Pb_Induction` / `Pb_MHD` hierarchy checks; the
-  fast path is `--arith-only` (25 tests, micro + numeric kernels only).
-  Use `UNIT_TEST_SUFFIX=_semi_opt` while the `optim` kernel archives are stale.
+  `Pb_Induction` / `Pb_MHD` hierarchy checks. The latest full run (2026-10-24)
+  SIGSEGVed at the first kernel-linked registration test, with both default and
+  `_semi_opt` suffixes; the 29-test `--arith-only` path passes. Use
+  `UNIT_TEST_SUFFIX=_semi_opt` while the `optim` kernel archives are stale.
 
 ## Sanitizers (local debugging)
 
