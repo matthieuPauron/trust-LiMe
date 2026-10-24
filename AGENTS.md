@@ -70,6 +70,7 @@ Switches: `EXTRA_CXXFLAGS="-I/path"` (GoogleTest headers),
 | `trust-lime-docs` | `make docs` pipeline |
 | `trust-lime-env` | Host detection, env sourcing, `$exec` guard, headroom proxy, wrappers |
 | `trust-lime-git` | Commit grouping, worktrees, branches, review hygiene |
+| `trust-code-navigation` | Index/query TRUST & TRIOCFD src symbols (ctags) |
 
 ## Unit tests (GoogleTest)
 
@@ -161,6 +162,13 @@ Reuse kernel base classes rather than reimplementing; recipe in
 `trust-lime-coding`. Kernel sources available as `trust-kernel` /
 `trust-include` references. Read `KERNEL_REUSE_NOTES.md` before extending;
 append new findings there.
+
+## Codebase navigation (TRUST / TRIOCFD)
+
+Symbol lookup in `../trust-code` and `~/Development/triocfd-code` (src/ only):
+build indexes with `.opencode/scripts/index-codebases.sh`, query with
+`.opencode/scripts/find-symbol.sh <name>` (or `/find-symbol`). See the
+`trust-code-navigation` skill. Indexes are gitignored (`.index/`).
 
 ## Retrieval (large reference docs)
 
