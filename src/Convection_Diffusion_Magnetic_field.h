@@ -26,6 +26,8 @@
 #define Convection_Diffusion_Magnetic_field_included
 
 #include <Convection_Diffusion_Temperature_base.h>
+#include <Matrice_Morse.h>
+#include <SolveurSys.h>
 
 class Navier_Stokes_std;
 
@@ -41,6 +43,7 @@ public:
 
   // --- Data-file handling -------------------------------------------------
   void set_param(Param& param) const override;
+  int lire_motcle_non_standard(const Motcle& mot, Entree& is) override;
 
   // --- Discretisation and field setup -------------------------------------
   void discretiser() override;
@@ -91,6 +94,28 @@ public:
    *         read-ordering rationale.
    */
   void completer() override;
+
+  /*! @brief Per-step Hodge projection of b when `correction_divergence` is
+   *         active (cleans `inconnue().valeurs()`). Idempotent.
+   */
+  void mettre_a_jour(double temps) override;
+
+  /*! @brief Initial cleaning of a non-solenoidal Champ_Init. */
+  int preparer_calcul() override;
+
+  // --- Gauss' law enforcement (opt-in `correction_divergence { }`) ----------
+  /*! @brief True when the per-step Hodge projection is enabled. */
+  inline bool correction_divergence() const { return correction_divergence_; }
+  /*! @brief Frequency (in time steps) of the correction; default 1. */
+  inline int frequence_correction() const { return frequence_correction_ > 0 ? frequence_correction_ : 1; }
+  /*! @brief Post-correction divergence watchdog threshold (0 = disabled). */
+  inline double seuil_divergence() const { return seuil_divergence_; }
+
+  /*! @brief Projects `b` in place: b <- b - G phi, L phi = D b. */
+  void corriger_divergence(DoubleTab& b);
+
+  /*! @brief Builds the L = D . G matrix once (cached). */
+  void assembler_correction();
 
   // --- Physical closures used by the inherited operators ------------------
   // Magnetic diffusivity eta: used both as the diffusion coefficient
@@ -206,6 +231,15 @@ protected:
   int nb_iterations_couplage_ = 0;
   double tolerance_couplage_ = 0.;
   mutable OBS_PTR(Navier_Stokes_std) eq_ns_;
+
+  // --- Gauss' law enforcement (opt-in `correction_divergence { }`) ----------
+  bool correction_divergence_ = false;
+  SolveurSys solveur_divergence_;
+  int frequence_correction_ = 1;
+  double seuil_divergence_ = 0.;
+  Matrice_Morse L_matrix_;
+  bool L_assembled_ = false;
+  int correction_count_ = 0;
 
   // --- Post-treatment fields (created lazily by creer_champ()) ------------
   double mu0_ = 1.;                          // magnetic permeability mu0 keyword

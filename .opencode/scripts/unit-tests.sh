@@ -80,7 +80,8 @@ mkdir -p "$build_dir"
 
 if [[ "$mode" == "arith" ]]; then
   test_sources=(tests/UnitTests/unit_induction_kernel.cpp
-                tests/UnitTests/unit_mhd_posttraitement_kernel.cpp)
+                tests/UnitTests/unit_mhd_posttraitement_kernel.cpp
+                tests/UnitTests/unit_correction_divergence_kernel.cpp)
   module_sources=()
   main_source=tests/UnitTests/main_gtest_lite.cpp
 else

@@ -77,6 +77,15 @@ bool mhd_iterate_time_step(Probleme_base& pb, bool& converged)
       // After iterateTimeStep: futur = new solution, present = old (restored
       // by faire_un_pas_de_temps_eqn_base), passe = old (preserved by flag).
 
+      // Clean the new solution's divergence (Gauss' law) when the correction
+      // is enabled: the new solution lives in futur(), not valeurs().
+      {
+        Convection_Diffusion_Magnetic_field* eqb_nc = const_cast<Convection_Diffusion_Magnetic_field*>(eqb);
+        DoubleTab& fut_b_nc = const_cast<DoubleTab&>(eqb->inconnue().futur());
+        eqb_nc->corriger_divergence(fut_b_nc);
+        fut_b_nc.echange_espace_virtuel();
+      }
+
       // Read the new solution from futur (dimensions_ may be -1, use addr).
       const DoubleTab& fut_b = eqb->inconnue().futur();
       const DoubleTab& fut_u = ns->vitesse().futur();

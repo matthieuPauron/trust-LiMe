@@ -97,6 +97,7 @@ parallel_ok=(
   # --- MagneticStandalone (2D) ---
   "$base/MagneticStandalone/Advection/"
   "$base/MagneticStandalone/Diffusion/"
+  "$base/MagneticStandalone/GaussLaw/"
   "$base/MagneticStandalone/MMS_2D/"
   "$base/MagneticStandalone/ErrorInputs/"
   "$base/MagneticStandalone/Hartmann1D/"

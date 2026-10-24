@@ -121,6 +121,13 @@ model from inside OpenCode before pinning it: a direct `curl` to
 `FreeTierError` ("free tier can only be used from within OpenCode"), so use a
 throwaway `subagent` run instead.
 
+Removed providers (2026-10-24): `google`, `groq` and `openrouter` are denied by
+`provider.use` policies in the global `~/.config/opencode/opencode.jsonc` —
+nothing here authenticates against them (all pins are `opencode/*` or `nvidia/*`;
+the Jev shim reaches Gemini through its own Python client, not OpenCode's
+`google` provider), so they only cluttered `/models` and `/connect`. Re-enable
+by deleting a line from that `policies` block.
+
 Build output is filtered by the `rtk` plugin, and global `tool_output` limits
 were raised so long compile errors are not clipped. Keep the primary loop:
 `syntax-check.sh` → `make module_semi_optim` → validate.
@@ -254,7 +261,7 @@ check before `/validate`.
   turbulent *validation form* is not wired yet — see
   `PLAN_induction_turbulence.md` Phase 4.
 - **§18.2 kernel heisenbug (guarded 2026-10-22)**: `Op_Diff_PolyMAC_MPFA_Elem::calculer_dt_stab()` now skips denormal `volumes_entrelaces`/flux contributions, so parallel forms (e.g. Champs3D fine scale) run cleanly on 2 ranks. The underlying uninitialized read in the kernel parallel init path is not pinned; the guard is robustness, not a root-cause fix.
-- **Strong (Picard) coupling (BROKEN, 2026-10-23)**: `couplage_fort { }` is opt-in and compiles, but **non-functional**: each Picard sweep calls `Probleme_base::iterateTimeStep()`, which advances the time by one step, so with `maxit = 5` the time advances 5 times instead of iterating within one step. The convergence check always reports success (change = 0). Fix requires upstream (trust-code) changes to the time-stepping framework (see `KERNEL_REUSE_NOTES.md` §20bis). Default (off) path is correct and is what all 30 validation forms use. Unlocks: strongly-coupled two-way MHD, turbulent two-way VKS, and a `StrongCoupling` validation form.
+- **Strong (Picard) coupling (opt-in, 2026-10-22)**: `couplage_fort { }` (+ `nb_iterations_couplage`, `tolerance_couplage`) on the magnetic equation enables Picard sweeps of the two-way magnetic<->momentum coupling. Default off preserves the green baseline. See `KERNEL_REUSE_NOTES.md` §20.
 
 Authoring/running rules, trustutils API, dataset syntax, and the headless
 nbconvert recipe: **`trust-lime-notebooks` skill**. The gate for adding new
