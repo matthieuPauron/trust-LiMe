@@ -1,12 +1,16 @@
 # Coupled MHD Simulations Plan — trust-LiMe baltik
 
-> **STATUS (2026-10-21): COMPLETE up to Phase 2 — historical record.** The
-> low-Rm coupled mode (`force_lorentz`) **and** the two-way coupling
-> (`vitesse_hydraulique`) are implemented and validated; Phase 3 items
-> (Nedelec vector potential, turbulent MHD/EDM, Ohmic heating) remain open
-> and deferred (see `END_GOAL.md`). The checkboxes below were never ticked
-> and are superseded by `AGENTS.md` § « Current state ». Read this file as
-> the original design intent, not as a task list.
+> **STATUS (2026-10-24): COUPLING FOUNDATION COMPLETE — historical plan.**
+> Low-Rm `force_lorentz` (PolyMAC and VEF), two-way `vitesse_hydraulique`,
+> opt-in Picard coupling, and effective turbulent magnetic diffusivity are
+> implemented. The Gauss-law projection is also implemented and opt-in; its
+> 2D MPI scan passes, but the 3D twin, error coverage and full regression remain
+> open. The next coupled benchmark gaps are the Reynolds scan and validated
+> 3D Shercliff duct. Magnetic fluctuation transport, MHD turbulence closure,
+> Ohmic heating, and high-Rm dynamo physics remain future work. The checkboxes
+> below were never ticked and are superseded by `AGENTS.md` and
+> `docs/content/plans.md`; read this file as original design intent, not as a
+> current task list.
 
 ## Overview
 
@@ -64,9 +68,9 @@ where `J = curl B / μ₀` is the current density and `J × B` is the **Lorentz 
 |--------|-------------------|-------------|
 | **Unknowns** | Magnetic field `b` only (velocity given) | `b` + `u` both solved (velocity from Navier-Stokes) |
 | **Lorentz force** | Out of scope (`force_lorentz { }` off) | **Included**: `J × B` couples momentum → induction |
-| **Equation count** | `nombre_d_equations() = 1` | `nombre_d_equations() = 3` (momentum + energy + magnetic) or more |
+| **Problem hierarchy** | `Pb_Induction` (magnetic equation only) | `Pb_MHD`, `Pb_MHD_Turbulent`, or `Pb_MHD_Thermal` (momentum first; thermal problem adds temperature) |
 | **Velocity field** | Data field from jdd (`vitesse_magnetique`) | Field from `Pb_Hydraulique` + MHD coupling |
-| **Div-b enforcement** | Not enforced (assumed by validation) | Can be enforced via vector potential or constrained transport |
+| **Div-b enforcement** | Assumed by default; opt-in cell-centred Hodge projection implemented | Vector potential / constrained transport remains a separate future formulation |
 | **Validation cases** | 7 standalone `.data` files | New coupled cases: Hartmann flow, Shercliff duct, libb flows |
 | **Sign convention** | `(u·∇)b - (b·∇)u - ηΔb = 0` | Same, but `(b·∇)u` term fully coupled |
 
@@ -142,9 +146,11 @@ benchmark cases pass.
 
 ## 4. Key Decisions (settled, new for coupled)
 
-- **D1 — Equation count**: `nombre_d_equations() = 1` in standalone (M0/M1);
-  `= 3` when `force_lorentz { }` enabled (momentum + magnetic + time). Further
-  extensions (turbulent, energy) add more.
+- **D1 — Problem hierarchy**: standalone uses `Pb_Induction`; laminar and
+  turbulent coupled problems use `Pb_MHD` and `Pb_MHD_Turbulent`; the thermal
+  family uses `Pb_MHD_Thermal` with momentum at index 0, temperature at 1 and
+  magnetic induction at 2. `force_lorentz` is a source on momentum, not an
+  equation-count switch.
 - **D2 — Discretization**: `Polymac_p0` for M0/M1 baseline; `Polymac_p1` or
   edge-elements (`Nedelec`) for coupled when `∇ · b = 0` enforcement needed.
 - **D3 — Lorentz force**: `J × B` computed from current `J = curl b / μ₀` using
@@ -152,8 +158,9 @@ benchmark cases pass.
 - **D4 — Velocity coupling**: two pathways:
        - **M0/M1**: `vitesse_magnetique` data field only (no Pb_Hydraulique)
        - **Coupled**: `vitesse_hydraulique` from `Pb_Hydraulique` + MHD source terms
-- **D5 — Div-b control**: deferred from M0/M1; added in C2 phase via vector potential
-  or constrained transport (edge elements).
+- **D5 — Div-b control**: an opt-in cell-centred Hodge projection is implemented
+  for the module's reported Green–Gauss divergence; vector potential / edge
+  elements remain a distinct, deferred formulation.
 - **D6 — Regime**: low-Rm approximation (Rm ≪ 1) for liquid metal breeding blankets
   (Tassone et al.); `(b·∇)u` explicit with lagged `b`; induced field is perturbation.
 

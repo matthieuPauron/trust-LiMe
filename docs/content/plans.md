@@ -6,10 +6,12 @@ what comes **next**, and what is deliberately **deferred**. The plain-Markdown
 originals remain the working documents: they are updated as work proceeds, and
 this page follows them.
 
-@note Status snapshot: October 2026. Every item marked *done* below is backed
-by a green run — see @ref TrustLiMe_validation "Validation cases" for the
-28-form suite that guards it (every positive form with its mesh-convergence scan on the coarse/standard/fine ladder), and @ref TrustLiMe_testcases "Test cases" for
-the unit-test layer underneath.
+@note Status snapshot: 24 October 2026. The established baseline is 28
+validation forms (checked 22 October) and 45 unit tests. The opt-in Gauss-law
+projection and recent VEF/VKS coupling changes are newer than that baseline;
+their targeted checks pass where noted below, but a full baseline regression is
+still outstanding. See @ref TrustLiMe_validation "Validation cases" and
+@ref TrustLiMe_testcases "Test cases".
 
 ---
 
@@ -19,18 +21,21 @@ the unit-test layer underneath.
 |---|---|
 | M0 — standalone magnetic advection–diffusion | **done** |
 | M1 — \f$S = (b\cdot\nabla)u\f$ stretching source (`induction_stretching`) | **done** |
-| Coupled low-Rm mode — `force_lorentz` on an optional `Navier_Stokes_standard` | **done** (one-way \f$b \to\f$ momentum) |
+| Coupled low-Rm mode — `force_lorentz` on a hydraulic problem | **done** (one-way \f$b \to\f$ momentum; PolyMAC and VEF source assembly) |
 | Post-treatment fields (`Champ_Fonc_MHD`) and their forms (merged 2026-10-21 into `Champs2D` / `Champs3D`) | **done** |
 | Coupled validation forms (7) | **done** |
-| Full validation suite — 2D, 3D twins, coupled, post-treatment | **done** — 27/27 forms pass (checked 2026-10-21; every baseline at `nbProcs=2`, the §18.2-pinned scan levels — `Shercliff3D` standard/fine — at 1 rank), every positive form carrying its mesh-convergence scan on the `coarse`/`standard`/`fine` ladder from a single substituted `src/<case>.data` template (suite history: DiffusionRefined/MMS_CoupledRefined absorbed, TwoWayFeedback folded into Coupled_Feedback, the MMS families fused into `MMS_2D`/`MMS_3D`, the malformed-input forms merged into one `ErrorInputs` notebook per category, the post-treatment forms merged into `Champs2D`/`Champs3D`, `MMS_Coupled3D` folded into `MMS_Coupled` as its 3D dataset, the Shercliff 3D twin added closing the R5 gap, the quantitative two-way `HartmannTwoWay` follow-up added) |
-| Unit tests (GoogleTest, arithmetic suite) | **done** — green via `--arith-only` |
+| Full validation suite — 2D, 3D twins, coupled, post-treatment | **28/28 pass** (checked 2026-10-22; positive forms include coarse/standard/fine scans). The latest Gauss-law and VEF/VKS changes still need a full baseline regression. |
+| Unit tests (GoogleTest) | **45 tests pass** in the documented full suite; rerun during regression of the latest changes |
 | Two-way coupling — NS velocity feeds the magnetic convection (`vitesse_hydraulique`) | **done** (lagged staggered scheme; commits `9e5b13b`, `d484fbd`) |
-| \f$\nabla\cdot b = 0\f$ enforcement, turbulence, dynamo | **open** — sections 3–5 |
+| \f$\nabla\cdot b = 0\f$ enforcement | **implemented, opt-in** via `correction_divergence`; 2D MPI mesh scan passes, broader validation pending |
+| Turbulent magnetic diffusivity | **implemented** from prescribed fields or hydraulic k-\f$\varepsilon\f$; magnetic fluctuation transport remains open |
+| Strong two-way coupling | **implemented, opt-in** Picard iteration via `couplage_fort`; default staggered mode unchanged |
+| High-\f$\mathrm{Rm}\f$ dynamo | **open / long term** — section 5 |
 
-Both earlier plans are therefore essentially retired: all phases of
-`PLAN_magnetic_standalone.md` are complete, and `PLAN_mhd_coupled.md` has its
-C0 kernel work plus C1 (both coupling directions) done. The live work is the rest of
-the coupled plan, and beyond it the horizon of `END_GOAL.md`.
+The standalone induction and low-Rm coupling foundations are complete. Current
+near-term work is closing validation and benchmark gaps (especially the Gauss
+projection regression and 3D coupled duct case); new turbulence equations,
+Ohmic heating and high-\f$\mathrm{Rm}\f$ dynamo capability remain larger extensions.
 
 ---
 
@@ -41,8 +46,10 @@ the coupled plan, and beyond it the horizon of `END_GOAL.md`.
 | Standalone M0/M1 | induction equation + stretching source | done | `PLAN_magnetic_standalone.md` |
 | Coupled C0 | kernel plumbing: optional equations, Lorentz source | done | `PLAN_mhd_coupled.md` |
 | Coupled C1 | low-Rm momentum coupling | **done** — one-way `force_lorentz`, two-way `vitesse_hydraulique` | `PLAN_mhd_coupled.md` |
-| Coupled C2 | full NS+MHD, Shercliff duct, Ha/Re scan | next | `PLAN_mhd_coupled.md` |
-| Coupled C3 | div-b enforcement, turbulent MHD, Ohmic heating | open | `PLAN_mhd_coupled.md` |
+| Coupled C2 | low-\f$\mathrm{Rm}\f$ two-way NS+MHD coupling | **done**; close the Re scan and Shercliff 3D benchmark | `PLAN_mhd_coupled.md` |
+| Gauss-law projection | opt-in cell-centred Hodge projection | **implemented**; add 3D/error coverage and run regression | `PLAN_Gauss_law.md` |
+| Turbulent induction | effective \f$\eta_t\f$ from fields or hydraulic k-\f$\varepsilon\f$ | **implemented**; magnetic fluctuation equations remain scaffolded | `PLAN_induction_turbulence.md` |
+| Coupled advanced physics | magnetic fluctuation transport, Ohmic heating, other benchmarks | open / staged | `PLAN_mhd_coupled.md` |
 | Dynamo / VKS | turbulent EDM, high-Rm regime | long term | `END_GOAL.md` |
 
 ---
@@ -82,30 +89,31 @@ itself lives in the kernel
 
 ### 2D/3D twin gaps (R5)
 
-`Shercliff2D` is now twinned (`MagneticStandalone3D/Shercliff3D/`, which also
-carries the full vector model). The remaining untwinned forms are the
-**coupled** ones: `HartmannTwoWay/`, `ForceLorentzBalance/` and
-`Coupled_Feedback/` have no 3D counterpart yet (`MagneticCoupled3D/` holds
-only the in-progress `ShercliffDuct3D`; the `MMS_Coupled` form carries its own
-3D twin as a second dataset). The
-`Hartmann1D` 2D/3D forms differ in probe sets by design. Worth a twin sweep
-once the form set stabilises — tracked as R5 in `AGENTS.md`.
+`Shercliff2D` is twinned by `MagneticStandalone3D/Shercliff3D/`, which also
+carries the full vector model. `MMS_Coupled` carries its 3D twin as a second
+dataset, and `VKSTurbulent` exercises a 3D VEF turbulent case. Still without
+3D counterparts are `HartmannTwoWay/`, `ForceLorentzBalance/` and
+`Coupled_Feedback/`; the coupled `ShercliffDuct3D` case also remains to be
+completed and validated. The `Hartmann1D` 2D/3D forms differ in probe sets by
+design. Keep this twin sweep as a coverage goal once the form set stabilises.
 
 ### \f$\nabla\cdot b = 0\f$ handling
 
-The module assumes a solenoidal field but does **not** enforce it; the
-Green-Gauss reconstruction of \f$\nabla b\f$ is exact for linear fields at
-interior cells and O(h) at walls (validation probes target interior cells).
-Three upgrade paths, in increasing ambition:
+An opt-in `correction_divergence { }` block now projects the cell-centred
+magnetic field onto the null space of the module's reported Green–Gauss
+divergence, using the exact discrete operator \f$L = D D^T\f$. The 2D
+`GaussLaw` case passes on 2 ranks over coarse/standard/fine meshes, with
+post-initialization maximum divergence below \f$2\times10^{-13}\f$.
+Implementation is not complete validation: the 3D twin, incompatible-net-flux
+error case, full baseline regression and sanitizer pass remain. The current
+projection supports homogeneous Neumann magnetic walls; non-homogeneous
+Dirichlet data are not preserved, and this does not enforce every flux-based
+divergence notion used by other discretizations.
 
-1. **Post-hoc correction** at interior cells — lightweight, no new
-   infrastructure.
-2. **Pressure-correction** projection — machine-precision
-   \f$\nabla\cdot b = 0\f$, but requires new solver machinery beyond the
-   standalone scope.
-3. **Vector potential / edge elements** (Nedelec) — the M3 formulation; it
-   also unlocks the missing `helicite_magnetique` and
-   `helicite_generalisee` post-treatment fields.
+The longer-term Nedelec/vector-potential route remains open. It would change the
+unknown/discretization and could also enable the missing `helicite_magnetique`
+and `helicite_generalisee` fields; it is not required for the implemented
+projection's narrower contract.
 
 ---
 
@@ -119,7 +127,7 @@ magnetic equation transports with the **solved NS velocity**
 The time stepping is a lagged staggered scheme,
 \f$b^{s+1}=F(b^s,u^s)\f$, \f$u^{s+1}=G(u^s,b^s)\f$.
 
-### C2 — two-way coupling — **done** (2026-10-18)
+### C2 — two-way coupling — **implemented**
 
 - The **NS velocity is the magnetic transport velocity** via the
   `vitesse_hydraulique` pathway (bound in `completer()`, once every
@@ -128,6 +136,10 @@ The time stepping is a lagged staggered scheme,
 - The `Coupled_Feedback` one-way regression and `ForceLorentzBalance`
   stayed green, plus the two error forms `Error_TwoWayNoNS` /
   `Error_TwoWayBothVelocities`.
+- `force_lorentz` now has VEF assembly as well as PolyMAC assembly; the
+  `VKSTurbulent` case exercises the VEF turbulent hydraulic path with two-way
+  coupling. This expands discretization coverage but is not a high-\f$Rm\f$
+  dynamo validation.
 - Still open (C2 follow-up): tightened time-step synchronisation if the
   explicit staggered scheme ever shows loose-coupling oscillations.
 - Tracked coupled benchmarks:
@@ -138,28 +150,27 @@ The time stepping is a lagged staggered scheme,
   - **Re axis — open.** The scan runs at a single Reynolds number, so the
     \f$\mathrm{Ha}/\mathrm{Re}\f$ regime map of `PLAN_mhd_coupled.md` §2.5 is
     only half covered.
-  - **Shercliff 3D duct — open** (Tassone et al. Fig. 6). A template
-    dataset exists (`MagneticCoupled3D/ShercliffDuct3D/src/shercliff_duct_3d.data`,
-    still untracked): full vector \f$b=(b_x,0,B_0)\f$, both feedbacks live,
-    open pressure boundaries with an imposed magnetic-pressure profile.
+  - **Shercliff 3D duct — open** (Tassone et al. Fig. 6). The case still needs
+    completion and validation: full vector \f$b=(b_x,0,B_0)\f$, both feedbacks
+    live, open pressure boundaries with an imposed magnetic-pressure profile.
 
 ### C3 — advanced coupled features
 
 | Item | Note |
 |---|---|
-| \f$\nabla\cdot b = 0\f$ by vector potential | edge elements / Nedelec (M3) |
-| Turbulent MHD | k-\f$\varepsilon\f$ with MHD modifications (Tassone et al. §4) |
+| \f$\nabla\cdot b = 0\f$ by vector potential | still open; the opt-in cell-centred projection is implemented separately (see section 3) |
+| Effective turbulent diffusivity \f$\eta_t\f$ | implemented from supplied fields, magnetic k/ε fields, or hydraulic k-ε; a 3D VKS turbulent case exists |
+| Magnetic fluctuation transport | scaffolding only; transport equations, production/dissipation and wall treatment remain open |
+| Turbulent MHD closure | MHD modifications to k-ε (Tassone et al. §4) remain open |
 | Energy equation with Ohmic heating | \f$J^2/\sigma\f$ source |
 | Lid-driven cavity with transverse \f$B\f$ | standard benchmark |
 | Pump-induced MHD duct flow | industrial liquid-metal application |
 
 ### C4 — consolidation
 
-Sanitizer pass (`project.cfg` ASan/UBSan + `make module_custom`), the review
-checklist (sign conventions, BCs, matrix symmetry), and appendices to
-`KERNEL_REUSE_NOTES.md` (coupled sign conventions, Ha-Re-M matrix, low-Rm
-limits). The remaining effort was estimated at **6–8 days** on the slow
-development host (C2: 3–4 d, C3: 2–3 d, C4: 1 d).
+Still to consolidate: sanitizer runs on the new projection and coupled paths,
+review sign conventions / boundary conditions / matrix properties, and keep
+`KERNEL_REUSE_NOTES.md` and the validation docs aligned with the implementation.
 
 ### Planned coupled validation targets
 
@@ -184,8 +195,8 @@ low-Pm dynamo. The gap from the current validated mode:
 |---|---|
 | low-Rm perturbation \f$(b \sim \mathrm{Ha}^2)\f$ | high-Rm induction, dynamo threshold and saturation |
 | lagged two-way coupling (low-Rm, staggered) | fully nonlinear high-Rm coupling |
-| molecular \f$\eta\f$ only | **turbulent EDM** \f$\eta_t\f$ from k-\f$\varepsilon\f$: \f$\nabla\times\overline{u'\times b'} \approx -\eta_t\,\nabla\times\bar{B}\f$ |
-| laminar / prescribed mean flow | fully turbulent flow (k-\f$\varepsilon\f$, LES, RSM) |
+| molecular plus effective \f$\eta_t\f$ from supplied or hydraulic k-\f$\varepsilon\f$ fields | magnetic fluctuation transport and a calibrated turbulent-EMF closure |
+| laminar/prescribed-flow validation, plus a VEF turbulent coupling case | validated turbulent MHD (k-\f$\varepsilon\f$, LES, RSM) |
 | forms running at 2 ranks | large 3D spherical meshes, impeller forcing |
 
 Roadmap phases (month ranges are `END_GOAL.md` estimates):
@@ -201,11 +212,11 @@ Roadmap phases (month ranges are `END_GOAL.md` estimates):
 5. **Integration and publication (24–30)** — combined report, code releases,
    simulation database.
 
-@warning The turbulent-EDM item is the one that most directly changes the
-equation solved today: the induction equation currently carries **molecular**
-\f$\eta\f$ only (a constant `Champ_Uniforme`), and the whole validation suite
-assumes laminar or prescribed-mean-flow velocities. Model turbulent diffusivity
-only together with a turbulence closure, not as a standalone patch.
+@warning A turbulent magnetic diffusivity path exists, including a hydraulic
+k-\f$\varepsilon\f$ handoff, but it is not yet a validated high-\f$Rm\f$
+closure. Magnetic fluctuation transport equations, broader turbulent
+benchmarks, large-scale VKS cases and dynamo threshold/saturation remain future
+work. Do not equate the VEF smoke/validation case with a validated VKS simulation.
 
 ---
 
@@ -216,7 +227,7 @@ first if one must change.
 
 | Id | Decision |
 |---|---|
-| D1 | Equation count: 1 standalone; the kernel's optional-equation mechanism appends `Navier_Stokes_standard` for the coupled mode (no three-equation problem yet). |
+| D1 | Problem families: `Pb_Induction` for standalone induction; `Pb_MHD` and `Pb_MHD_Turbulent` for momentum + magnetic; `Pb_MHD_Thermal` adds temperature (NS, temperature, magnetic). Equation indices are part of the contract. |
 | D2 | Discretisation: `Polymac_p0` baseline; `Polymac_p1` or edge elements only where \f$\nabla u\f$ / \f$J\times B\f$ resolution or div-b enforcement demands it. |
 | D3 | Magnetic diffusivity \f$\eta\f$ read as the equation keyword `diffusivite_magnetique`; no new milieu property. |
 | D4 | Boundary conditions reuse kernel scalar CLs (via the `"Thermique"` application domain); magnetic-named vocabulary added only where implemented (`paroi_isolante_magnetique`). |

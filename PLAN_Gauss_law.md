@@ -1,16 +1,17 @@
 # Plan — Gauss' law enforcement (Path 2: opt-in divergence correction)
 
-**Status: projection operator corrected; mesh-scan revalidation in progress
-(2026-10-24).** The original `D∘G` implementation omitted the outer-cell
+**Status (2026-10-24): 2D projection and MPI mesh scan pass; follow-up validation
+and repository-wide regression remain.** The original `D∘G` implementation omitted the outer-cell
 inverse volume and retained checkerboard null modes. The implementation now
 uses the exact sparse transpose of the Pass-1 divergence (`L = D D^T`), with a
 `1e-12` relative diagonal regularization. It also sums boundary flux over MPI
 and counts only owned physical faces. The full 2-rank 2D notebook passes on
 coarse/standard/fine; post-initialization probe maxima are `1.74e-13`,
-`5.79e-14`, and `4.75e-14`. Remaining: the 3D twin, `ErrorInputs` additions,
-full baseline regression, and docs. Reserves the M3 milestone
-(Gauss' law enforcement) already earmarked in `docs/content/model.md` and
-`KERNEL_REUSE_NOTES.md` §11bis.
+`5.79e-14`, and `4.75e-14`. Framework-free kernel tests and the 2D validation
+form are present. `model.md`, `test_cases.md`, the validation parallel allowlist
+and the roadmap describe the implementation. Remaining: the 3D twin, a
+negative test for incompatible net flux, `AGENTS.md` / `KERNEL_REUSE_NOTES.md`
+synchronization, full baseline regression, and sanitizer validation.
 
 Built on the full picture from both sides — the module's ∇·b state and the
 kernel's incompressible machinery — the sections below give the design
@@ -25,9 +26,10 @@ rationale, then the concrete implementation plan.
   feeding `tension_magnetique`, `force_lorentz`, and the
   `divergence_magnetique` probe — is `tr(∇b)` from Green–Gauss with centred
   face averages (`gradient_b_elements`, Pass 1 + B2).
-- Today that divergence is assumed zero (Path 1, `KERNEL_REUSE_NOTES.md`
-  §11bis); the notes and `docs/content/model.md` already reserve the M3
-  milestone for enforcement.
+- Without the opt-in `correction_divergence` block, that divergence remains an
+  assumption (Path 1, `KERNEL_REUSE_NOTES.md` §11bis). With the block enabled,
+  the implementation projects the field in this discrete measure; it does not
+  enforce every flux-based divergence associated with other discretizations.
 
 ## 2. What TRUST does for ∇·u = 0 (the elements worth taking)
 
@@ -127,27 +129,25 @@ A per-step magnetic Hodge projection owned by
 
 ## 5. Validation & testing (staged per the ASN 28 gate)
 
-1. **Unit tests** (`tests/UnitTests/`, `--arith-only-fast`): hand-built 3×3
+1. **Unit tests — implemented:** `tests/UnitTests/unit_correction_divergence_kernel.cpp`
+   covers a hand-built 3×3
    Cartesian patch — `Lφ == D(D^Tφ)` with reversed boundary orientations and
    nonuniform volumes; synthetic
    non-solenoidal field annihilated in one pass; idempotence (clean twice =
    clean once); net-flux rejection.
-2. **New form `GaussLaw` + 3D twin:**
-   - (a) deliberately non-solenoidal initial condition with the correction
+2. **`GaussLaw` 2D form — passes** on 2 ranks, coarse/standard/fine. It covers:
+   - deliberately non-solenoidal initial condition with the correction
      on → `divergence_magnetique` interior probes < 1e-12 after step 1 and
      held;
-   - (b) invariance: an existing solenoidal case run with the correction on
+   - invariance: an existing solenoidal case run with the correction on
      reproduces the baseline probes (the identity property, a strong
      no-regression statement);
-   - (c) coarse/standard/fine scan of (a) to show no order degradation;
-   - (d) parallel, `nbProcs=2` — the first cross-rank scalar solve in the
-     module (mind the §18.2 heisenbug class);
-   - (e) `ErrorInputs` additions for the incompatible-flux exit.
-3. **All 28 existing forms re-run untouched** (zero code path without the
-   keyword), sanitizer pass on the matrix assembly, then docs: `model.md`
-   M3 row + §6 limitations, `KERNEL_REUSE_NOTES.md` §11bis Path 2 →
-   implemented with the exact kernel pieces reused, `AGENTS.md`,
-   `test_cases.md`, `parallel_ok[]`.
+   - coarse/standard/fine mesh scan on 2 MPI ranks.
+3. **Remaining:** add the 3D twin and incompatible-net-flux `ErrorInputs` case;
+   rerun all 28 established forms untouched (the keyword-absent path must stay
+   unchanged); run sanitizers on the matrix assembly. `model.md`,
+   `test_cases.md`, `docs/content/plans.md` and the 2D `parallel_ok[]` entry
+   are updated; synchronize `KERNEL_REUSE_NOTES.md` §11bis and `AGENTS.md`.
 
 ---
 
@@ -198,17 +198,13 @@ by `tension_magnetique` / `force_lorentz`) is driven to solver tolerance.
 4. **Unit tests** (`tests/UnitTests/`, arith-only friendly): `Lφ == D(D^Tφ)`
    to machine precision on a 3×3 patch; synthetic divergence annihilated in
    one pass; idempotence; net-flux rejection.
-5. **Validation forms `GaussLaw` (2D) + `GaussLaw3D` twin + `ErrorInputs`
-   additions** — incl. the invariance case (solenoidal baseline + correction
-   on ⇒ probes unchanged), a non-solenoidal case driven to < 1e-12, the
-   mesh-convergence ladder, and `nbProcs=2` (first cross-rank scalar solve
-   in the module — watch the §18.2 heisenbug class). Add to
-   `parallel_ok[]`.
-6. **Docs:** `model.md` M3 row → implemented (projection variant; honest
-   note that MPFA-flux divergence is not the annihilated measure), §6
-   limitations rewrite; `KERNEL_REUSE_NOTES.md` §11bis Path 2 → implemented
-   with the reused kernel pieces; `AGENTS.md` divergence paragraph;
-   `test_cases.md`.
+5. **Validation — partial:** `GaussLaw` 2D has the invariance and
+   non-solenoidal assertions, mesh ladder, and 2-rank execution; it is listed
+   in `parallel_ok[]`. Add the `GaussLaw3D` twin and incompatible-flux
+   `ErrorInputs` assertion.
+6. **Docs — partial:** `model.md`, `test_cases.md`, and the roadmap document
+   the implemented projection and its scope. Still update `KERNEL_REUSE_NOTES.md`
+   §11bis Path 2 and the `AGENTS.md` current-state/gap summary.
 
 ### 6.3 Sequence
 
@@ -226,8 +222,9 @@ syntax-check loop → unit tests (--arith-only) → make module_semi_optim
 - Green-baseline gate: stage per `trust-lime-testing`; the keyword must be
   opt-in everywhere, including the coupled forms.
 
-**Next step:** finish the full notebook scan and its probe assertions, then add
-the 3D twin and `ErrorInputs` coverage, then finish the docs.
+**Next step:** add the 3D twin and incompatible-flux `ErrorInputs` case, then
+run the established full baseline and sanitizer pass; finish the kernel-notes
+and `AGENTS.md` synchronization.
 
 ---
 

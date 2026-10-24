@@ -1,13 +1,13 @@
 # Improved Work Plan — MHD Integration in trust-LiMe baltik
 
-> **STATUS (2026-10-21): SUPERSEDED — historical record.** The parts of this
-> plan that shipped are the M0/M1 formulation, the vector unknown, the
-> `induction_stretching` source and the Lorentz force (`force_lorentz`, plus
-> the two-way `vitesse_hydraulique` pathway). The divergence-free (M3)
-> formulation and the `paroi_conductrice_magnetique` boundary condition remain
-> deferred. The checkboxes below were never ticked; live status is
-> `AGENTS.md` § « Current state » and `docs/content/plans.md`. Read this file
-> as the original design intent, not as a task list.
+> **STATUS (2026-10-24): SUPERSEDED — historical design record.** M0/M1,
+> `force_lorentz`, two-way `vitesse_hydraulique`, turbulent effective
+> diffusivity, and an opt-in cell-centred Gauss-law projection are implemented.
+> The projection's 2D MPI mesh scan passes; its 3D twin, error coverage and full
+> baseline regression remain open. A vector-potential/Nedelec formulation and
+> `paroi_conductrice_magnetique` are still deferred. The checkboxes below were
+> never ticked; current status is in `AGENTS.md` and `docs/content/plans.md`.
+> Read this file as the original design intent, not as a task list.
 
 ## Overview
 
@@ -86,8 +86,8 @@ is explicit with lagged `b`, consistent with kinematic MHD.
 | **Discretization** | `Polymac_p0` only (uniform) | `Polymac_p0` as baseline + optional `Polymac_p1` for M1 validation |
 | **Diffusivity** | Keyword `diffusivite_magnetique` | Same keyword, but with `η > 0` validation and Ha-number reporting |
 | **Source terms** | M1 only: `(b·∇)u` explicit, lagged `b` | M0: pure diffusion; M1: `(b·∇)u` + optional `(B₀·∇)u` uniform background |
-| **BC vocabulary** | `magnetic_field_impose`, `paroi_isolante_magnetique` | Same + `paroi_conductrice_magnetique` (perfect conductor) + `paroi_isolante_magnetique` (Neumann) |
-| **Div-b control** | Not enforced (assumed by validation cases) | Consistent mass-matrix treatment; `Δb` discretization preserves constant modes |
+| **BC vocabulary** | `magnetic_field_impose`, `paroi_isolante_magnetique` | Perfect-conductor `paroi_conductrice_magnetique` remains deferred; scalar kernel CLs are reused |
+| **Div-b control** | Assumed by default | Separate opt-in `correction_divergence` projection implemented for the reported cell-centred divergence; vector potential remains deferred |
 | **Lorentz force groundwork** | Out of scope | Add `terme_lorentz` skeleton with `J × B`; enable via keyword `force_lorentz` (off by default) |
 | **Analytic validation** | Not specified | Analytic Hartmann/Shercliff profiles from Davidson §3.3, Shercliff 1953 duct experiment |
 | **Sign convention** | Ad hoc | Matched to Gérard-Varet: `(u·∇)b - (b·∇)u - ηΔb = 0` |
@@ -178,8 +178,10 @@ review checklist signed off.
 
 ## 4. Key Decisions (settled, improving D1–D4)
 
-- **D1 — Equation count**: Magnetic-only `nombre_d_equations() = 1` in M0/M1 phases.
-  Lorentz force adds 2 more equations but is off by default (`force_lorentz { }`).
+- **D1 — Equation hierarchy**: standalone uses `Pb_Induction`; coupled
+  `Pb_MHD` / `Pb_MHD_Turbulent` and thermal `Pb_MHD_Thermal` families provide
+  momentum + magnetic (and, for the thermal family, temperature) equations.
+  `force_lorentz` is a momentum source, not an equation-count switch.
 - **D2 — Discretization**: `Polymac_p0` as baseline (D2 from original plan), with optional
   `Polymac_p1` for M1 stretching source when mesh resolves `∇u`. P0-friendly: elementwise
   constant gradients or analytic profiles, else refine mesh.

@@ -1,10 +1,13 @@
 # Work plan — Standalone magnetic models (M0 → M1)
 
-> **STATUS (2026-10-21): COMPLETE — historical record.** All phases of this
-> plan are implemented and validated; the checkboxes below were never ticked
-> and are superseded by `AGENTS.md` § « Current state » (28-form suite green
-> in 2-rank parallel, mesh-convergence scans on every positive form). Read
-> this file as the original design intent, not as a task list.
+> **STATUS (2026-10-24): M0/M1 COMPLETE — historical record.** The standalone
+> equation and stretching source are implemented; the checkboxes below were
+> never ticked and are superseded by `AGENTS.md` § « Current state » and
+> `docs/content/plans.md`. The opt-in `correction_divergence` projection is now
+> implemented separately; its 2D MPI mesh scan passes, while its 3D twin,
+> error coverage and full regression remain open. The established 28-form
+> baseline predates the newest projection/VEF changes. Read this file as design
+> history, not as a current task list.
 
 Status: draft · Author: agent loop w/ matthieu · Scope: **magnetic equation only**,
 no hydraulics coupling (coupled MHD / Lorentz force is deferred).
@@ -16,7 +19,7 @@ no hydraulics coupling (coupled MHD / Lorentz force is deferred).
 We implement the magnetic (induction) equation in **standalone mode**:
 
 ```
-∂t b + (u·∇)b − η Δb = S        ∇·b = 0 (assumed by the validation cases, not enforced yet)
+∂t b + (u·∇)b − η Δb = S        ∇·b = 0 (assumed by default; opt-in projection available)
 ```
 
 - **M0 — advection–diffusion:** S = 0. Pure reuse of the scalar transport
@@ -28,8 +31,10 @@ The transport velocity `u` enters as data in the `.data` file (uniform or
 `Champ_Fonc_xyz`), not from `Pb_Hydraulique`. `Pb_MHD` may be used as the
 problem shell, but the momentum/energy equations stay off in the test cases.
 
-**Explicitly out of scope:** Lorentz force feedback, `nombre_d_equations()=3`
-bookkeeping, turbulent MHD, div-free enforcement / vector-potential (M3).
+**Original plan scope:** Lorentz force feedback, hydraulics coupling, turbulent
+MHD and a vector-potential formulation were out of scope. Since this plan was
+written, low-Rm Lorentz coupling, effective turbulent diffusivity and an
+opt-in cell-centred div-b projection have been implemented in separate work.
 
 ---
 
@@ -183,9 +188,11 @@ to M0 diffusion behavior.
 
 ## 4. Decisions (settled) — UPDATED
 
-- **D1 — equation count**: magnetic-only. `nombre_d_equations() = 1`; the
-  hydraulics/thermique equations are not exposed in this phase. Lorentz force
-  (`force_lorentz { }`) is off by default and would add 2 more equations.
+- **D1 — original scope**: this plan covered magnetic-only induction. The
+  implemented hierarchy uses `Pb_Induction` for standalone, `Pb_MHD` or
+  `Pb_MHD_Turbulent` for momentum + magnetic, and `Pb_MHD_Thermal` for momentum,
+  temperature and magnetic equations. `force_lorentz` is a momentum source,
+  not an equation-count switch; see `PLAN_mhd_coupled.md`.
 - **D2 — discretization**: `Polymac_p0` as baseline (D2 from original plan),
   with optional `Polymac_p1` for M1 stretching source when mesh resolves `∇u`.
   P0-friendly: elementwise constant gradients or analytic profiles, else refine
@@ -198,9 +205,9 @@ to M0 diffusion behavior.
   we do **not** write new boundary-condition code in this phase — we reuse the
   kernel's existing scalar BC classes under magnetic keyword names
   (`magnetic_field_impose` → Dirichlet, `paroi_isolante_magnetique` →
-  homogeneous Neumann). New vocabulary: `paroi_conductrice_magnetique` (perfect
-  conductor, `b × n = 0`). Physics-specific magnetic BCs (conducting vs.
-  insulating walls) are now explicitly offered, not deferred.
+  homogeneous Neumann). `paroi_conductrice_magnetique` (perfect conductor,
+  `b × n = 0`) is not implemented; per-component boundary treatment remains
+  deferred.
 - **D5 — vector unknown**: magnetic field `b` treated as `Champ_Inc` vector with
   `nb_composantes = ndim` from Phase 1 onward. Each component transported
   independently as a scalar field (D2 from improved plan).

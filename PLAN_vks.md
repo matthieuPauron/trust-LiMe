@@ -1,8 +1,12 @@
 # VKS (Von Kármán Sodium) Simulation Plan — trust-LiMe baltik
 
-**Status:** Future / not started. This document specifies the inputs, keywords,
-and structure needed for a future VKS data file. It is a design document, not
-an implementation.
+**Status (2026-10-24): VKS simulation not started; enabling foundations are
+partly implemented.** Effective magnetic diffusivity can be built from fields
+or hydraulic k-ε, and the 3D `VKSTurbulent` integration case exercises two-way
+VEF coupling. An opt-in cell-centred Gauss-law projection and Picard coupling
+are also implemented, but only low-Rm validation exists. No spherical VKS
+geometry, rotating impellers, high-Rm threshold or saturated dynamo has been
+validated. This remains a design plan, not a runnable VKS case.
 
 ## 1. Overview
 
@@ -29,8 +33,10 @@ with **turbulent magnetic diffusivity** η_t (EDM) added:
 ```
 η_eff = η + η_t(k, ε, b)
 ```
-Currently trust-LiMe uses molecular η only (`Champ_Uniforme`). The EDM term
-`∇×(u'×b'̄) ≈ −η_t ∇×B̄` is deferred (END_GOAL.md §2.2).
+The equation accepts molecular η plus an effective η_t supplied as a field,
+computed from magnetic k/ε fields, or obtained from the hydraulic k-ε model.
+The magnetic-fluctuation transport equations and a calibrated VKS EDM closure
+remain deferred (see `PLAN_induction_turbulence.md` and `END_GOAL.md` §2.2).
 
 ### 2.2 Momentum equation (TRUST Navier-Stokes)
 ```
@@ -306,38 +312,39 @@ mu Champ_Fonc_xyz dom 1 $MU0 * (1 + $ALPHA * (T - $T0))
 | Capability | trust-LiMe status | VKS need |
 |-----------|-------------------|----------|
 | Induction equation (M0/M1) | ✅ Done | ✅ (base) |
-| Lorentz force (force_lorentz) | ✅ Done (low-Rm, lagged) | ✅ (but needs high-Rm) |
-| Two-way coupling (vitesse_hydraulique) | ✅ Done (lagged) | ✅ (but needs tight coupling) |
+| Lorentz force (`force_lorentz`) | ✅ Done for PolyMAC and VEF (low-Rm) | ✅ (but needs high-Rm validation) |
+| Two-way coupling (`vitesse_hydraulique`) | ✅ Done; opt-in Picard coupling is available | ✅ (high-Rm stability still unvalidated) |
 | Post-treatment fields (energy, Poynting, helicity, J, tension) | ✅ Done | ✅ |
-| Turbulent magnetic diffusivity (EDM) | ❌ Deferred | ❌ (critical for VKS) |
+| Effective turbulent magnetic diffusivity | ✅ From prescribed fields or hydraulic/magnetic k-ε fields; `VKSTurbulent` exercises the hydraulic path | ⚠️ Magnetic fluctuation transport and calibrated closure needed |
 | High-Rm regime (Rm ~ 100-1000) | ❌ Not validated | ❌ (critical for VKS) |
-| Turbulence models (k-ε, LES) | ❌ Not implemented | ❌ (critical for VKS) |
+| Turbulence models (k-ε, LES) | ⚠️ Hydraulic k-ε can feed η_t; full turbulent MHD/LES not implemented | ❌ (critical for VKS) |
 | Spherical geometry | ❌ Not tested | ❌ (needed) |
 | Impeller rotation BCs | ❌ Not implemented | ❌ (needed) |
 | Temperature-dependent properties | ❌ Not implemented | ⚠️ (nice to have) |
-| Conducting wall BC (paroi_conductrice) | ❌ Deferred (Phase B.2) | ⚠️ (impeller surfaces) |
-| div-b enforcement | ❌ Not enforced | ⚠️ (important at high Rm) |
+| Conducting wall BC (`paroi_conductrice_magnetique`) | ❌ Deferred | ⚠️ (impeller surfaces) |
+| div-b enforcement | ⚠️ Opt-in projection for the reported cell-centred divergence; 2D scan passes, 3D/regression pending | ⚠️ (important at high Rm) |
 
 ## 5. Gap analysis: what must be built before a VKS data file can run
 
 ### 5.1 Critical gaps (must fix)
-1. **Turbulent EDM** (η_t from k-ε): without this, the induction equation
-   uses molecular η only, which is wrong for turbulent sodium (Rm would be
-   based on molecular values, not turbulent).
+1. **Validated turbulent EDM closure:** effective η_t input and hydraulic
+   k-ε handoff exist, but magnetic fluctuation transport and calibration for
+   turbulent sodium are not implemented/validated.
 2. **High-Rm validation**: the current low-Rm mode assumes b is a perturbation
    (b ~ Ha², not O(1)). VKS operates at Rm ~ 100-1000 where b is O(1).
    The induction equation must handle the nonlinear (u·∇)b and (b·∇)u terms
    at high Rm.
-3. **Tight coupling**: the current staggered scheme (bˢ⁺¹ = F(bˢ,uˢ),
-   uˢ⁺¹ = G(uˢ,bˢ)) may be unstable at high Rm. Needs implicit or
-   semi-implicit coupling.
+3. **High-Rm coupling validation:** the default staggered scheme can be
+   supplemented by opt-in Picard iterations (`couplage_fort`), but stability
+   and accuracy in the high-Rm regime remain untested; an implicit or
+   semi-implicit strategy may still be needed.
 
 ### 5.2 Important gaps (should fix)
 4. **Spherical mesh generation**: TRUST supports polyhedral meshes via
    `Polyedriser`. Need a mesh of the spherical shell with impeller surfaces.
 5. **Impeller rotation BCs**: `paroi_defilante` (moving wall) or body force.
-6. **div-b enforcement**: at high Rm, ∇·b errors accumulate. Need constrained
-   transport or projection.
+6. **div-b enforcement:** an opt-in projection cleans the module's reported
+   divergence, but 3D validation remains and high-Rm robustness is unknown.
 7. **Conducting wall BC**: impeller surfaces may be conducting (steel).
 
 ### 5.3 Nice-to-have

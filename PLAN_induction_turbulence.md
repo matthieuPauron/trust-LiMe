@@ -1,16 +1,19 @@
 # Plan — Induction turbulence (k-ε) for trust-LiMe
 
-Status: **Phases 1, 2a, 2b, 2b+ implemented; Phase 4 (hydraulic k-eps coupling)
-implemented and exercised end-to-end (grab + non-uniform eta_t); Phase 3
-(magnetic fluctuation transport) scaffolded.**
+Status (2026-10-24): **Prescribed and k-ε-derived effective magnetic
+diffusivity implemented; hydraulic k-ε handoff is exercised end-to-end.** The
+3D `VKSTurbulent` case now exercises two-way coupling with VEF `force_lorentz`.
+Magnetic fluctuation transport remains scaffolded; high-Rm/VKS dynamo behavior
+is not validated. See `docs/content/plans.md` for the cross-project roadmap.
 
 ## 1. Motivation
 
-The induction equation currently uses molecular magnetic diffusivity η only.
-At mid/high Rm in turbulent flow (VKS-like, Rm ~ 100–1000, Re ~ 1e5–1e6,
+The baseline induction equation uses molecular magnetic diffusivity η; the
+module now also supports an effective η + η_t from supplied fields or hydraulic
+k-ε fields. At mid/high Rm in turbulent flow (VKS-like, Rm ~ 100–1000, Re ~ 1e5–1e6,
 Pm ~ 1e-5) the unresolved fluctuations u'×b' act as an extra diffusivity
-η_t. Without it the effective Rm is far too high and the field grows
-unphysically. The turbulent EDM term is
+η_t. Without an appropriate η_t, the effective Rm is too high and the field
+may grow unphysically. The turbulent EDM term is
 
     ∇×(ū'×b̄') ≈ −η_t ∇×B̄,     η_t = ν_t / Pm_t  (or C_μ^m k²/ε)
 
@@ -64,13 +67,13 @@ dissipation (ε_b), plus an eddy magnetic diffusivity η_t.
   `diffusivite_turbulente_magnetique_`, so the Phase 2a fold handles the rest.
 - Constant C_mu for now (realizable variant deferred).
 
-### Phase 3 — transport equations for magnetic fluctuations
+### Phase 3 — transport equations for magnetic fluctuations (SCAFFOLDED)
 - New equation `Convection_Diffusion_K_Magnetic` (or reuse the kernel's
   `Transport_K_Eps` machinery) for k_b, ε_b, coupled to the induction
   equation via the EDM term. This mirrors triocfd's `Transport_K_Eps`.
 - Wall treatment and limiters analogous to `calculate_limit_viscosity`.
 
-### Phase 4 — coupling with hydraulic k-ε
+### Phase 4 — coupling with hydraulic k-ε (IMPLEMENTED)
 - In the coupled mode (`vitesse_hydraulique`), reuse the hydraulic k, ε to
   compute η_t = ν_t / Pm_t instead of solving separate magnetic fluctuation
   equations. This is the VKS-relevant path.
@@ -133,24 +136,18 @@ dissipation (ε_b), plus an eddy magnetic diffusivity η_t.
   Working recipe: `VEFPreP1B` on a **triangulated** mesh
   (`Trianguler dom` + `VerifierCoin dom { }`), `Navier_Stokes_turbulent` with
   `K_Epsilon { turbulence_paroi negligeable ... }`, and `nb_composantes 1` on
-  the magnetic equation. Two limits found on the way:
-  - `Op_Diff_VEF_Face::ajouter_cas_multi_scalaire` aborts for a **vector**
-    magnetic unknown (`nb_composantes 2`) on VEF, so a turbulent case must
-    either stay scalar or move to PolyMAC;
-  - PolyMAC cannot host k-eps here: `Turbulence_paroi_base` builds the wall-law
-    type name as `negligeable_<discretisation>` and no `*_PolyMAC_*` wall law
-    is registered, so `turbulence_paroi negligeable` fails to type.
-  Promoting this to a validation form therefore needs either a PolyMAC wall
-  law upstream or a VEF-compatible multi-component diffusion path — module
-  code is not the blocker.
-- The vector (2-component) path therefore stays on the laminar PolyMAC forms;
-  the k-eps grab itself is component-agnostic.
-- **VKS 3D turbulent case** (2026-10-23): new form
+  the magnetic equation. PolyMAC still cannot host k-eps here:
+  `Turbulence_paroi_base` builds the wall-law type name as
+  `negligeable_<discretisation>` and no `*_PolyMAC_*` wall law is registered,
+  so `turbulence_paroi negligeable` fails to type. Broader turbulent
+  discretization coverage remains an upstream wall-law concern.
+- **VKS 3D turbulent case** (2026-10-23, updated 2026-10-24): form
   `MagneticCoupled3D/VKSTurbulent/` — VEFPreP1B on a tetrahedral mesh
   (`Tetraedriser` + `VerifierCoin`), `Pb_MHD_Turbulent` with `K_Epsilon`,
-  `nb_composantes 3`, one-way coupling (no `force_lorentz` — VEF has no
-  implementation yet). Runs to completion and prints the grab + non-uniform fold.
-  Two-way coupling on VEF requires a VEF `force_lorentz` (new class).
+  `nb_composantes 3`, and two-way coupling through `vitesse_hydraulique` plus
+  the VEF `force_lorentz` assembly. The notebook exercises the turbulent
+  diffusivity handoff and both coupling directions; this is a targeted
+  integration case, not a high-Rm dynamo validation.
 - Minimal working data-file skeleton for the smoke case (2D, 0 <= x <= 10,
   0 <= y <= 1, 11x6 nodes triangulated):
 
