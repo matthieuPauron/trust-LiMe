@@ -20,6 +20,7 @@ The module has **two** kinds of tests:
 
 | File | Covers |
 |---|---|
+| `unit_correction_divergence_kernel.cpp` | Pass-1 divergence and its exact transpose, `D D^T` assembly with nonuniform volumes/reversed boundary orientation, projection, idempotence and net-flux compatibility |
 | `unit_magnetic_field.cpp` | equation keyword, `domaine_application() == "Thermique"` (the BC-compatibility contract), the `Pb_Induction` / `Pb_MHD` problem hierarchy (equation counts, momentum-before-magnetic order), out-of-range index |
 | `unit_induction_source.cpp` | `induction_stretching` keyword; `readOn()` consumes its own braces (regression); unknown keyword is rejected |
 | `unit_induction_kernel.cpp` | the arithmetic of \f$S = (b\cdot\nabla)u\f$: index layout, single-component case, accumulation, element-wise application |
@@ -64,11 +65,13 @@ tests of **one single category**. Following the TRUST validation-form layout
 (`Rapports_automatiques/<Category>/<FormName>/<FormName>.ipynb`), the standalone
 magnetic folder ships one *form folder* per dataset, each containing
 `<FormName>.ipynb` + `src/<case>.data` (`MagneticStandalone/Invariance/`,
-`MagneticStandalone/Diffusion/`, …, `MagneticStandalone/ErrorBadBc/`).
-Each form exists **in 2D and in 3D**: `MagneticStandalone3D/<FormName>/` is the
+`MagneticStandalone/Diffusion/`, `MagneticStandalone/GaussLaw/`, …,
+`MagneticStandalone/ErrorBadBc/`). The established forms have **2D and 3D
+twins**: `MagneticStandalone3D/<FormName>/` is the
 3D twin of `MagneticStandalone/<FormName>/` (same physics, same assertions;
 the dataset gains `dimension 3`, three-component vectors, and `Polyedriser dom`
-after `Mailler` — PolyMAC_MPFA needs polyhedral cells in 3D). The
+after `Mailler` — PolyMAC_MPFA needs polyhedral cells in 3D). `GaussLaw` is
+currently a 2D form without a 3D twin. The
 `.data` files are **computations**, not tests — a dataset such as `diffusion`
 feeds its validation form (`Diffusion/Diffusion.ipynb`), which carries the
 mesh-convergence scan itself (coarse = baseline, standard = ×2, fine = ×4,
@@ -167,6 +170,7 @@ so no `.med` file is required and the cases can be run from a clean checkout.
 | `steady_state.data` | equilibrium \f$b = y\f$ with **non-uniform** \f$\eta(x) = 1+x\f$ | Validation – separate effects | exact steady state | spurious source, mis-assembled diffusion, functional-\f$\eta\f$ reading path |
 | `varying_velocity.data` | **spatially varying** velocity \f$u = (-y, x)\f$, uniform \f$b\f$ | Verification | exact invariant | `Champ_Don → Champ_Inc` transfer onto faces, wrong velocity components |
 | `source_stretching.data` | M1 source \f$S = (b\cdot\nabla)u\f$, \f$u = (x, -y)\f$ (div-free) | Validation – separate effects | \f$b(t) = B_0 e^{t}\f$ | source magnitude, sign, gradient-index order |
+| `gauss_law.data` | Non-solenoidal \f$b=(\cos(2\pi x),0)\f$ with `correction_divergence` enabled | Verification | interior divergence probes below \f$10^{-8}\f$ on coarse/standard/fine meshes and two MPI ranks | `D D^T` projection, MPI ghost handling, global boundary-flux check |
 | `hartmann_1d.data` | induced field of the Hartmann profile (\f$\mathrm{Ha}=5\f$), insulating walls, \f$b=(b_x,B_0)\f$ (`nb_composantes 2`) | Validation – separate effects | mean-free \f$b_x(y) = -\tfrac{B_0}{\eta}\big[\int_{-h}^{y}u - \tfrac12\int_{-h}^{h}u\big]\f$ | multi-component transport, M1 source driving \f$b_x\f$ through the applied \f$b_y\f$, insulating walls, odd symmetry, \f$b_y\equiv B_0\f$ |
 | `shercliff_2d.data` | induced field of the parabolic no-slip channel profile, insulating walls, \f$b=(b_x,B_0)\f$ (`nb_composantes 2`) | Validation – separate effects | \f$b_x(y) = \tfrac{B_0 U_0}{\eta}\big(\tfrac{y^3}{3h^2}-y\big)\f$ and \f$J_z(y) = \tfrac{B_0 U_0}{\eta\mu_0}\big(1-(y/h)^2\big)\f$ | M1 source with a no-slip shear profile, `courant_magnetique` post-treatment (interior parabola, zero at walls), \f$b_y\equiv B_0\f$ |
 | `shercliff_3d.data` | 3D twin (`MagneticStandalone3D/Shercliff3D/`): same 1D physics on a polyhedral mesh (`Polyedriser dom`), full vector \f$b=(b_x,B_0,0)\f$ (`nb_composantes 3`) | Validation – separate effects | same analytic profile, plus the exact extrusion invariants \f$b_z\equiv 0\f$, z-uniformity, and the vector \f$\mathbf{J}=(0,0,J_z(y))\f$ | full vector model in 3D, 3-component `courant_magnetique`, `Polyedriser` mesh path, probe snapping in 3D |

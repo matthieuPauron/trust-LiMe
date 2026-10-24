@@ -17,8 +17,9 @@ share/Validation/Rapports_automatiques/
 │   ├── SteadyState/  VaryingVelocity/  SourceStretching/
 │   ├── Hartmann1D/                 # Hartmann induced field (1D physics)
 │   ├── MMS_2D/                     # the four historical MMS cases fused
+│   ├── GaussLaw/                   # opt-in discrete divergence projection
 │   └── ErrorInputs/                # the 3 malformed-input cases merged
-├── MagneticStandalone3D/           # the same 10 forms, one-to-one, in 3D
+├── MagneticStandalone3D/           # 3D twins of the established standalone forms
 │   └── <FormName>/…                # (Polyedriser dom after Mailler — see below)
 ├── MagneticCoupled/                # coupled low-Rm MHD (2D, incl. the merged
 │   └── <FormName>/…                #   one-way + two-way feedback form)
@@ -28,7 +29,8 @@ share/Validation/Rapports_automatiques/
     └── Champs2D/ Champs3D/         # (∇b / |b|² / u·b based — two datasets each)
 ```
 
-The `MagneticStandalone3D` forms differ from their 2D counterpart only in the
+The `GaussLaw` form currently has no 3D twin. Other
+`MagneticStandalone3D` forms differ from their 2D counterpart only in the
 dataset: `dimension 3`, three-component vector data, three-coordinate probes,
 and **`Polyedriser dom`** right after `Mailler` (PolyMAC_MPFA requires polyhedral
 cells in 3D; the `Pave` hexahedra are converted in place). The notebooks and the
@@ -37,9 +39,11 @@ asserted tolerances are shared with the 2D forms.
 Four formatting rules are enforced by `.opencode/scripts/check-validation.sh`
 (`/check-validation`): the notebook lives at the form root only —
 `Rapports_automatiques/<Category>/<FormName>/<FormName>.ipynb`, never in
-`src/`; datasets are **sequential-only** (no `Decouper`/`Scatter` partition
-machinery in a `.data`, no `partition()` / `nbProcs>1` in a notebook); the R4 rule
-is **one form per notebook** (see the `trust-lime-notebooks` skill) — a form runs
+`src/`; datasets and notebooks are sequential-only unless the form is explicitly
+listed in the script's `parallel_ok[]` allowlist (such forms need mesh,
+partition, and scatter marker regions and must opt into `partition()`/
+`nbProcs>1` together); the R4 rule is **one form per notebook** (see the
+`trust-lime-notebooks` skill) — a form runs
 its mesh-convergence scales (coarse/standard/fine) from the single template
 `src/<case>.data`, and the `MMS_2D`/`MMS_3D` forms run four datasets each.
 

@@ -23,9 +23,10 @@ with
 | \f$\eta\f$ | magnetic diffusivity \f$= 1/(\mu_0\sigma)\f$ | `diffusivite_magnetique` |
 
 This is the standard convection–diffusion form of the induction equation. For an
-incompressible flow, the Gauss law \f$\nabla\cdot b = 0\f$ is assumed by the
-validation cases; **it is not enforced by the solver** (see the *Known
-limitations* section below).
+incompressible flow, the Gauss law \f$\nabla\cdot b = 0\f$ is assumed by
+default. An opt-in projection (`correction_divergence`, described below) can
+clean the magnetic field in the equation's discrete divergence measure. With
+that keyword absent, the existing solve is unchanged.
 
 ### Physical model variants
 
@@ -34,7 +35,7 @@ limitations* section below).
 | **M0** | none (pure advection–diffusion) | **implemented** |
 | **M1** | \f$S = (b\cdot\nabla)u\f$ (frozen-velocity stretching) | **implemented** — kernel source term `induction_stretching` |
 | **M2+** | Lorentz force \f$(\nabla\times b)\times b\f$ on momentum | **implemented** — source term `force_lorentz` (§3ter) |
-| M3 | vector-potential / divergence-free formulation | deferred |
+| M3 | vector-potential / divergence-free formulation | deferred (a separate opt-in discrete Hodge projection is available) |
 
 ---
 
@@ -95,8 +96,10 @@ source machinery, post-processing plumbing) is inherited from the kernel:
 | `diffusivite_pour_transport()` | return \f$\eta\f$ instead of the fluid conductivity \f$\lambda\f$ |
 | `diffusivite_pour_pas_de_temps()` | return \f$\eta\f$ (time-step stability estimate) |
 | `vitesse_pour_transport()` | return the transport velocity instead of `probleme().get_champ("vitesse")` — the `vitesse_magnetique` data field, or the solved NS velocity once `completer()` has rebound it |
-| `set_param()` | register `diffusivite_magnetique`, `vitesse_magnetique`, `vitesse_hydraulique`, `nb_composantes` |
+| `set_param()` | register magnetic fields and constants plus the `correction_divergence` block |
 | `readOn()` | fill the velocity field, rename the mass coefficient |
+| `preparer_calcul()` | apply the optional initial Gauss-law projection |
+| `mettre_a_jour()` | apply the optional per-step projection before post-processing |
 | `domaine_application()` | report `"Thermique"` so kernel scalar CLs are accepted (see below) |
 
 `get_time_factor()` is **not** overridden: the energy equation's \f$\rho C_p\f$
@@ -131,6 +134,7 @@ Inside the `Convection_Diffusion_Magnetic_field` block:
 | `sources` | block | inherited | — | Kernel source framework; enables the M1 `induction_stretching` term. |
 | `initial_conditions` | block | **yes** | — | `magnetic_field <Champ_...> ...` |
 | `boundary_conditions` | block | **yes** | — | Kernel scalar CLs (see *Boundary conditions*). |
+| `correction_divergence` | block | no | off | Opt-in projection enforcing the equation's Pass-1 magnetic divergence; see below. |
 
 **Ordering matters:** keywords are processed in the order they appear in the
 data file, so `diffusivite_magnetique` must be given before `diffusion` (the
@@ -139,6 +143,37 @@ diffusion reader immediately queries the diffusivity).
 The unknown is named **`magnetic_field`**; its components are
 `magnetic_field0`, `magnetic_field1`, … and they are directly usable as probe
 names.
+
+### Opt-in Gauss-law correction
+
+Add `correction_divergence` to the magnetic equation to project the field at
+initialization and after time-step updates:
+
+```c
+correction_divergence
+{
+  solveur_divergence Petsc Gmres { precond diag { } }
+  frequence_correction 1
+  seuil_divergence 1.e-8
+}
+```
+
+The solver keyword is required inside the block; the frequency defaults to one
+step and a zero `seuil_divergence` disables the post-correction watchdog. The
+projection uses the same Pass-1 Green–Gauss divergence as
+`divergence_magnetique`: interior face values are centred averages and physical
+boundary face values use the adjacent cell. If this discrete operator is
+written as \f$D\f$, the code solves \f$(D D^T)\phi = D b\f$ and updates
+\f$b \leftarrow b-D^T\phi\f$. A small diagonal regularization handles
+redundant modes of the cell-centred operator.
+
+The boundary-flux compatibility check is global across MPI ranks and counts
+owned physical faces only. The projection does not reapply boundary conditions
+afterward, since doing so can reintroduce divergence. The current validated
+case uses homogeneous Neumann walls; non-homogeneous Dirichlet magnetic data
+are not yet supported by this projection. The measure is the module's
+cell-centred Green–Gauss divergence, not the divergence of every discretized
+diffusive flux.
 
 ---
 
@@ -192,8 +227,9 @@ Implementation notes:
   error-prone index convention in the module — is covered by unit tests
   (`tests/UnitTests/unit_induction_kernel.cpp`) without a mesh or a solve.
 
-Only the M1 term is implemented; the divergence-free projection (M3) remains
-out of scope.
+Only the M1 stretching source is described here; the optional Gauss-law
+projection is independent of that source. A vector-potential / edge-element
+formulation remains out of scope.
 
 ---
 
@@ -389,8 +425,11 @@ framework-free `src/MHD_posttraitement_kernel.h`. Validation examples live in
 ## 6. Known limitations / deferred work
 
 
-1. **Gauss law is not enforced.** \f$\nabla\cdot b = 0\f$ is assumed, not
-   projected.
+1. **Gauss-law projection limits.** Enforcement is opt-in via
+   `correction_divergence`; without it, \f$\nabla\cdot b = 0\f$ is assumed.
+   The projection targets the module's Pass-1 Green–Gauss divergence and does
+   not preserve non-homogeneous Dirichlet magnetic data. It is not a
+   vector-potential / constrained-transport discretization.
 2. **Two-way coupling implemented (`vitesse_hydraulique`).** The
    `force_lorentz` source (§3ter) applies \f$(\nabla\times b)\times b/\mu_0\f$
    to the momentum equation (explicit, lagged \f$b\f$), and with the
