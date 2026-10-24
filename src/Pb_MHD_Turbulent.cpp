@@ -121,6 +121,8 @@ void Pb_MHD_Turbulent::associer_milieu_base(const Milieu_base& mil)
 {
   Pb_Hydraulique_Turbulent::associer_milieu_base(mil);
   eq_magnetic_field.associer_milieu_base(mil);
+  for (int i = 0; i < eq_opt_.size(); i++)
+    eq_opt_[i]->associer_milieu_base(mil);
 }
 
 /*! @brief Time-step iteration, with optional Picard strong coupling.

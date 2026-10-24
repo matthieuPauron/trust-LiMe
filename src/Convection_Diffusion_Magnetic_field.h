@@ -28,6 +28,7 @@
 #include <Convection_Diffusion_Temperature_base.h>
 #include <Matrice_Morse.h>
 #include <SolveurSys.h>
+#include <Modele_turbulence_magnetique.h>
 
 class Navier_Stokes_std;
 
@@ -86,6 +87,7 @@ public:
    *         problem has been read (call from completer() or later).
    */
   const Navier_Stokes_std* eq_navier_stokes() const;
+  const Modele_turbulence_magnetique* modele_turbulence_magnetique() const;
 
   // --- Framework hook -------------------------------------------------------
   /*! @brief Completes the equation (base class), then, in the two-way mode
@@ -200,6 +202,7 @@ protected:
   OWN_PTR(Champ_Don_base) diffusivite_magnetique_;
   OWN_PTR(Champ_Don_base) diffusivite_turbulente_magnetique_;
   OWN_PTR(Champ_Don_base) diffusivite_effective_;
+  OWN_PTR(Modele_turbulence_magnetique) modele_turbulence_magnetique_;
   // Phase 2b: operands for the turbulent magnetic diffusivity eta_t = C_mu*k^2/eps/Pm_t.
   OWN_PTR(Champ_Don_base) k_magnetique_;
   OWN_PTR(Champ_Don_base) epsilon_magnetique_;

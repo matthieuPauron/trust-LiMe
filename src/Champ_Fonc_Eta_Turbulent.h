@@ -33,7 +33,8 @@ public:
   void configurer(const Convection_Diffusion_Magnetic_field& eqn,
                   const Champ_base& k, int k_comp,
                   const Champ_base& eps, int eps_comp,
-                  double C_mu, double Pm_t, bool realizable);
+                  double C_mu, double Pm_t, bool realizable,
+                  double epsilon_min = 1.e-12, double eta_max = 1.e30);
 
   /*! @brief Recomputes eta_t, then forwards time bookkeeping. */
   void mettre_a_jour(double tps) override;
@@ -49,6 +50,8 @@ private:
   double C_mu_;
   double Pm_t_;
   bool realizable_;
+  double epsilon_min_ = 1.e-12;
+  double eta_max_ = 1.e30;
 };
 
 #endif /* Champ_Fonc_Eta_Turbulent_included */

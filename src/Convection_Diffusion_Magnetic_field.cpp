@@ -9,6 +9,7 @@
 #include <Champ_Fonc_MHD.h>
 #include <Champ_Fonc_Somme.h>
 #include <Champ_Fonc_Eta_Turbulent.h>
+#include <Modele_turbulence_magnetique.h>
 #include <Probleme_base.h>
 #include <Discret_Thyd.h>
 #include <Param.h>
@@ -164,6 +165,14 @@ int Convection_Diffusion_Magnetic_field::lire_motcle_non_standard(const Motcle& 
            << ", seuil=" << seuil_divergence_ << ")." << finl;
       return 1;
     }
+  if (mot == "modele_turbulence_magnetique")
+    {
+      if (modele_turbulence_magnetique_)
+        Process::exit("Convection_Diffusion_Magnetic_field: duplicate modele_turbulence_magnetique block.");
+      modele_turbulence_magnetique_.typer("Modele_turbulence_magnetique");
+      is >> modele_turbulence_magnetique_.valeur();
+      return 1;
+    }
   return Convection_Diffusion_Temperature_base::lire_motcle_non_standard(mot, is);
 }
 
@@ -181,6 +190,7 @@ void Convection_Diffusion_Magnetic_field::set_param(Param& param) const
   param.ajouter("C_mu_magnetique", &C_mu_magnetique_);
   param.ajouter("prandtl_turbulent_magnetique", &prandtl_turbulent_magnetique_);
   param.ajouter_flag("realizable_C_mu_magnetique", &realizable_C_mu_magnetique_);
+  param.ajouter_non_std("modele_turbulence_magnetique", (this));
   param.ajouter("vitesse_magnetique", &vitesse_magnetique_);
   // Constants consumed by the post-treatment fields (Champ_Fonc_MHD) only;
   // they have no influence on the transport itself.  See
@@ -329,7 +339,8 @@ void Convection_Diffusion_Magnetic_field::completer()
   // Phase 4: if no explicit k/eps fields but a hydraulic turbulence model is
   // present on the Navier-Stokes equation, grab its k and epsilon fields and
   // build eta_t = C_mu*k^2/eps/Pm_t (TrioCFD k-eps).
-  if (vitesse_hydraulique_ && !k_magnetique_ && !epsilon_magnetique_ && !diffusivite_turbulente_magnetique_)
+  if (vitesse_hydraulique_ && !k_magnetique_ && !epsilon_magnetique_ && !diffusivite_turbulente_magnetique_
+      && !modele_turbulence_magnetique_)
     {
       const Navier_Stokes_std* ns = eq_navier_stokes();
       const Navier_Stokes_Turbulent* nst = dynamic_cast<const Navier_Stokes_Turbulent*>(ns);
@@ -427,6 +438,24 @@ void Convection_Diffusion_Magnetic_field::completer()
         }
     }
 
+  if (modele_turbulence_magnetique_)
+    {
+      if (diffusivite_turbulente_magnetique_ || k_magnetique_ || epsilon_magnetique_)
+        Process::exit("Convection_Diffusion_Magnetic_field: modele_turbulence_magnetique is mutually exclusive with explicit eta_t or k/epsilon fields.");
+      modele_turbulence_magnetique_->completer(*this);
+      OWN_PTR(Champ_Fonc_base) somme;
+      somme.typer("Champ_Fonc_Somme");
+      Champ_Fonc_Somme& s = ref_cast(Champ_Fonc_Somme, somme.valeur());
+      s.configurer(*this, diffusivite_magnetique_.valeur(), modele_turbulence_magnetique_->eta_t());
+      diffusivite_effective_ = somme;
+      champs_compris_.ajoute_champ(diffusivite_effective_);
+      diffusivite_effective_->mettre_a_jour(inconnue().temps());
+      terme_diffusif.associer_diffusivite(diffusivite_effective_.valeur());
+      terme_diffusif.associer_diffusivite_pour_pas_de_temps(diffusivite_effective_.valeur());
+      Cerr << "Convection_Diffusion_Magnetic_field: independent magnetic k-epsilon model active; "
+           << "using eta_eff = eta + eta_t." << finl;
+    }
+
   if (!vitesse_hydraulique_)
     return;
 
@@ -466,6 +495,11 @@ void Convection_Diffusion_Magnetic_field::completer()
 
   Cerr << "Convection_Diffusion_Magnetic_field: two-way coupling enabled, transporting "
        << "velocity taken from the " << ns->que_suis_je() << " equation." << finl;
+}
+
+const Modele_turbulence_magnetique* Convection_Diffusion_Magnetic_field::modele_turbulence_magnetique() const
+{
+  return modele_turbulence_magnetique_ ? &modele_turbulence_magnetique_.valeur() : nullptr;
 }
 
 /*! @brief Reuses the kernel scalar (thermal) boundary conditions.

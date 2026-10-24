@@ -1,8 +1,78 @@
 #include <Terme_Source_Epsilon_Magnetic.h>
+#include <Convection_Diffusion_Magnetic_field.h>
+#include <Convection_Diffusion_K_Magnetic.h>
+#include <Convection_Diffusion_Epsilon_Magnetic.h>
+#include <Modele_turbulence_magnetique.h>
+#include <Probleme_base.h>
+#include <Domaine_VF.h>
+#include <Process.h>
 
 Implemente_instanciable(Terme_Source_Epsilon_Magnetic,
                         "Terme_Source_Epsilon_Magnetic",
-                        Objet_U);
+                        Source_base);
 
-Sortie& Terme_Source_Epsilon_Magnetic::printOn(Sortie& os) const { return os; }
-Entree& Terme_Source_Epsilon_Magnetic::readOn(Entree& is) { return is; }
+Sortie& Terme_Source_Epsilon_Magnetic::printOn(Sortie& os) const
+{
+  return Source_base::printOn(os);
+}
+
+Entree& Terme_Source_Epsilon_Magnetic::readOn(Entree& is)
+{
+  return Source_base::readOn(is);
+}
+
+void Terme_Source_Epsilon_Magnetic::associer_pb(const Probleme_base& pb)
+{
+  for (int i = 0; i < pb.nombre_d_equations(); i++)
+    if (sub_type(Convection_Diffusion_Magnetic_field, pb.equation(i)))
+      {
+        equation_magnetique_ = ref_cast(Convection_Diffusion_Magnetic_field, pb.equation(i));
+        if (const Modele_turbulence_magnetique* modele = equation_magnetique_->modele_turbulence_magnetique())
+          modele_ = *modele;
+        break;
+      }
+  if (!equation_magnetique_ || !modele_)
+    Process::exit("Terme_Source_Epsilon_Magnetic requires a magnetic equation with an active magnetic turbulence model.");
+}
+
+void Terme_Source_Epsilon_Magnetic::ajouter_source(DoubleTab& secmem) const
+{
+  if (!equation_magnetique_ || !modele_)
+    Process::exit("Terme_Source_Epsilon_Magnetic is not associated with the magnetic turbulence model.");
+
+  DoubleTab production;
+  modele_->calculer_production(production);
+  const DoubleTab& k = modele_->equation_k().inconnue().valeurs();
+  const DoubleTab& eps = modele_->equation_epsilon().inconnue().valeurs();
+  const double k_min = modele_->k_min();
+  const double eps_min = modele_->epsilon_min();
+  const Domaine_VF& domaine_vf = ref_cast(Domaine_VF, equation_magnetique_->domaine_dis());
+  const DoubleVect& volumes = domaine_vf.volumes();
+  const DoubleVect& porosite = equation_magnetique_->milieu().porosite_elem();
+  const int ne = secmem.dimension(0);
+  for (int e = 0; e < ne; e++)
+    {
+      const double kb = std::max(k(e, 0), k_min);
+      const double eb = std::max(eps(e, 0), eps_min);
+      const double value = modele_->C_eps1() * (eb / kb) * production(e, 0)
+                           - modele_->C_eps2() * eb * eb / kb;
+      secmem(e, 0) += porosite(e) * volumes(e) * value;
+    }
+}
+
+DoubleTab& Terme_Source_Epsilon_Magnetic::calculer(DoubleTab& secmem) const
+{
+  secmem = 0.;
+  return ajouter(secmem);
+}
+
+DoubleTab& Terme_Source_Epsilon_Magnetic::ajouter(DoubleTab& secmem) const
+{
+  ajouter_source(secmem);
+  return secmem;
+}
+
+void Terme_Source_Epsilon_Magnetic::ajouter_blocs(matrices_t, DoubleTab& secmem, const tabs_t&) const
+{
+  ajouter_source(secmem);
+}

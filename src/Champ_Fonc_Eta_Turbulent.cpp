@@ -5,6 +5,7 @@
 #include <Champ_Fonc_Eta_Turbulent.h>
 #include <Convection_Diffusion_Magnetic_field.h>
 #include <Champ_base.h>
+#include <Process.h>
 #include <TRUSTTab.h>
 #include <cmath>
 
@@ -16,7 +17,8 @@ Implemente_instanciable(Champ_Fonc_Eta_Turbulent,
 void Champ_Fonc_Eta_Turbulent::configurer(const Convection_Diffusion_Magnetic_field& eqn,
                                           const Champ_base& k, int k_comp,
                                           const Champ_base& eps, int eps_comp,
-                                          double C_mu, double Pm_t, bool realizable)
+                                          double C_mu, double Pm_t, bool realizable,
+                                          double epsilon_min, double eta_max)
 {
   eqn_ = eqn;
   k_ = k;
@@ -26,6 +28,10 @@ void Champ_Fonc_Eta_Turbulent::configurer(const Convection_Diffusion_Magnetic_fi
   C_mu_ = C_mu;
   Pm_t_ = (Pm_t > 0.0) ? Pm_t : 1.0;
   realizable_ = realizable;
+  epsilon_min_ = epsilon_min;
+  eta_max_ = eta_max;
+  if (epsilon_min_ <= 0. || eta_max_ <= 0.)
+    Process::exit("Champ_Fonc_Eta_Turbulent: epsilon_min and eta_max must be positive.");
 
   nommer("eta_turbulent_magnetique");
   associer_domaine_dis_base(eqn.domaine_dis());
@@ -76,7 +82,7 @@ void Champ_Fonc_Eta_Turbulent::calculer()
       {
         double kk = (vk.dimension(0) == 1) ? vk(0, k_comp_) : vk(e, k_comp_);
         double ee = (ve_.dimension(0) == 1) ? ve_(0, eps_comp_) : ve_(e, eps_comp_);
-        if (ee < 1e-12) ee = 1e-12;
+        if (ee < epsilon_min_) ee = epsilon_min_;
         if (kk < 0.) kk = 0.;
 
         double Cmu = C_mu_;
@@ -106,7 +112,7 @@ void Champ_Fonc_Eta_Turbulent::calculer()
             if (Cmu < 1e-4) Cmu = 1e-4;
             if (Cmu > 0.5) Cmu = 0.5;
           }
-        ve(e, c) = Cmu * kk * kk / ee / Pm_t_;
+        ve(e, c) = std::min(Cmu * kk * kk / ee / Pm_t_, eta_max_);
       }
 }
 

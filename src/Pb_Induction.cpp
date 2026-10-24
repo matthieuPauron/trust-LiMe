@@ -69,26 +69,28 @@ Entree& Pb_Induction::readOn(Entree& is)
 
 /*! @brief Number of equations of the problem.
  *
- *  Exactly one: the magnetic induction equation.  The standalone problem has
- *  no momentum equation by design (see Pb_Induction.h).
+ *  The magnetic induction equation plus any optional scalar equations (e.g.
+ *  the independent k_b and epsilon_b equations).
  *
- *  @return 1
+ *  @return the total equation count
  */
 int Pb_Induction::nombre_d_equations() const
 {
-  return 1;
+  return 1 + eq_opt_.size();
 }
 
 /*! @brief Read-only access to equation @p i.
  *
- *  @param[in] i equation index; only 0 (the magnetic induction equation) is
- *             valid.
+ *  @param[in] i equation index; 0 is magnetic induction, later indices are
+ *             optional equations in input order.
  *  @return the equation.
  */
 const Equation_base& Pb_Induction::equation(int i) const
 {
   if (i == 0)
     return eq_magnetic_field;
+  if (i > 0 && i <= eq_opt_.size())
+    return eq_opt_[i - 1].valeur();
   Cerr << "Pb_Induction::equation() : wrong equation index " << i
        << " (the problem has 1 equation)" << finl;
   Process::exit();
@@ -100,6 +102,8 @@ Equation_base& Pb_Induction::equation(int i)
 {
   if (i == 0)
     return eq_magnetic_field;
+  if (i > 0 && i <= eq_opt_.size())
+    return eq_opt_[i - 1].valeur();
   Cerr << "Pb_Induction::equation() : wrong equation index " << i
        << " (the problem has 1 equation)" << finl;
   Process::exit();
