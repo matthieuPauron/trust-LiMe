@@ -9,7 +9,9 @@
 > Rm=0.1; because its fully developed flow has no convective acceleration,
 > this is not an inertial-Re regime map. The validated 3D Shercliff duct remains open.
 > Magnetic fluctuation transport, MHD turbulence closure,
-> Ohmic heating, and high-Rm dynamo physics remain future work. The checkboxes
+> Ohmic heating, and high-Rm dynamo physics remain future work. The low-Rm
+> sign/boundary/matrix review is documented in KERNEL_REUSE_NOTES.md §22;
+> the sanitizer pass is still open. The checkboxes
 > below were never ticked and are superseded by `AGENTS.md` and
 > `docs/content/plans.md`; read this file as original design intent, not as a
 > current task list.

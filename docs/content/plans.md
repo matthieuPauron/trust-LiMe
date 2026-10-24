@@ -24,17 +24,17 @@ still outstanding. See @ref TrustLiMe_validation "Validation cases" and
 | Coupled low-Rm mode — `force_lorentz` on a hydraulic problem | **done** (one-way \f$b \to\f$ momentum; PolyMAC and VEF source assembly) |
 | Post-treatment fields (`Champ_Fonc_MHD`) and their forms (merged 2026-10-21 into `Champs2D` / `Champs3D`) | **done** |
 | Coupled validation forms (7) | **done** |
-| Full validation suite — 2D, 3D twins, coupled, post-treatment | **28/28 pass** (checked 2026-10-22; positive forms include coarse/standard/fine scans). The latest Gauss-law and VEF/VKS changes still need a full baseline regression. |
-| Unit tests (GoogleTest) | **45 tests pass** in the documented full suite; rerun during regression of the latest changes |
+| Full validation suite — 2D, 3D twins, coupled, post-treatment | **32 reportable forms**; latest full PDF sweep ran 31/32 (2026-10-24). `HartmannTwoWay` is currently in progress and failed at `run.reset()` on a non-empty generated scan directory; the other forms, including both Gauss-law dimensions and the flux-error case, passed. |
+| Unit tests (GoogleTest) | **29 arith-only tests pass**; the full 45-test run currently exits by SIGSEGV at the first kernel-linked registration test |
 | Two-way coupling — NS velocity feeds the magnetic convection (`vitesse_hydraulique`) | **done** (lagged staggered scheme; commits `9e5b13b`, `d484fbd`) |
-| \f$\nabla\cdot b = 0\f$ enforcement | **implemented, opt-in** via `correction_divergence`; 2D MPI mesh scan passes, broader validation pending |
+| \f$\nabla\cdot b = 0\f$ enforcement | **implemented, opt-in** via `correction_divergence`; 2D MPI and 3D serial mesh scans plus incompatible-flux rejection pass |
 | Turbulent magnetic diffusivity | **implemented** from prescribed fields or hydraulic k-\f$\varepsilon\f$; magnetic fluctuation transport remains open |
 | Strong two-way coupling | **implemented, opt-in** Picard iteration via `couplage_fort`; default staggered mode unchanged |
 | High-\f$\mathrm{Rm}\f$ dynamo | **open / long term** — section 5 |
 
 The standalone induction and low-Rm coupling foundations are complete. Current
 near-term work is closing validation and benchmark gaps (especially the Gauss
-projection regression and 3D coupled duct case); new turbulence equations,
+projection sanitizer/full-unit-test follow-up and 3D coupled duct case); new turbulence equations,
 Ohmic heating and high-\f$\mathrm{Rm}\f$ dynamo capability remain larger extensions.
 
 ---
@@ -47,7 +47,7 @@ Ohmic heating and high-\f$\mathrm{Rm}\f$ dynamo capability remain larger extensi
 | Coupled C0 | kernel plumbing: optional equations, Lorentz source | done | `PLAN_mhd_coupled.md` |
 | Coupled C1 | low-Rm momentum coupling | **done** — one-way `force_lorentz`, two-way `vitesse_hydraulique` | `PLAN_mhd_coupled.md` |
 | Coupled C2 | low-\f$\mathrm{Rm}\f$ two-way NS+MHD coupling | **done**; close the Re scan and Shercliff 3D benchmark | `PLAN_mhd_coupled.md` |
-| Gauss-law projection | opt-in cell-centred Hodge projection | **implemented**; add 3D/error coverage and run regression | `PLAN_Gauss_law.md` |
+| Gauss-law projection | opt-in cell-centred Hodge projection | **implemented and validated** in 2D/3D; full-suite and sanitizer follow-up documented | `PLAN_Gauss_law.md` |
 | Turbulent induction | effective \f$\eta_t\f$ from fields or hydraulic k-\f$\varepsilon\f$ | **implemented**; magnetic fluctuation equations remain scaffolded | `PLAN_induction_turbulence.md` |
 | Coupled advanced physics | magnetic fluctuation transport, Ohmic heating, other benchmarks | open / staged | `PLAN_mhd_coupled.md` |
 | Dynamo / VKS | turbulent EDM, high-Rm regime | long term | `END_GOAL.md` |
@@ -104,9 +104,17 @@ magnetic field onto the null space of the module's reported Green–Gauss
 divergence, using the exact discrete operator \f$L = D D^T\f$. The 2D
 `GaussLaw` case passes on 2 ranks over coarse/standard/fine meshes, with
 post-initialization maximum divergence below \f$2\times10^{-13}\f$.
-Implementation is not complete validation: the 3D twin, incompatible-net-flux
-error case, full baseline regression and sanitizer pass remain. The current
-projection supports homogeneous Neumann magnetic walls; non-homogeneous
+The 3D `MagneticStandalone3D/GaussLaw` twin passes a sequential
+coarse/standard/fine scan on the shared 16/32/64 active-x-cell ladder, with
+maximum probe divergence \f$1.43\times10^{-13}\f$. Three cells in y/z avoid a
+parity-sensitive null mode in this 3D cell-centred operator.
+`ErrorInputs/error_incompatible_flux.data` confirms that nonzero net boundary
+flux is rejected with the Gauss-law diagnostic. The full PDF sweep passed
+31/32 reportable forms; the remaining failure is the in-progress
+`HartmannTwoWay` scan's `run.reset()` on a non-empty generated build directory.
+The 45-test kernel-linked unit suite also currently SIGSEGVs before its first
+test, while all 29 arith-only tests pass. Sanitizer validation remains open.
+The projection supports homogeneous Neumann magnetic walls; non-homogeneous
 Dirichlet data are not preserved, and this does not enforce every flux-based
 divergence notion used by other discretizations.
 
@@ -177,9 +185,16 @@ The time stepping is a lagged staggered scheme,
 
 ### C4 — consolidation
 
-Still to consolidate: sanitizer runs on the new projection and coupled paths,
-review sign conventions / boundary conditions / matrix properties, and keep
-`KERNEL_REUSE_NOTES.md` and the validation docs aligned with the implementation.
+Sign conventions, boundary conditions and matrix properties were reviewed and
+documented in `KERNEL_REUSE_NOTES.md` §22 (2026-10-24). The Lorentz force is
+$\mathbf{J}\times\mathbf{B}$ (per unit mass), the magnetic-pressure
+profile is required at open boundaries, and the explicit lagged source does not
+enter the Jacobian, so matrix symmetry stays a kernel-level property. The
+wall-gradient bias of `induction_stretching` remains a documented limitation.
+Still open: a full-kernel ASan/UBSan pass (the module-only environment is not
+configured here; the recipe is in `KERNEL_REUSE_NOTES.md` §18.2) and keeping
+`KERNEL_REUSE_NOTES.md` / the validation docs aligned as the implementation
+evolves.
 
 ### Planned coupled validation targets
 

@@ -487,41 +487,41 @@ The scalar model (nb_composantes 1) is **rejected** by creer_champ with a
 clean Process::exit — ∇·b is only meaningful for a full vector b; the
 kernel function mhd_tension_magnetique asserts nb_b == dim.
 
-### Path 1 — Lightweight Green-Gauss correction (current implementation)
-- Uses the existing gradient_b_elements — no new discretisation infrastructure
-- **Exact for linear fields at interior cells** (all faces have neighbours)
-- Boundary cells have O(h) accuracy due to the "zero normal gradient" approximation
-  (bf = b(e0) at walls); this is the same approximation pattern as the
-  thermalhydraulics velocity field (∇·u = 0 assumed, not enforced)
-- **Validation probes must target interior cells**
-- All 22 MagneticStandalone validation cases pass with this treatment
-- Documented in AGENTS.md §Divergence of the magnetic field` and
-  KERNEL_REUSE_NOTES.md §11bis
+### Path 1 — No projection (default)
+- Without `correction_divergence`, the module assumes `∇·b = 0`; this preserves
+  the established equation path byte-for-byte and matches the
+  thermalhydraulics velocity-field assumption pattern.
+- The reported `∇b` is reconstructed by `gradient_b_elements`: centred
+  Green–Gauss face values are exact for linear fields at interior cells.
+  Homogeneous-Neumann wall traces use the adjacent cell value (`bf = b(e0)`),
+  so boundary-cell gradients have O(h) accuracy; analytic probes should target
+  interior cells.
 
-### Path 2 — Pressure-correction approach (alternative, beyond M0/M1 scope)
-- Would achieve **machine-precision ∇·b = 0 globally** (to solver tolerance)
-- **Requires new solver infrastructure**: a PISO-like algorithm for the magnetic field,
-  similar to the thermalhydraulics Navier-Stokes fluide_incompressible block
-- **Beyond M0/M1 standalone scope**: would be Phase 1+ of the coupled MHD plan
-  (PLAN_mhd_coupled.md)
-- **Implementation steps** (beyond current scope):
-  1. Add divergence_free { } keyword to .data file
-  2. Add terme_divergence_free term to the equation
-  3. Solve a Poisson-type correction equation ∇·((1/μ₀)∇p_mag) = ∇·b
-  5. Correct the field: b_corrected = b − μ₀∇p_mag
-  5. Update nombre_d_equations() if adding coupled equations
-  6. Revalidate all 22 validation cases
-  7. Document in model.md, test_cases.md, AGENTS.md, KERNEL_REUSE_NOTES.md
-- **Acceptance criteria** (future work):
-  - ∇·b machine-precision globally
-  - All existing validation cases still pass
-  - Sanitizer pass (ASan/UBSan)
-  - Review checklist signed off
-
-**Note**: Path 2 is documented for completeness and future reference; it is
-not implemented in the current M0/M1 standalone scope. The baseline treatment
-(Path 1) is what is used in all existing validation cases and is consistent
-with the thermalhydraulics velocity-field assumption pattern.
+### Path 2 — Opt-in cell-centred Hodge projection (implemented)
+- Enable with `correction_divergence { }` on the magnetic equation. The
+  Pass-1 divergence operator `D` uses centred interior-face averages and the
+  adjacent cell value at walls. The correction uses its exact sparse transpose:
+  assemble `L = D D^T`, solve `L φ = D b*`, then update `b ← b − D^T φ`.
+- The operator is assembled once and uses a `1e-12` relative diagonal
+  regularization for redundant rows. Projection runs during
+  `preparer_calcul()` and after each time-step update; the strong-coupling
+  Picard loop explicitly corrects `futur()`.
+- Before projection, the code checks global boundary-flux compatibility,
+  summing owned physical faces across MPI ranks. Incompatible net flux exits
+  with `Gauss law violated by boundary conditions`.
+- Supported boundary data are homogeneous Neumann. Non-homogeneous Dirichlet
+  values are not preserved by this unconstrained projection. The projection
+  enforces the module's Pass-1 measure, not every flux-divergence definition
+  associated with other discretizations.
+- Validation: 2D two-rank coarse/standard/fine and 3D sequential
+  coarse/standard/fine scans, plus the incompatible-flux `ErrorInputs` case.
+  The 3D case uses the shared active-x refinement ladder and three cells in
+  each transverse direction to avoid a parity-sensitive null mode. The 2D case
+  verifies MPI ghost and global-flux handling.
+- The latest reportable full sweep passed 31/32 forms; `HartmannTwoWay` was
+  still in progress and failed at `run.reset()` on a non-empty generated scan
+  directory. The full kernel-linked unit test and sanitizer follow-ups remain
+  open (arith-only tests pass).
 
 ## 11ter. Merging the post-treatment validation forms (2026-10-21)
 
@@ -1395,3 +1395,87 @@ Symptom when unguarded: `TRUSTTab.tpp:71: Assertion 'i2 >= 0 && i2 <
 dimensions_[1]' failed` from `Op_Diff_PolyMAC_MPFA_Elem::calculer_dt_stab()`
 during `Schema_Temps_base::initialize()`, i.e. right after "Pressure increment
 computed successfully".
+
+---
+
+## 22. Consolidation review of the coupled (low-Rm) path (2026-10-24)
+
+Review checklist requested by `PLAN_mhd_coupled.md` §4.4, applied to the
+low-Rm two-way path (`Pb_MHD`, `Pb_MHD_Turbulent`, `Terme_Source_Lorentz`,
+`MHD_Coupling`, `vitesse_hydraulique` / `induction_stretching`).
+
+### Sign conventions — resolved, validated
+
+- Lorentz force is \f$ \mathbf{F} = \mathbf{J}\times\mathbf{B} \f$ with
+  \f$ \mathbf{J} = \operatorname{curl}\mathbf{b}/\mu_0 \f$, assembled as
+  `mhd_force_lorentz` (`src/MHD_posttraitement_kernel.h`):
+  2D \f$ (F_x,F_y)=(-w_z B_y,\; w_z B_x)/\mu_0 \f$,
+  3D \f$ \mathbf{F}=(\mathbf{w}\times\mathbf{b})/\mu_0 \f$.
+  The force is divided by \f$\rho\f$ (per unit mass) in `ajouter_blocs`,
+  matching the gravity/Boussinesq precedent.
+- The sign is pinned by validation, not by convention alone:
+  `ForceLorentzBalance` (hydrostatic \f$\Delta p = -0.18\f$, \f$u\to 0\f$),
+  `MMS_Coupled` (both force components, \f$\Delta p=-0.60\pm5\%\f$),
+  `HartmannTwoWay` (suppression by \f$12.7\times\f$ at Ha=5) and
+  `Coupled_Feedback` (two-way discriminator). A sign flip in either the
+  Lorentz force or the stretching source fails these at the 0.4–1 % level.
+- Induction sign follows the kernel convection–diffusion convention
+  \f$ \partial_t b + (u\cdot\nabla)b - \eta\Delta b = (b\cdot\nabla)u \f$;
+  `induction_stretching` contributes \f$ +(b\cdot\nabla)u \f$ to the RHS.
+
+### Boundary conditions — resolved, validated
+
+- Magnetic CLs reuse the kernel scalar CLs through the
+  `domaine_application() == "Thermique"` contract
+  (`paroi_isolante_magnetique` = homogeneous Neumann on every component,
+  `Neumann_Paroi_adiabatique`, `Paroi`, `frontiere_ouverte_pression_imposee`).
+  The kernel validates the CL vocabulary; the module only supplies the
+  `Thermique` application tag.
+- Coupled open-pressure boundaries must impose the analytic magnetic-pressure
+  profile \f$ p(y)=P-b_x(y)^2/(2\mu_0) \f$; a uniform \f$p\f$ drives a
+  spurious cross-flow \f$u_y\sim5\times10^{-4}\f$ and pollutes \f$b_y\f$
+  (measured drift 9.6 % → 0.75 %). `HartmannTwoWay` checks
+  \f$\max |u_y|/U_0 < 10^{-3}\f$ at every Re/Ha point.
+- Insulating walls are homogeneous Neumann on all components; the
+  `∇b` reconstruction at a wall cell uses the zero-normal-gradient trace
+  \f$ b_f = b(e_0) \f$, which is O(h) accurate there (see §11bis).
+- `force_lorentz` skips Dirichlet-velocity faces (`fcl(f,0) >= 2`) in the
+  face block and carries the force through the element block, exactly as the
+  kernel `Terme_Boussinesq_PolyMAC_CDO_Face` source does.
+
+### Matrix properties — resolved (P5), documented in §12bis
+
+- `Terme_Source_Lorentz::ajouter_blocs` modifies only `secmem` (RHS); it
+  never touches the Jacobian. The Lorentz force is explicit and lagged
+  (\f$\mathbf{J}\times\mathbf{B}\f$ at \f$b^s\f$), so it does not enter
+  the momentum matrix at all.
+- Matrix symmetry is therefore a kernel-level property: the PolyMAC_MPFA
+  diffusion operator is symmetric, the upwind convection operator is not.
+  No module-level symmetry break is introduced by the coupling.
+- The VEF branch assembles the force per element and distributes it through
+  `volumes_entrelaces`; no matrix contribution there either.
+- If a future implementation treats the Lorentz force implicitly (in the
+  matrix), symmetry must be revisited.
+
+### Wall-gradient bias — remains a documented limitation
+
+The M1 `induction_stretching` source reads \f$\nabla u\f$ from the kernel's
+face-gradient average; a boundary face only gets a Dirichlet contribution, so
+the two cells adjacent to a wall receive a biased gradient (measured exactly
+halved for a linear velocity). `Hartmann1D` documents and bounds the effect;
+the regression bound is **not** tightened. The fix lives in the kernel
+(`grad_Champ_Face_PolyMAC_MPFA::update_ge()`), not in this module, and is
+tracked as an upstream item. Core probes are asserted tightly; wall probes
+only against a bound.
+
+### Sanitizer status (open)
+
+The module-only ASan/UBSan environment is not configured in this checkout
+(no `$TRUST_ROOT/env/Cmake.custom`, no `linux_custom` symlinks, no
+`TRUST_mpi_custom.a`). The recipe in §18.2 of this file is complete and
+was last exercised on 2026-10-20 (module-instrumented build), where it
+localised the §18.2 kernel FPE. A full-kernel instrumented pass
+(`make custom` in the TRUST checkout) is still required to instrument
+kernel-side reads; until then, the coupled paths are validated by the
+analytic notebooks (ForceLorentzBalance, MMS_Coupled, HartmannTwoWay,
+Coupled_Feedback) and the 29-test arith-only unit suite, not by ASan.
