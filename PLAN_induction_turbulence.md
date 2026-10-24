@@ -15,9 +15,12 @@ Pm ~ 1e-5) the unresolved fluctuations u'×b' act as an extra diffusivity
 η_t. Without an appropriate η_t, the effective Rm is too high and the field
 may grow unphysically. The turbulent EDM term is
 
-    ∇×(ū'×b̄') ≈ −η_t ∇×B̄,     η_t = ν_t / Pm_t  (or C_μ^m k²/ε)
+    ∇×(u'×b̄') ≈ −η_t ∇×B̄,     η_t = ν_t / Pm_t
 
-mirroring the hydrodynamic k-ε eddy viscosity ν_t = C_μ k²/ε.
+for the hydraulic handoff. A separate magnetic-fluctuation closure could use
+the k-ε form `eta_t = C_mu_b * k_b^2 / epsilon_b / Pm_t_b`, provided `k_b`
+is defined in velocity-squared units (see the draft below); it is not the
+hydraulic `k` and `epsilon` under different names.
 
 ## 2. Reference: triocfd k-ε (read 2026-10-22)
 
@@ -32,9 +35,11 @@ TrioCFD (`/home/matthieu/Development/triocfd-code`) implements RANS k-ε via:
     by the momentum diffusion operator;
   - wall laws (`loi_paroi`) and limiters (`calculate_limit_viscosity`).
 
-The induction analogue needs the same machinery but for the magnetic field:
-transport equations for the magnetic fluctuation energy (k_b) and its
-dissipation (ε_b), plus an eddy magnetic diffusivity η_t.
+The induction model can reuse TRUST's scalar transport infrastructure, but it
+must not copy the hydraulic production terms blindly: its state variables,
+energy transfers, units and closure assumptions are magnetic-specific. The
+draft below chooses a minimal EDM-consistent source for a first model and
+records the alternative stretching term already present in the code shells.
 
 ## 3. Phases
 
@@ -68,10 +73,246 @@ dissipation (ε_b), plus an eddy magnetic diffusivity η_t.
 - Constant C_mu for now (realizable variant deferred).
 
 ### Phase 3 — transport equations for magnetic fluctuations (SCAFFOLDED)
-- New equation `Convection_Diffusion_K_Magnetic` (or reuse the kernel's
-  `Transport_K_Eps` machinery) for k_b, ε_b, coupled to the induction
-  equation via the EDM term. This mirrors triocfd's `Transport_K_Eps`.
-- Wall treatment and limiters analogous to `calculate_limit_viscosity`.
+- Existing `Convection_Diffusion_{K,Epsilon}_Magnetic`,
+  `Terme_Source_{K,Epsilon}_Magnetic` and
+  `Modele_turbulence_magnetique` are compile-only shells. Implement the two
+  scalar equations from the model draft below; reuse generic TRUST scalar
+  transport infrastructure only where its lifecycle/operator contracts fit.
+- First supported scope is interior/closed-domain transport with positivity
+  control. Wall functions, low-Re corrections and broad discretization support
+  are later work, not part of the initial equation implementation.
+
+#### Draft model: independent magnetic-fluctuation k-ε
+
+This is a proposed **separate, opt-in closure**, not the implemented hydraulic
+k-ε handoff. It evolves two scalar fields, `k_b` and `epsilon_b`, on the
+magnetic equation's domain and with its bound transport velocity. It supplies
+an isotropic turbulent magnetic diffusivity to the mean induction equation.
+It does not replace that equation and, by itself, does not model an alpha
+effect, magnetic helicity, or prove a self-sustained dynamo.
+
+##### 3.a State, units and scope
+
+For constant reference density, define the Alfvén-normalized field
+`b_A = B / sqrt(mu0 * rho_ref)` and
+`k_b = 1/2 <|b_A'|^2>`. Then `k_b` has units m²/s² and `epsilon_b`, its
+dissipation rate, has units m²/s³. This is required for
+`C_mu_b*k_b²/epsilon_b` to have diffusivity units. The first version should
+therefore either establish this normalization at the magnetic-model boundary
+or reject unsupported unit/density configurations. Applying that closure
+directly to a Tesla-valued field is dimensionally wrong. Variable density and
+the mapping to the module's stored magnetic-field units remain an explicit
+design gate, not an implicit conversion.
+
+The model is an isotropic, local, two-equation RANS closure. It does not
+resolve `b'` or `u'` and must not be described as a direct simulation of
+magnetic fluctuations. The hydraulic `k` and `epsilon` remain a distinct
+alternative provider of `eta_t`; they are not the model's `k_b` and
+`epsilon_b`.
+
+##### 3.b Proposed closure equations
+
+Let `U` be the velocity transported by the induction equation; `eta` the
+molecular magnetic diffusivity; and `P_b` the modeled transfer into unresolved
+magnetic-fluctuation energy. The first implementation proposal is
+
+```text
+∂t k_b + U·∇k_b = ∇·[(eta + eta_t/sigma_kb) ∇k_b] + P_b - epsilon_b
+
+∂t epsilon_b + U·∇epsilon_b =
+    ∇·[(eta + eta_t/sigma_epsb) ∇epsilon_b]
+    + C_eps1b (epsilon_b/k_b) P_b - C_eps2b epsilon_b²/k_b
+
+eta_t = C_mu_b k_b² / (epsilon_b Pm_t_b)
+P_b   = eta_t |curl(b_A)|²
+```
+
+The production term is selected because it is non-negative and represents the
+loss of resolved mean-field energy caused by the same `eta_t` used in the
+induction equation. With closed/no-flux boundaries, it gives a testable energy
+transfer path: resolved magnetic energy lost to turbulent diffusion is
+injected into `k_b`, then removed by `epsilon_b`. Its units are m²/s³. The
+evolution must use a curl-form induction diffusion operator (or demonstrate
+the equivalent energy identity for the selected discretization) for this
+interpretation to hold, especially with non-uniform `eta_t`.
+
+There is a competing sketch in the current source shells: `Terme_Source_K_Magnetic`
+mentions a stretching production proportional to `-b_i b_j d_i u_j`. That is
+not the selected v1 expression and its sign/index convention is not yet
+specified. A velocity-strain production requires a closure for anisotropic
+magnetic correlations; it must not be added on top of `P_b` without deriving
+the energy budget, or production may be double-counted. Before implementing
+the shells, reconcile/update their comments and test whichever production is
+chosen. V1 deliberately omits this extra term; a later model may add it as a
+separately named and validated closure option.
+
+The coefficients `C_mu_b`, `C_eps1b`, `C_eps2b`, `sigma_kb`, `sigma_epsb`,
+and `Pm_t_b` belong to the magnetic model. They must be named separately
+from hydraulic constants and have documented defaults only after calibration.
+Do not claim universal values by copying the hydraulic k-ε constants. The
+laminar limit is `eta_t -> 0` as `k_b -> 0`; a zero-energy state must remain
+well-defined numerically rather than evaluate `0/0`.
+
+##### 3.c Transport meaning and numerical update
+
+`k_b` and `epsilon_b` are **two additional scalar unknowns**, not components
+of the vector `b`. Both are advected by the same `U` as the magnetic field.
+Their modeled scalar diffusivities are respectively
+`eta + eta_t/sigma_kb` and `eta + eta_t/sigma_epsb`; they are not the hydraulic
+momentum diffusivity `nu + nu_t/sigma`. The `eta` term is molecular magnetic
+diffusion, while the `eta_t/sigma_*` terms model transport of the two scalar
+quantities. Convection and diffusion operators must be selected and verified
+for each supported discretization rather than inferred from the vector-field
+operator.
+
+The initial algorithm is a lagged, staggered update per physical step:
+
+1. Use the current mean `b_A`, `U`, `k_b`, and `epsilon_b` to evaluate bounded
+   `eta_t` and cellwise `P_b` from the discrete curl of `b_A`.
+2. Advance the `k_b` and `epsilon_b` transport equations with those lagged
+   coefficients/sources. Treat destruction terms implicitly where the TRUST
+   source API permits; keep source signs and any linearization explicit in the
+   implementation notes.
+3. Refresh `eta_t` from the updated turbulence fields and solve the induction
+   equation with `eta_eff = eta + eta_t`.
+4. If `couplage_fort` is enabled, repeat the turbulence/induction sweep until
+   the existing iteration tolerance is met; otherwise retain the lagged
+   one-sweep behavior.
+
+This ordering makes the closure's feedback visible and avoids an unplanned
+fully coupled nonlinear solve. The source and diffusivity fields must be
+refreshed after their operands change; a stale `Champ_Fonc` is a correctness
+failure. Compute/project `|curl(b_A)|²` at the scalar equation's locations
+using the same discrete gradient/curl data as the induction operator where
+possible, so the production and mean-field diffusion use compatible operators.
+
+##### 3.d Positivity, initialization and boundaries
+
+Use strictly positive numerical denominator floors
+`k_b_eff = max(k_b, k_b_min)` and
+`epsilon_b_eff = max(epsilon_b, epsilon_b_min)` in the closure and epsilon
+source. Floors are safeguards, not physical sources: do not replace the
+transported unknown silently, and report counts/minima when clipping occurs.
+Enforce non-negative `k_b` and `epsilon_b` after updates using a documented
+TRUST-compatible limiter; test conservation/energy effects of clipping.
+`eta_t` also needs a configurable upper bound or a fatal diagnostic for
+non-finite/unreasonably large values, rather than allowing the time step or
+linear system to fail opaquely. The floor and cap values need unit-aware
+defaults and should be exposed only when there is a defensible user need.
+
+For initialization, require both fields or provide an explicit model default;
+never read uninitialized transport unknowns. Missing `epsilon_b` with a
+positive `k_b` is an input error unless the user supplies a documented length
+scale `ell_b` from which the model computes
+`epsilon_b = C_mu_b^(3/4) k_b^(3/2) / ell_b`. This optional inlet/initialization
+relation must not be confused with solving epsilon's transport equation.
+Restart files must save and restore both unknowns and model constants needed
+to reproduce `eta_t`.
+
+The first validation scope should use closed domains with zero normal flux for
+`k_b` and `epsilon_b`. Inlets need prescribed non-negative turbulence data;
+outlets need a tested convective/outflow treatment. Wall functions, conducting
+wall production/suppression, and magnetic boundary-layer modeling are deferred.
+Do not advertise a wall-bounded turbulent induction case until those choices
+and discretization support exist.
+
+##### 3.e TRUST ownership and input contract
+
+`Modele_turbulence_magnetique` should own the two unknowns, transport
+equations, constants, floors/limiters, and derived `eta_t`. The existing
+`Convection_Diffusion_K_Magnetic`,
+`Convection_Diffusion_Epsilon_Magnetic`, `Terme_Source_K_Magnetic`, and
+`Terme_Source_Epsilon_Magnetic` files are compilable shells only; they need
+real equation/source base classes, read/discretize/update lifecycle, unknown
+registration, and tests. Reuse generic TRUST scalar transport infrastructure
+where compatible, but do not force the magnetic model into hydraulic
+`Transport_K_Eps` ownership or share its hydraulic source terms.
+
+Implementation sequence:
+
+1. Give each `Convection_Diffusion_*_Magnetic` class a genuine scalar equation
+   base, unknown, convection operator bound to the induction velocity,
+   diffusivity field, boundary conditions, and source term. The model object
+   coordinates their read/complete/discretize/update calls and exposes
+   references to `k_b`, `epsilon_b`, and `eta_t`.
+2. Confirm how model-owned equations enter TRUST's solve, timestep, restart and
+   post-processing lifecycle. Use the kernel-supported equation/model hook;
+   never advance the unknowns by an ad-hoc call from the induction equation.
+   Preserve the public problem ordering contract (momentum at index 0 and
+   magnetic at index 1 in `Pb_MHD_Turbulent`). If TRUST requires the transport
+   equations to be registered in the problem equation list, register them
+   without changing those indices or the meanings of existing datasets.
+3. Implement and unit-test the shared `eta_t`/`P_b` evaluator first, including
+   operand observation/update and consistent cell-to-equation projection.
+   Then implement the k source, epsilon source and scalar equation assembly;
+   test each source's `calculer` and `ajouter` signs independently.
+4. Wire the lagged timestep sequence and diagnostics only after the two
+   equations solve independently. Emit min/max of `k_b`, `epsilon_b`, `eta_t`,
+   integrated `P_b`, and the number of limited cells at a configurable
+   diagnostic frequency; these are needed to distinguish a closure failure
+   from an induction-operator failure.
+
+Conceptual input shape (illustrative only; not valid TRUST syntax until the
+classes and keywords are implemented):
+
+```text
+modele_turbulence_magnetique {
+    C_mu_b ...
+    C_eps1b ...
+    C_eps2b ...
+    sigma_kb ...
+    sigma_epsb ...
+    Pm_t_b ...
+    transport_k_b { ... initial/boundary data ... }
+    transport_epsilon_b { ... initial/boundary data ... }
+}
+```
+
+Both equations must have compatible time schemes and use the same physical
+time step as induction. Their initial and boundary data are first-class input
+requirements, not values inferred from the hydraulic turbulence model.
+
+Provider contract for the new model: it must not be combined with another
+provider of `eta_t`. Preserve legacy behavior for existing inputs: an explicit
+`diffusivite_turbulente_magnetique` currently takes precedence over explicit
+operand fields; a complete explicit `k_magnetique`/`epsilon_magnetique` pair
+builds `eta_t` when no direct field is set; hydraulic fallback is considered
+only when none of these inputs is present. The new model keyword should be
+mutually exclusive with these providers and fail clearly on conflicts or
+incomplete magnetic field pairs, without silently changing old datasets. The
+magnetic model must require the same valid transport velocity as induction.
+Its scalar equations can share the mesh but need independently verified
+scalar convection/diffusion operators; they are not guaranteed by support for
+the vector magnetic equation. PolyMAC wall-law limitations remain a blocker
+for wall-bounded cases, not something this model should mask.
+
+##### 3.f Verification and validation ladder
+
+1. **Algebra/unit tests:** verify the units/normalization contract, closure
+   `eta_t`, floors, caps, zero/near-zero limits, and source signs; reject NaN,
+   negative inputs and incomplete/conflicting providers.
+2. **Transport-only tests:** with `P_b=0`, verify non-negative k/epsilon,
+   advection, diffusion and epsilon decay on a simple domain, including mesh
+   and time-step refinement.
+3. **Production test:** prescribe a curl-bearing mean field and verify the
+   discrete `P_b` field against `eta_t*|curl(b_A)|²`; a uniform field must give
+   zero production. Confirm source-unit and projection consistency.
+4. **Energy transfer test:** in a closed domain, measure mean magnetic energy,
+   integrated `P_b`, `k_b`, and dissipation. Check that the resolved-field
+   turbulent-diffusion loss and turbulence production balance to the expected
+   time/discretization error; report boundary fluxes separately.
+5. **Coupled regression:** demonstrate that changing `k_b`/`epsilon_b` changes
+   `eta_eff` and the induction decay rate; compare molecular-only, prescribed
+   `eta_t`, hydraulic fallback, and magnetic-model runs without expecting the
+   two turbulence closures to match pointwise.
+6. **Physical calibration:** only after the above, calibrate coefficients
+   against a suitable magnetic-turbulence/VKS reference and add a high-Rm
+   validation case. `VKSTurbulent` currently validates hydraulic k-ε reuse,
+   not this independent model.
+
+Do not mark Phase 3 implemented or call the closure validated until the source
+shells, restart, positivity behavior, energy-transfer check, and at least one
+mesh/time refinement test pass.
 
 ### Phase 4 — coupling with hydraulic k-ε (IMPLEMENTED)
 - In the coupled mode (`vitesse_hydraulique`), reuse the hydraulic k, ε to
