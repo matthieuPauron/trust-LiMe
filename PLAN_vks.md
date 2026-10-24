@@ -295,17 +295,27 @@ Postraitement
 ### 3.10 Sodium physical properties (temperature-dependent)
 
 For full VKS, sodium properties vary with temperature. TRUST supports
-`Champ_Fonc_xyz` for spatially varying properties, or `Champ_Uniforme`
-for constant. For temperature-dependent:
+temperature-dependent properties via `Champ_Fonc_Fonction` / `Champ_Fonc_Tabule`
+referencing the solved temperature field (`pb temperature`), and (for the fluid)
+via the incompressible Boussinesq path (mu, lambda T-dependent; rho, Cp,
+beta_th uniform). For trust-LiMe's own magnetic diffusivity eta = 1/(mu0*sigma),
+which is not a TRUST fluid property, use the same mechanism:
 
 ```
-mu Champ_Fonc_xyz dom 1 $MU0 * (1 + $ALPHA * (T - $T0))
+diffusivite_magnetique Champ_Fonc_Fonction pb temperature 1 \
+    1./(mu0 * (sigma0 * (1 + alpha * (val - T0))))
 ```
+
+or a `Champ_Fonc_Tabule { pb temperature } 1 { ... }` for tabulated sigma(T).
 
 **Inputs needed:**
-- Reference temperature ($T0, typically 120°C)
-- Temperature coefficient ($ALPHA)
+- Reference temperature (T0, typically 120 C)
+- Temperature coefficient (alpha) for sigma(T), or a tabulated sigma(T)
 - Operating temperature range
+- Magnetic permeability mu0 (default 1) and reference conductivity sigma0
+
+Note: the earlier `Champ_Fonc_xyz` static-spatial form is NOT temperature-dependent
+during the solve; use `Champ_Fonc_Fonction`/`Tabule` referencing `pb temperature`.
 
 ## 4. What trust-LiMe currently provides vs. what VKS needs
 
@@ -319,8 +329,9 @@ mu Champ_Fonc_xyz dom 1 $MU0 * (1 + $ALPHA * (T - $T0))
 | High-Rm regime (Rm ~ 100-1000) | ❌ Not validated | ❌ (critical for VKS) |
 | Turbulence models (k-ε, LES) | ⚠️ Hydraulic k-ε can feed η_t; full turbulent MHD/LES not implemented | ❌ (critical for VKS) |
 | Spherical geometry | ❌ Not tested | ❌ (needed) |
-| Impeller rotation BCs | ❌ Not implemented | ❌ (needed) |
-| Temperature-dependent properties | ❌ Not implemented | ⚠️ (nice to have) |
+| Impeller rotation BCs | ✅ Available (`Paroi_defilante`); exercised in `SmoothDiskMHD` (smooth disks, no blades) | ✅ (smooth disks; blade-resolving deferred) |
+| Smooth rotating disks (modelized propellers) | ✅ `SmoothDiskMHD` validation case (3D, 2-rank, laminar, Rm~1, runs to completion) | ✅ (smoke; high-Rm not validated) |
+| Temperature-dependent properties | ⚠️ Fluid side (mu, lambda) supported by TRUST (Boussinesq path); eta = 1/(mu0*sigma) supported in trust-LiMe after the mettre_a_jour fix (Champ_Fonc_Fonction/Tabule vs. pb temperature) | ⚠️ (nice to have; fluid side via TRUST, eta via trust-LiMe) |
 | Conducting wall BC (`paroi_conductrice_magnetique`) | ❌ Deferred | ⚠️ (impeller surfaces) |
 | div-b enforcement | ⚠️ Opt-in projection for the reported cell-centred divergence; 2D scan passes, 3D/regression pending | ⚠️ (important at high Rm) |
 
@@ -342,7 +353,7 @@ mu Champ_Fonc_xyz dom 1 $MU0 * (1 + $ALPHA * (T - $T0))
 ### 5.2 Important gaps (should fix)
 4. **Spherical mesh generation**: TRUST supports polyhedral meshes via
    `Polyedriser`. Need a mesh of the spherical shell with impeller surfaces.
-5. **Impeller rotation BCs**: `paroi_defilante` (moving wall) or body force.
+5. **Impeller rotation BCs**: `Paroi_defilante` available and exercised in `SmoothDiskMHD` (smooth disks). Body force (`force_rotative`) not available in this TRUST version.
 6. **div-b enforcement:** an opt-in projection cleans the module's reported
    divergence, but 3D validation remains and high-Rm robustness is unknown.
 7. **Conducting wall BC**: impeller surfaces may be conducting (steel).
@@ -502,7 +513,7 @@ Solve pb
 2. High-Rm validation of the induction equation
 3. Tight (implicit) coupling for stability at high Rm
 4. Spherical mesh generation pipeline
-5. Impeller rotation BCs (paroi_defilante)
+5. Impeller rotation BCs (`Paroi_defilante`) — available; exercised in `SmoothDiskMHD`
 6. Conducting wall BC (paroi_conductrice, Phase B.2)
 7. div-b enforcement (optional but recommended)
 8. §18.2 kernel fix (for 3D form creation)

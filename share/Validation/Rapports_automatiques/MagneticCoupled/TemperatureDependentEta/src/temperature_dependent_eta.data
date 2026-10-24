@@ -1,0 +1,120 @@
+# Temperature-dependent magnetic diffusivity eta(T) (smoke). #
+# Coupled hydro + thermal + magnetic induction: eta = 1/(mu0*sigma(T)). #
+# Standalone smoke case: runs to completion with finite results. #
+dimension 2
+Pb_MHD_Thermal pb
+Domaine dom
+
+# BEGIN MESH #
+Mailler dom
+{
+    Pave Cavite
+    {
+        Origine 0. 0.
+        Nombre_de_Noeuds 11 11
+        Longueurs 0.01 0.01
+    }
+    {
+        Bord Gauche X = 0.  0. <= Y <= 0.01
+        Bord Haut Y = 0.01  0. <= X <= 0.01
+        Bord Bas Y = 0.     0. <= X <= 0.01
+        Bord Droit X = 0.01 0. <= Y <= 0.01
+    }
+}
+Trianguler dom
+VerifierCoin dom { }
+# END MESH #
+
+VEFPreP1B dis
+Read dis { P0 }
+
+Schema_Euler_Implicite sch
+Read sch
+{
+    tinit 0.
+    tmax 0.001
+    dt_min 1.e-6
+    dt_max 0.0002
+    dt_impr 0.001
+    dt_sauv 1
+    seuil_statio 1.e-8
+    facsec 1e6
+    facsec_max 1e6
+    solveur implicite { solveur petsc cli { } }
+}
+
+Associate pb dom
+Associate pb sch
+Discretize pb dis
+
+Read pb
+{
+    nb_composantes 1
+
+    fluide_incompressible {
+        gravite champ_uniforme 2 0 -9.81
+
+        mu Champ_Uniforme 1 1.85e-5
+        rho Champ_Uniforme 1 1.17
+        lambda Champ_Uniforme 1 0.0262
+        Cp Champ_Uniforme 1 1006
+        beta_th Champ_Uniforme 1 3.41e-3
+    }
+
+    Navier_Stokes_standard
+    {
+        solveur_pression GCP { precond ssor { omega 1.5 } seuil 1.e-12 impr }
+        convection { Amont }
+        diffusion { }
+        sources { boussinesq_temperature { T0 0. } }
+        initial_conditions { vitesse Champ_Uniforme 2 0. 0. }
+        boundary_conditions
+        {
+            Gauche paroi_fixe
+            Droit paroi_fixe
+            Bas paroi_fixe
+            Haut paroi_fixe
+        }
+    }
+
+    Convection_Diffusion_Temperature
+    {
+        diffusion { }
+        convection { Amont }
+        initial_conditions { temperature Champ_Uniforme 1 0.5 }
+        boundary_conditions
+        {
+            Gauche paroi_temperature_imposee Champ_Front_Uniforme 1 1.
+            Droit paroi_temperature_imposee Champ_Front_Uniforme 1 0.
+            Bas paroi_adiabatique
+            Haut paroi_adiabatique
+        }
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        diffusivite_magnetique Champ_Fonc_Fonction pb temperature 1 1./(0.1*(1.+0.5*val))
+        vitesse_hydraulique
+
+        diffusion { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            Gauche Neumann_Paroi_adiabatique
+            Droit Neumann_Paroi_adiabatique
+            Bas Neumann_Paroi_adiabatique
+            Haut Neumann_Paroi_adiabatique
+        }
+        initial_conditions { magnetic_field Champ_Uniforme 1 1. }
+    }
+
+    Postraitement
+    {
+        Champs { magnetic_field elem temperature elem }
+        format lml
+    }
+}
+
+Solve pb
+Fin

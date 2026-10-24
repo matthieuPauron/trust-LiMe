@@ -17,6 +17,8 @@
 #include <Champ_Inc_base.h>
 #include <Champ_Don_base.h>
 #include <Champ_Uniforme.h>
+#include <Champ_Fonc_Tabule.h>
+#include <Discretisation_base.h>
 #include <Champ_Face_PolyMAC_MPFA.h>
 #include <Fluide_base.h>
 #include <Navier_Stokes_std.h>
@@ -337,6 +339,23 @@ void Convection_Diffusion_Magnetic_field::completer()
 {
   Convection_Diffusion_Temperature_base::completer();
 
+  // Discretise a derived molecular magnetic diffusivity eta (Champ_Fonc_Tabule /
+  // Champ_Fonc_Fonction, e.g. a temperature-dependent eta(T)) now that the
+  // hosting problem is fully known: nommer_completer_champ_physique creates its
+  // discretised counterpart (modifier_champ_tabule) and binds it to the parameter
+  // field (e.g. the solved temperature field of a Pb_MHD_Thermal problem).
+  // Guarded so standalone problems (no temperature field) do not crash.
+  if (diffusivite_magnetique_
+      && sub_type(Champ_Fonc_Tabule, diffusivite_magnetique_.valeur())
+      && probleme().has_champ("temperature"))
+    {
+      const Discretisation_base& d = discretisation();
+      d.nommer_completer_champ_physique(domaine_dis(), "diffusivite_magnetique",
+                                        "m2/s", diffusivite_magnetique_.valeur(), probleme());
+    }
+  if (diffusivite_magnetique_)
+    champs_compris_.ajoute_champ(diffusivite_magnetique_);
+
   // Phase 4: if no explicit k/eps fields but a hydraulic turbulence model is
   // present on the Navier-Stokes equation, grab its k and epsilon fields and
   // build eta_t = C_mu*k^2/eps/Pm_t (TrioCFD k-eps).
@@ -434,6 +453,12 @@ void Convection_Diffusion_Magnetic_field::completer()
           diffusivite_effective_ = somme;
           // Register so the problem-level update keeps its values fresh.
           champs_compris_.ajoute_champ(diffusivite_effective_);
+          // Re-bind the diffusion operator to the effective (non-uniform) diffusivity,
+          // since the base class already associated it with the molecular eta.
+          diffusivite_effective_->mettre_a_jour(inconnue().temps());
+          terme_diffusif.associer_diffusivite(diffusivite_effective_.valeur());
+          terme_diffusif.valeur().associer_diffusivite(diffusivite_effective_.valeur());
+          terme_diffusif.associer_diffusivite_pour_pas_de_temps(diffusivite_effective_.valeur());
           Cerr << "Convection_Diffusion_Magnetic_field: turbulent magnetic diffusivity folded "
                << "(non-uniform) into eta_eff = eta + eta_t." << finl;
         }
@@ -459,9 +484,22 @@ void Convection_Diffusion_Magnetic_field::completer()
       modele_turbulence_magnetique_->diffusivite_epsilon().mettre_a_jour(inconnue().temps());
       diffusivite_effective_->mettre_a_jour(inconnue().temps());
       terme_diffusif.associer_diffusivite(diffusivite_effective_.valeur());
+      terme_diffusif.valeur().associer_diffusivite(diffusivite_effective_.valeur());
       terme_diffusif.associer_diffusivite_pour_pas_de_temps(diffusivite_effective_.valeur());
-      Cerr << "Convection_Diffusion_Magnetic_field: independent magnetic k-epsilon model active; "
-           << "using eta_eff = eta + eta_t." << finl;
+      // Report the eta_t range, mirroring the hydraulic path, so validation
+      // notebooks can check the closure's contribution.
+      {
+        const DoubleTab& etav = modele_turbulence_magnetique_->eta_t().valeurs();
+        double emin = 0., emax = 0.;
+        if (etav.size() > 0)
+          {
+            emin = emax = etav(0,0);
+            for (int i=0; i<etav.dimension(0); i++)
+              for (int c=0; c<etav.dimension(1); c++) { if (etav(i,c)<emin) emin=etav(i,c); if (etav(i,c)>emax) emax=etav(i,c); }
+          }
+        Cerr << "Convection_Diffusion_Magnetic_field: independent magnetic k-epsilon model active; "
+             << "using eta_eff = eta + eta_t (eta_t in [" << emin << ", " << emax << "])." << finl;
+      }
     }
 
   if (!vitesse_hydraulique_)
@@ -929,6 +967,18 @@ void Convection_Diffusion_Magnetic_field::gradient_b_elements(DoubleTab& gb) con
 void Convection_Diffusion_Magnetic_field::mettre_a_jour(double temps)
 {
   Convection_Diffusion_Temperature_base::mettre_a_jour(temps);
+
+  // Refresh the molecular magnetic diffusivity eta when it is a derived field
+  // (e.g. a temperature-dependent Champ_Fonc_Fonction / Champ_Fonc_Tabule).
+  // The diffusion operator holds a reference to the same field and sees the
+  // new values.
+  if (diffusivite_magnetique_)
+    diffusivite_magnetique_->mettre_a_jour(temps);
+  if (diffusivite_effective_)
+    {
+      diffusivite_effective_->mettre_a_jour(temps);
+    }
+
   if (!correction_divergence_)
     return;
   correction_count_++;
