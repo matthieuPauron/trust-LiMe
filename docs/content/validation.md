@@ -17,9 +17,10 @@ share/Validation/Rapports_automatiques/
 │   ├── SteadyState/  VaryingVelocity/  SourceStretching/
 │   ├── Hartmann1D/                 # Hartmann induced field (1D physics)
 │   ├── MMS_2D/                     # the four historical MMS cases fused
-│   ├── GaussLaw/                   # opt-in discrete divergence projection
-│   └── ErrorInputs/                # the 3 malformed-input cases merged
+│   ├── GaussLaw/                   # opt-in 2D discrete divergence projection
+│   └── ErrorInputs/                # malformed inputs incl. incompatible net flux
 ├── MagneticStandalone3D/           # 3D twins of the established standalone forms
+│   ├── GaussLaw/                   # sequential 3D projection twin
 │   └── <FormName>/…                # (Polyedriser dom after Mailler — see below)
 ├── MagneticCoupled/                # coupled low-Rm MHD (2D, incl. the merged
 │   └── <FormName>/…                #   one-way + two-way feedback form)
@@ -29,8 +30,11 @@ share/Validation/Rapports_automatiques/
     └── Champs2D/ Champs3D/         # (∇b / |b|² / u·b based — two datasets each)
 ```
 
-The `GaussLaw` form currently has no 3D twin. Other
-`MagneticStandalone3D` forms differ from their 2D counterpart only in the
+`MagneticStandalone3D/GaussLaw/` is the 3D twin of the 2D `GaussLaw` form. It
+uses a compatible non-solenoidal full-vector field and a sequential mesh scan
+on the shared active-x ladder; three y/z cells avoid a parity-sensitive null
+mode. The 2D form separately exercises the MPI path. Other
+`MagneticStandalone3D` forms differ from their 2D counterpart in the
 dataset: `dimension 3`, three-component vector data, three-coordinate probes,
 and **`Polyedriser dom`** right after `Mailler` (PolyMAC_MPFA requires polyhedral
 cells in 3D; the `Pave` hexahedra are converted in place). The notebooks and the
@@ -73,7 +77,7 @@ dataset into `build/<dataset name>/` where the results (`.son` probes, `.dt_ev`,
 
 Each form can be exported to PDF and the per-form PDFs concatenated into a
 single report at the repository root (`trust-lime_validation.pdf`,
-28 forms: the 2D and 3D standalone families (the 3D MMS cases fused as
+32 forms: the 2D and 3D standalone families (the 3D MMS cases fused as
 `MMS_3D`, the Shercliff twins `Shercliff2D`/`Shercliff3D`), the coupled-MHD
 forms (including the quantitative two-way `HartmannTwoWay`) and the
 post-treatment fields merged into `Champs2D`/`Champs3D` — every
@@ -83,6 +87,11 @@ forms merged into one `ErrorInputs` notebook per category), via
 `pdfunite`). The report is a generated artifact and stays untracked; the rule
 lives in the `trust-lime-notebooks` skill ("PDF export & the repository
 report").
+
+The latest full sweep generated 31 of the 32 reportable PDFs. The remaining
+`HartmannTwoWay` notebook is in progress and failed during `run.reset()` because
+a generated scan directory was not empty; this does not affect the Gauss-law
+forms, which both executed and passed.
 
 ---
 
@@ -114,7 +123,8 @@ magnetic system, so the old placeholders no longer apply. The coupled low-Rm
 mode (`force_lorentz` + optional `Navier_Stokes_standard`) is documented in
 @ref TrustLiMe_model "Problems, equations and boundary conditions" §4bis and
 validated by `MagneticCoupled/ForceLorentzBalance/`. The Shercliff 3D duct
-benchmark remains an open coupled-case target (Tassone et al.).
+benchmark is now implemented as `MagneticCoupled3D/ShercliffDuct3D/`
+(Tassone et al.).
 
 The **standalone half** of the Hartmann problem — the induced field produced by a
 given Hartmann velocity profile with insulating walls — is covered today by the

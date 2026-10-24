@@ -79,9 +79,7 @@ Read pb
 
         boundary_conditions
         {
-            # open boundaries driving the flow; the magnetic-pressure profile   #
-            # p = P - b_x(y,z)^2/(2 mu0) is injected through $pmag (a closed    #
-            # form of the Shercliff b_x, or 0 for the Ha=0 control)             #
+            # open boundaries driving the flow; magnetic-pressure profile #
             gauche   frontiere_ouverte_pression_imposee Champ_front_fonc_txyz 1 1.-$pmag
             droite   frontiere_ouverte_pression_imposee Champ_front_fonc_txyz 1 -$pmag
             bas      paroi_fixe
@@ -107,7 +105,7 @@ Read pb
         diffusion  { }
         convection { amont }
 
-        # M1 inductive stretching source S = (b.grad) u : S_x = B0 du/dz #
+        # M1 inductive stretching source S = (b.grad) u #
         sources
         {
             induction_stretching { }
@@ -131,8 +129,6 @@ Read pb
     {
         Sondes
         {
-            # cross-section probes at x = 0.375 (off the open boundaries):       #
-            # y along the side-wall direction, z along the Hartmann direction    #
             sonde_a1 grav vitesse Periode 1e-8 Points 1 0.375  0.0    0.0
             sonde_a2 grav vitesse Periode 1e-8 Points 1 0.375  0.0    0.25
             sonde_a3 grav vitesse Periode 1e-8 Points 1 0.375  0.0    0.45
@@ -143,7 +139,6 @@ Read pb
             sonde_bz grav magnetic_field2 Periode 1e-8 Points 1 0.375  0.0    0.0
         }
     }
-
 }
 
 Solve pb

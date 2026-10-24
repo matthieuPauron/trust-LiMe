@@ -125,6 +125,7 @@ parallel_ok=(
   "$base/MagneticCoupled/ErrorInputs/"
   # --- MagneticCoupled3D (VKS smoke, runs on 2 ranks) ---
   "$base/MagneticCoupled3D/VKSLite/"
+  "$base/MagneticCoupled3D/ShercliffDuct3D/"
   # --- Industrial examples (2-rank coupled MHD smoke cases) ---
   "$base/Industrial_Examples/"
   # --- Postraitement_fields (merged: one form per dimension) ---

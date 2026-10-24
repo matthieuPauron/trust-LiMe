@@ -310,4 +310,4 @@ in `Pb_MHD` (laminar) and `Pb_MHD_Turbulent` (k-eps) and validated by
 the driven-Hartmann physics the historical `HartmannFlow` case aimed at is
 now covered — quantitatively and with both feedbacks live — by
 `MagneticCoupled/HartmannTwoWay/`.
-The Shercliff 3D duct benchmark remains an open coupled-case target.
+The Shercliff 3D duct benchmark is implemented as `MagneticCoupled3D/ShercliffDuct3D/`.

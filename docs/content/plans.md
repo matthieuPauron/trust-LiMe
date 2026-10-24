@@ -167,7 +167,7 @@ The time stepping is a lagged staggered scheme,
     convective acceleration. The exploratory \f$(Re_H,Ha)=(100,7.9)\f$
     point left the Hartmann branch in this finite duct and is not included in
     the validated interval.
-  - **Shercliff 3D duct — open** (Tassone et al. Fig. 6). The case still needs
+  - **Shercliff 3D duct — done** (Tassone et al. Fig. 6). Full vector field, both feedbacks live, open pressure boundaries with magnetic-pressure profile (form: `MagneticCoupled3D/ShercliffDuct3D/`).
     completion and validation: full vector \f$b=(b_x,0,B_0)\f$, both feedbacks
     live, open pressure boundaries with an imposed magnetic-pressure profile.
 

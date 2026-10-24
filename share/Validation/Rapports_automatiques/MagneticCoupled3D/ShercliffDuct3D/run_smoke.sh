@@ -22,7 +22,10 @@ open("shercliff_duct_3d.data","w").write(s)
 PYEOF
 
 echo "=== Running coupled 3D duct (Ha=0 control) ==="
-ASAN_OPTIONS="handle_sigfpe=2 detect_leaks=0" /home/matthieu/Development/trust-LiMe/trust-lime_custom shercliff_duct_3d.data 1>run.out 2>run.err
+source /home/matthieu/Development/trust-code/env_TRUST.sh >/dev/null 2>&1
+source /home/matthieu/Development/trust-code/env_for_python.sh >/dev/null 2>&1
+source /home/matthieu/Development/trust-LiMe/env_trust_LiMe.sh >/dev/null 2>&1
+/home/matthieu/Development/trust-LiMe/trust-lime_semi_opt shercliff_duct_3d.data 1>run.out 2>run.err
 rc=$?
 echo "exit code: $rc"
 if [ -f shercliff_duct_3d.stop ]; then
