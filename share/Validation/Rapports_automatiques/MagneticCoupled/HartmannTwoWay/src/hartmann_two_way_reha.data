@@ -1,0 +1,146 @@
+# PARALLEL OK #
+
+# ============================================================================= #
+# Coupled MHD: two-way Hartmann flow, fixed-Rm Re-Ha grid                 #
+# Full Re_H x Ha grid at fixed low magnetic Reynolds number Rm = 0.1.     #
+# Re_H=rho U_H(0)L/mu, L=1; choose mu to set Re, eta=U_H(0)L/Rm, and    #
+# B0=Ha sqrt(mu mu0 eta)/h to set Ha. The exact Hartmann state gives     #
+# b_x(y)=bscale [sinh(Ha y/h)h/(Ha cosh(Ha))-y].                        #
+# Pressure boundaries impose p(y)=P-pcoeff*bshape(y)^2.                   #
+# The notebook substitutes $mu, $eta, $B0, $ka, $kfac, $bscale,         #
+# $pcoeff, $tmax and mesh counts.                                       #
+# ============================================================================= #
+dimension 2
+Pb_MHD pb
+Domaine dom
+
+# plates at y = +/- 0.5 : walls are the two bords normal to Y #
+
+# BEGIN MESH #
+Mailler dom
+{
+    Pave pave
+    {
+        Origine              0. -0.5
+        Nombre_de_Noeuds     $nx $ny
+        Longueurs            1.  1.
+    }
+    {
+        Bord gauche   X = 0.   -0.5 <= Y <= 0.5
+        Bord droite   X = 1.   -0.5 <= Y <= 0.5
+        Bord bas      Y = -0.5  0. <= X <= 1.
+        Bord haut     Y = 0.5   0. <= X <= 1.
+    }
+}
+# END MESH #
+
+# BEGIN PARTITION
+Partition dom
+{
+    Partition_tool metis { nb_parts 2 }
+    Larg_joint 2
+    zones_name DOM
+}
+End
+END PARTITION #
+
+# BEGIN SCATTER
+Scatter DOM.Zones dom
+END SCATTER #
+
+
+Polymac_p0 dis
+
+Associate pb dom
+
+Schema_Euler_Implicite sch
+Read sch
+{
+    tinit 0.
+    tmax $tmax
+    dt_max $dt
+    facsec 1e6
+    facsec_max 1e6
+    solveur implicite { solveur petsc cli { } }
+}
+
+Associate pb sch
+Discretize pb dis
+
+Read pb
+{
+    # vector model: b = (b_x induced, B0 applied) #
+    nb_composantes 2
+    fluide_incompressible
+    {
+        mu      Champ_Uniforme 1 $mu
+        rho     Champ_Uniforme 1 1.0
+        lambda  Champ_Uniforme 1 1.0
+        Cp      Champ_Uniforme 1 1.0
+        beta_th Champ_Uniforme 1 0.0
+    }
+
+    Navier_Stokes_standard
+    {
+        solveur_pression Petsc Cholesky { }
+        diffusion  { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            # open boundaries: dp = 1 over L = 1; impose analytic magnetic pressure #
+            gauche   frontiere_ouverte_pression_imposee Champ_front_fonc_txyz 1 1.-$pcoeff*(sinh($ka*y)*$kfac-y)*(sinh($ka*y)*$kfac-y)
+            droite   frontiere_ouverte_pression_imposee Champ_front_fonc_txyz 1 -$pcoeff*(sinh($ka*y)*$kfac-y)*(sinh($ka*y)*$kfac-y)
+            bas      paroi_fixe
+            haut     paroi_fixe
+        }
+        initial_conditions
+        {
+            vitesse Champ_Uniforme 2 0. 0.
+        }
+        sources
+        {
+            force_lorentz { }
+        }
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        diffusivite_magnetique Champ_Uniforme 1 $eta
+        vitesse_hydraulique
+
+        diffusion  { }
+        convection { amont }
+
+        sources
+        {
+            induction_stretching { }
+        }
+
+        boundary_conditions
+        {
+            gauche  Neumann_Paroi_adiabatique
+            droite  Neumann_Paroi_adiabatique
+            bas     Neumann_Paroi_adiabatique
+            haut    Neumann_Paroi_adiabatique
+        }
+        initial_conditions { magnetic_field Champ_Uniforme 2 0. $B0 }
+    }
+
+    Postraitement
+    {
+        Sondes
+        {
+            sonde_u0 grav vitesse Periode 1e-6 Points 1 0.375 0.0078125
+            sonde_u1 grav vitesse Periode 1e-6 Points 1 0.375 -0.0546875
+            sonde_u2 grav vitesse Periode 1e-6 Points 1 0.375 -0.1796875
+            sonde_u3 grav vitesse Periode 1e-6 Points 1 0.375 -0.3046875
+            sonde_b0 grav magnetic_field0 Periode 1e-6 Points 1 0.375 0.0078125
+            sonde_b3 grav magnetic_field0 Periode 1e-6 Points 1 0.375 -0.3046875
+            sonde_by grav magnetic_field1 Periode 1e-6 Points 1 0.375 0.0078125
+        }
+    }
+
+}
+
+Solve pb

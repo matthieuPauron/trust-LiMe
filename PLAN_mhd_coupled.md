@@ -5,8 +5,10 @@
 > opt-in Picard coupling, and effective turbulent magnetic diffusivity are
 > implemented. The Gauss-law projection is also implemented and opt-in; its
 > 2D MPI scan passes, but the 3D twin, error coverage and full regression remain
-> open. The next coupled benchmark gaps are the Reynolds scan and validated
-> 3D Shercliff duct. Magnetic fluctuation transport, MHD turbulence closure,
+> open. `HartmannTwoWay` now has a 12-point Re_H × Ha parameter grid at fixed
+> Rm=0.1; because its fully developed flow has no convective acceleration,
+> this is not an inertial-Re regime map. The validated 3D Shercliff duct remains open.
+> Magnetic fluctuation transport, MHD turbulence closure,
 > Ohmic heating, and high-Rm dynamo physics remain future work. The checkboxes
 > below were never ticked and are superseded by `AGENTS.md` and
 > `docs/content/plans.md`; read this file as original design intent, not as a

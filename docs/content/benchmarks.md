@@ -43,8 +43,16 @@ directions), run from a single substituted `src/<case>.data` template.
   stretching-induced `b_x`, magnetic-pressure profile `p(y) = P − b_x²/(2μ₀)`.
 - **What it catches:** both feedback directions live, open pressure boundaries,
   suppression factor `σ(Ha) = Ha²/(2(1−1/cosh Ha))` within 1.5 % at
-  Ha ∈ {2.5, 5, 7.9}.
-- **Status:** Ha axis done; Re axis open.
+  Ha ∈ {2.5, 5, 7.9}. The complete 12-point grid also checks
+  `Re_H = ρ U_H(0)L/μ ∈ {0.01, 0.1, 1, 10}` against every Ha level at
+  fixed `Rm = 0.1`, including both dimensionless numbers, velocity,
+  induced-field and invariant checks.
+- **Scope limit:** the fully developed profile is unidirectional, so
+  `u·∇u = 0`; its normalized solution has no inertial Re dependence. This grid
+  validates parameter scaling for the exact Hartmann solution, not an inertial
+  transition or a general `Ha`–`Re` regime map. A non-fully-developed duct
+  benchmark is needed for that. An exploratory `Re_H=100, Ha=7.9` case left
+  the Hartmann branch in the finite-length duct and is outside the checked map.
 
 ### SourceStretching — M1 induction source
 
@@ -91,7 +99,9 @@ merged per category) are excluded by design.
 
 ## Open items
 
-- **Re axis** of the Ha/Re regime map (Ha axis done via HartmannTwoWay).
+- **Inertial Re dependence** in the Ha/Re regime map: the HartmannTwoWay
+  parameter grid is complete for its exact solution, but a geometry with
+  nonzero convective acceleration is still needed to validate Re effects.
 - **Shercliff 3D duct** (Tassone et al. Fig. 6) — coupled, blocked by §18.2
   heisenbug for new 3D forms.
 - **`paroi_conductrice_magnetique`** (Phase B.2) — strict `b·n = 0` and
