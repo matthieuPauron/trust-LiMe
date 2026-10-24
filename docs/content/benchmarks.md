@@ -21,6 +21,10 @@ Every positive form carries a **mesh-convergence scan** on a shared
 `coarse` / `standard` / `fine` ladder (cells ×2 then ×4 in the active
 directions), run from a single substituted `src/<case>.data` template.
 
+An experimental `MagneticStandalone/MagneticTurbulence/` form exercising the
+independent magnetic k-\f$\varepsilon\f$ closure is in development; it is not
+yet part of the reportable suite (it currently aborts at `Solve`).
+
 ## Key benchmarks
 
 ### Shercliff2D / Shercliff3D — parabolic-shear channel

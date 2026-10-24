@@ -6,8 +6,8 @@ what comes **next**, and what is deliberately **deferred**. The plain-Markdown
 originals remain the working documents: they are updated as work proceeds, and
 this page follows them.
 
-@note Status snapshot: 24 October 2026. The established baseline is 28
-validation forms (checked 22 October) and 45 unit tests. The opt-in Gauss-law
+@note Status snapshot: 24 October 2026. The established baseline is 32
+reportable validation forms and 45 unit tests (29 arith-only pass). The opt-in Gauss-law
 projection and recent VEF/VKS coupling changes are newer than that baseline;
 their targeted checks pass where noted below, but a full baseline regression is
 still outstanding. See @ref TrustLiMe_validation "Validation cases" and
@@ -28,7 +28,7 @@ still outstanding. See @ref TrustLiMe_validation "Validation cases" and
 | Unit tests (GoogleTest) | **29 arith-only tests pass**; the full 45-test run currently exits by SIGSEGV at the first kernel-linked registration test |
 | Two-way coupling — NS velocity feeds the magnetic convection (`vitesse_hydraulique`) | **done** (lagged staggered scheme; commits `9e5b13b`, `d484fbd`) |
 | \f$\nabla\cdot b = 0\f$ enforcement | **implemented, opt-in** via `correction_divergence`; 2D MPI and 3D serial mesh scans plus incompatible-flux rejection pass |
-| Turbulent magnetic diffusivity | **implemented** from prescribed fields or hydraulic k-\f$\varepsilon\f$; magnetic fluctuation transport remains open |
+| Turbulent magnetic diffusivity | **implemented**: prescribed fields, hydraulic k-\f$\varepsilon\f$, and an independent magnetic k-\f$\varepsilon\f$ closure (source-level; smoke case still aborts at `Solve`) |
 | Strong two-way coupling | **implemented, opt-in** Picard iteration via `couplage_fort`; default staggered mode unchanged |
 | High-\f$\mathrm{Rm}\f$ dynamo | **open / long term** — section 5 |
 

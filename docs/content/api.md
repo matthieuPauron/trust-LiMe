@@ -22,6 +22,7 @@ equation (if any) is solved alongside it — the same split the kernel uses for
 | @ref Pb_Induction "Pb_Induction" | `Probleme_base` | magnetic only (prescribed velocity) |
 | @ref Pb_MHD "Pb_MHD" | `Pb_Hydraulique` | `Navier_Stokes_std`, then magnetic |
 | @ref Pb_MHD_Turbulent "Pb_MHD_Turbulent" | `Pb_Hydraulique_Turbulent` | `Navier_Stokes_turbulent` (k-eps), then magnetic |
+| @ref Pb_MHD_Thermal "Pb_MHD_Thermal" | `Pb_Thermohydraulique` | `Navier_Stokes_std`, then energy, then magnetic |
 
 - @ref Pb_Induction "Pb_Induction" — the induction-only problem: a single
   Convection_Diffusion_Magnetic_field equation advected by a prescribed
@@ -33,6 +34,9 @@ equation (if any) is solved alongside it — the same split the kernel uses for
 - @ref Pb_MHD_Turbulent "Pb_MHD_Turbulent" — the same layout with
   `Navier_Stokes_turbulent`; the hydraulic k-eps model is reused for the
   magnetic turbulent diffusivity.
+- @ref Pb_MHD_Thermal "Pb_MHD_Thermal" — hydro + thermal + magnetic, with the
+  energy equation at index 1 and the magnetic equation at index 2 (momentum
+  stays at index 0).
 - @ref Convection_Diffusion_Magnetic_field "Convection_Diffusion_Magnetic_field" —
   the magnetic induction equation
   \f$ \partial_t b + (u\cdot\nabla) b - \nabla\cdot(\eta \nabla b) = S \f$,
@@ -55,6 +59,21 @@ equation (if any) is solved alongside it — the same split the kernel uses for
   `force_lorentz`: the Lorentz force density \f$ J \times B \f$ applied to the
   momentum equation of a Pb_MHD / Pb_MHD_Turbulent problem (coupled low-Rm
   mode).
+
+## Independent magnetic k-ε closure (Phase 3, in source)
+
+- @ref Modele_turbulence_magnetique "Modele_turbulence_magnetique" —
+  `modele_turbulence_magnetique`: owns the closure coefficients, the
+  Alfvén-normalized k_b / epsilon_b fields and the derived `eta_t`.
+- @ref Convection_Diffusion_K_Magnetic "Convection_Diffusion_K_Magnetic" —
+  transport equation for k_b.
+- @ref Convection_Diffusion_Epsilon_Magnetic "Convection_Diffusion_Epsilon_Magnetic" —
+  transport equation for epsilon_b.
+- @ref Terme_Source_K_Magnetic "Terme_Source_K_Magnetic" — k_b source
+  (production \f$P_b\f$ minus dissipation).
+- @ref Terme_Source_Epsilon_Magnetic "Terme_Source_Epsilon_Magnetic" —
+  epsilon_b source (\f$C_{\epsilon 1b}(\epsilon_b/k_b)P_b -
+  C_{\epsilon 2b}\epsilon_b^2/k_b\f$).
 
 ## Post-treatment fields
 

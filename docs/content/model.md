@@ -56,6 +56,11 @@ Pb_MHD_Turbulent (Pb_Hydraulique_Turbulent)     src/Pb_MHD_Turbulent.{h,cpp}
   ├── eq_hydraulique        Navier_Stokes_turbulent (equation 0)
   └── eq_magnetic_field                         (equation 1)
 
+Pb_MHD_Thermal   (Pb_Thermohydraulique)         src/Pb_MHD_Thermal.{h,cpp}
+  ├── eq_hydraulique        Navier_Stokes_std   (equation 0)
+  ├── eq_temperature        Convection_Diffusion_Temperature (equation 1)
+  └── eq_magnetic_field                         (equation 2)
+
 Convection_Diffusion_Magnetic_field             src/Convection_Diffusion_Magnetic_field.{h,cpp}
   └── Convection_Diffusion_Temperature_base
         └── Convection_Diffusion_std
@@ -67,6 +72,7 @@ Convection_Diffusion_Magnetic_field             src/Convection_Diffusion_Magneti
 | `Pb_Induction` | magnetic only | none (prescribed `u`) | M0/M1 with a frozen or analytic velocity |
 | `Pb_MHD` | hydro + magnetic | `Navier_Stokes_std` | coupled low-Rm with a laminar flow |
 | `Pb_MHD_Turbulent` | hydro + magnetic | `Navier_Stokes_turbulent` (k-eps) | coupled low-Rm with a RANS flow; reuses k-eps for \f$\eta_t\f$ |
+| `Pb_MHD_Thermal` | hydro + thermal + magnetic | `Navier_Stokes_std`, then `Convection_Diffusion_Temperature` | coupled low-Rm MHD with an energy equation; magnetic induction last (§2) |
 
 `Pb_Induction` deliberately derives from `Probleme_base` and not from
 `Pb_Fluide_base`: several kernel source terms treat
@@ -134,6 +140,7 @@ Inside the `Convection_Diffusion_Magnetic_field` block:
 | `sources` | block | inherited | — | Kernel source framework; enables the M1 `induction_stretching` term. |
 | `initial_conditions` | block | **yes** | — | `magnetic_field <Champ_...> ...` |
 | `boundary_conditions` | block | **yes** | — | Kernel scalar CLs (see *Boundary conditions*). |
+| `modele_turbulence_magnetique` | block | no | off | Independent magnetic k-ε closure (k_b, epsilon_b transport equations): `eta_t = C_mu_b*k_b^2/(epsilon_b*Pm_t_b)`, Alfvén-normalized. Mutually exclusive with explicit eta_t / k / epsilon fields. See PLAN_induction_turbulence.md. |
 | `correction_divergence` | block | no | off | Opt-in projection enforcing the equation's Pass-1 magnetic divergence; see below. |
 
 **Ordering matters:** keywords are processed in the order they appear in the
@@ -305,6 +312,35 @@ velocity the *solved* NS velocity, rebound in `completer()` once every equation
 is known (see §6, item 2). Without that keyword the mode stays one-way
 \f$\mathbf{b}\f$ \f$\to\f$ momentum, transporting with the `vitesse_magnetique`
 data field.
+
+---
+
+## 3quat. Independent magnetic k-\f$\varepsilon\f$ closure (Phase 3)
+
+The magnetic equation accepts an optional `modele_turbulence_magnetique { ... }`
+block (mutually exclusive with `diffusivite_turbulente_magnetique` and the
+`k_magnetique`/`epsilon_magnetique` pair). It solves two extra scalar
+transport equations — `Convection_Diffusion_K_Magnetic` (unknown `k_b`) and
+`Convection_Diffusion_Epsilon_Magnetic` (unknown `epsilon_b`) — that must be
+listed in the problem block after the magnetic equation (kernel `eq_opt_`
+mechanism, so `Pb_Induction`/`Pb_MHD`/... carry them as optional equations).
+The closure is Alfvén-normalized:
+
+\f[
+\eta_t = C_{\mu b}\,\frac{k_b^2}{\varepsilon_b\,Pm_{t,b}},\qquad
+P_b = \eta_t\,|\nabla\times b_A|^2,\quad b_A = b/\sqrt{\mu_0\rho_{\rm ref}},
+\f]
+
+with `k_b` source \f$P_b - \varepsilon_b\f$ and `epsilon_b` source
+\f$C_{\varepsilon 1b}(\varepsilon_b/k_b)P_b - C_{\varepsilon 2b}\varepsilon_b^2/k_b\f$.
+Floors (`k_b_min`, `epsilon_b_min`) and an `eta_t_max` cap guard the
+numerics; the production uses the cell-centred Green-Gauss curl, consistent
+with the induction operator.
+
+Status: implemented in source and the keyword is accepted, but the
+experimental smoke dataset `MagneticStandalone/MagneticTurbulence/` still
+aborts at `Solve`; the closure is not validated. No wall functions, low-Re
+corrections or restart handling are implemented yet.
 
 ---
 
