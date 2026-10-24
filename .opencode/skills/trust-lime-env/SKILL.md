@@ -4,8 +4,9 @@ description: >
 Set up and use the TRUST + trust-LiMe runtime environment: host detection
 (laptop vs workstation), sourcing order for env_TRUST.sh / env_for_python.sh /
 venv_trust / env_trust_LiMe.sh, the $exec guard, headroom proxy usage, and
-the with-trust-env.sh wrapper. Use when a command needs the TRUST env, when
-running validation or unit tests, or when debugging env-related failures.
+the with-trust-env.sh / wait-build.sh wrappers and retrieve-notes.sh. Use when
+a command needs the TRUST env, when running validation or unit tests, or when
+debugging env-related failures.
 ---
 
 # trust-LiMe environment

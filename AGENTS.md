@@ -162,6 +162,19 @@ Reuse kernel base classes rather than reimplementing; recipe in
 `trust-include` references. Read `KERNEL_REUSE_NOTES.md` before extending;
 append new findings there.
 
+## Retrieval (large reference docs)
+
+`KERNEL_REUSE_NOTES.md` (1700+ lines), `PLAN_*.md` and `docs/content/*.md` are
+large. Prefer targeted retrieval over full reads:
+
+```bash
+.opencode/scripts/retrieve-notes.sh <topic words>
+```
+
+Prints the best-matching sections with source locations. Use `--list` to browse
+headings, `--top N` / `--max-lines M` to control output. See `trust-lime-env`
+for the script location.
+
 ## Current state (summary)
 
 - Sources rewritten; pass `syntax-check.sh`. Problem classes: `Pb_Induction`,

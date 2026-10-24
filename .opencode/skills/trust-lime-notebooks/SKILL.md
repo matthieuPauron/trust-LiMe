@@ -1,13 +1,12 @@
 ---
 name: trust-LiMe notebooks
 description: >
-Author, edit, and run trust-LiMe Jupyter validation notebooks and their
-.data datasets (share/Validation/Rapports_automatiques/). Covers the
-trustutils pipeline (addCase/runCases/tablePerf), dataset syntax rules,
-the headless nbconvert run recipe, non-regression mechanics, and the
-sequential-by-default execution rule (with a documented parallel exception)
-for trust-LiMe. Use when touching any .ipynb or .data file, or running
-validation.
+Author, edit, and run trust-LiMe Jupyter validation notebooks and their .data
+datasets (share/Validation/Rapports_automatiques/): trustutils pipeline
+(addCase/runCases/tablePerf), dataset syntax rules, headless nbconvert run
+recipe, baseline/RULE harness, and the sequential-by-default execution rule
+(with the documented parallel exception). Use when touching any .ipynb or .data
+file, or running validation. Test-tier concepts live in trust-lime-testing.
 ---
 
 # trust-LiMe notebooks & datasets
