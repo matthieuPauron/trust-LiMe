@@ -151,12 +151,18 @@ geometries — its 2D case and its 3D twin `mms_coupled_3d` in the same form):
 | `ForceLorentzBalance/` | hydrostatic balance with \f$b=(y,0)\f$: \f$\Delta p = -0.18 \pm 10\%\f$, \f$u \to 0\f$ |
 | `MMS_Coupled/` | MMS with \f$b=(y,-x)\f$ — **both force components**: \f$\Delta p = -0.60 \pm 5\%\f$ (its scan's standard level *is* the absorbed `MMS_CoupledRefined` twin); the same form also carries the **3D twin** as a second dataset (`mms_coupled_3d`, coarse-mesh regression) |
 | `Coupled_Feedback/` | both coupling modes: the baseline documents the one-way limit (\f$b\f$ frozen to machine precision with \f$u_0 \neq 0\f$), the merged `twoway_feedback.data` case (`vitesse_hydraulique`) asserts the two-way discriminator \f$10^{-3} < \max_t \|\mathbf{b}-\mathbf{b}_0\| < 0.5\f$ |
-| `HartmannTwoWay/` | the **quantitative** two-way follow-up announced by `Coupled_Feedback`: a channel driven by an imposed pressure difference with both feedbacks live — the solved \f$u\f$ relaxes to the analytic Hartmann profile (\f$\mathrm{Ha}=5\f$, centreline 12.7× below Poiseuille, core error < 1 %), the stretching source induces the analytic \f$b_x\f$ from the *solved* velocity, and the open boundaries impose the analytic magnetic-pressure profile \f$p(y) = P - b_x(y)^2/(2\mu_0)\f$ (which kills the spurious cross-flow a uniform \f$p\f$ would leave); a **Hartmann-number scan** (\f$\mathrm{Ha} \in \{2.5, 5, 7.9\}\f$) maps the suppression factor \f$\sigma(\mathrm{Ha}) = \mathrm{Ha}^2/(2(1-1/\cosh\mathrm{Ha}))\f$ — the low-Rm regime map of PLAN_mhd_coupled §2.5 |
+| `HartmannTwoWay/` | the **quantitative** two-way follow-up announced by `Coupled_Feedback`: a channel driven by an imposed pressure difference with both feedbacks live — the solved \f$u\f$ relaxes to the analytic Hartmann profile (\f$\mathrm{Ha}=5\f$, centreline 12.7× below Poiseuille, core error < 1 %), the stretching source induces the analytic \f$b_x\f$ from the *solved* velocity, and the open boundaries impose the analytic magnetic-pressure profile \f$p(y) = P - b_x(y)^2/(2\mu_0)\f$; scans \f$Re_H=\rho U_H(0)L/\mu \in \{0.01,0.1,1,10\}\f$ × \f$Ha \in \{2.5,5,7.9\}\f$ (12 points) at fixed \f$Rm=0.1\f$, asserting the exact suppression factor and field profiles |
 | `ErrorInputs/` | the four merged malformed-input datasets (`error_bad_force`, `error_missing_ps`, `error_two_way_no_ns`, `error_two_way_both_velocities`): each rejected with a non-zero exit and a readable diagnostic (also removing the historical duplicate `Error_MissingPressureSolver` row) |
 
-The **Ha axis** of the low-Rm regime map is covered by `HartmannTwoWay`'s
-Hartmann-number scan (above); the **Re axis** and the **Shercliff 3D duct**
-(Tassone et al. Fig. 6) remain open targets. The coupled mode itself is
+An exploratory \f$(Re_H,Ha)=(100,7.9)\f$ case left the Hartmann branch in
+the finite-length channel, so that higher-Re endpoint is not part of the
+validated grid.
+
+`HartmannTwoWay` now covers the full discrete \f$Re_H\times Ha\f$ parameter
+grid for the exact Hartmann solution. Because this fully developed channel has
+\f$u\cdot\nabla u=0\f$, the grid does not validate inertial Re dependence; a
+non-fully-developed geometry is still needed for that, as is the coupled
+**Shercliff 3D duct** (Tassone et al. Fig. 6). The coupled mode itself is
 documented in @ref TrustLiMe_model "Problems, equations and boundary conditions".
 
 Every dataset is **self-contained**: the mesh is generated inline with `Mailler`/`Pave`,

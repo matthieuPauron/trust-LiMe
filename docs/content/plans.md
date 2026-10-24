@@ -147,9 +147,18 @@ The time stepping is a lagged staggered scheme,
     (\f$\mathrm{Ha} \in \{2.5, 5, 7.9\}\f$) maps the suppression factor
     \f$\sigma(\mathrm{Ha}) = \mathrm{Ha}^2/(2(1-1/\cosh\mathrm{Ha}))\f$
     within 1.5 % at every point.
-  - **Re axis — open.** The scan runs at a single Reynolds number, so the
-    \f$\mathrm{Ha}/\mathrm{Re}\f$ regime map of `PLAN_mhd_coupled.md` §2.5 is
-    only half covered.
+  - **Re × Ha grid — added in `HartmannTwoWay`.** The 12-point sweep spans
+    \f$Re_H \in \{0.01,0.1,1,10\}\f$ and
+    \f$Ha \in \{2.5,5,7.9\}\f$ at fixed \f$Rm=0.1\f$. It checks the
+    requested Reynolds and magnetic Reynolds numbers, velocity and induced-field
+    profiles, suppression factor, cross-flow and applied-field invariant at every point.
+    Here \f$Re_H=\rho U_H(0)L/\mu\f$ with \f$L=1\f$. **Scope limit:** this fully developed channel has
+    \f$u\cdot\nabla u=0\f$, so it verifies the analytic scaling across the
+    grid but cannot validate an inertial Re transition or the general
+    \f$M=Ha/\sqrt{Re}\f$ regime map. That needs a geometry with nonzero
+    convective acceleration. The exploratory \f$(Re_H,Ha)=(100,7.9)\f$
+    point left the Hartmann branch in this finite duct and is not included in
+    the validated interval.
   - **Shercliff 3D duct — open** (Tassone et al. Fig. 6). The case still needs
     completion and validation: full vector \f$b=(b_x,0,B_0)\f$, both feedbacks
     live, open pressure boundaries with an imposed magnetic-pressure profile.
