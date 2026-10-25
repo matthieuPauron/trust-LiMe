@@ -1,3 +1,5 @@
+@page TrustLiMe_plan_inductturb Plan: induction turbulence
+
 # Plan — Induction turbulence (k-ε) for trust-LiMe
 
 Status (2026-10-24): **Prescribed and k-ε-derived effective magnetic
@@ -394,12 +396,12 @@ a qualitative side-by-side comparison until this port is done.
 - `src/Convection_Diffusion_Magnetic_field.{h,cpp}`: keyword + diffusivity sum.
 - `src/Terme_Source_*` (optional): EDM as a source if not folded into diffusivity.
 - Validation: `MagneticStandalone/TurbulentDiffusion/` (2D) + 3D twin.
-- `AGENTS.md`, `KERNEL_REUSE_NOTES.md`, `docs/content/model.md`.
+- `AGENTS.md`, `docs/content/dev_corner/kernel_reuse.md`, `docs/content/model.md`.
 ### Phase 4 — hydraulic k-ε coupling (IMPLEMENTED 2026-10-22)
 - The hydraulic k-ε model is carried by `Navier_Stokes_turbulent`, which is
   equation 0 of `Pb_MHD_Turbulent` (a `Pb_Hydraulique_Turbulent`); the
   magnetic equation is equation 1. This is what the hierarchy refactor
-  (§20 of `KERNEL_REUSE_NOTES.md`) made possible — the old `Pb_MHD` had no
+  (§20 of `docs/content/dev_corner/kernel_reuse.md`) made possible — the old `Pb_MHD` had no
   turbulent momentum equation at all.
 - In `completer()`, when `vitesse_hydraulique` is set and no explicit k/eps
   fields are given, grab the momentum equation's turbulence model fields

@@ -1,5 +1,5 @@
 # VKS-sodium: 3D coupled MHD with real sodium properties (design case). #
-# Uses the true sodium values from PLAN_vks.md (T ~ 120 C). The Reynolds  #
+# Uses the true sodium values from docs/content/plans/vks.md (T ~ 120 C). The Reynolds  #
 # number is high (Re ~ 1e5), so this case needs a turbulent Navier-Stokes  #
 # problem type (Navier_Stokes_Turbulent) and a turbulence model (k-eps)     #
 # before it can run; kept here as a reference/template, not a runnable case. #

@@ -651,7 +651,7 @@ bool Convection_Diffusion_Magnetic_field::has_champ(const Motcle& nom) const
  *  is being read (both the `champs { ... }` and the `Sondes { ... }` paths).
  *  The u-dependent fields also trigger the one-time preparation of the
  *  velocity auxiliary element values (and of the element gradient), exactly
- *  like the induction_stretching source term (see KERNEL_REUSE_NOTES.md).
+ *  like the induction_stretching source term (see docs/content/dev_corner/kernel_reuse.md).
  */
 void Convection_Diffusion_Magnetic_field::creer_champ(const Motcle& motlu)
 {
@@ -747,7 +747,7 @@ void Convection_Diffusion_Magnetic_field::get_noms_champs_postraitables(Noms& no
  *  + d].  Those rows only exist after init_auxiliary_variables(); with an
  *  Elem unknown nobody requests them, so they must be requested here
  *  explicitly or the reads return out-of-bounds garbage (see
- *  KERNEL_REUSE_NOTES.md "Getting a velocity gradient for free").
+ *  docs/content/dev_corner/kernel_reuse.md "Getting a velocity gradient for free").
  */
 void Convection_Diffusion_Magnetic_field::preparer_vitesse_aux_elems() const
 {
@@ -806,7 +806,7 @@ void Convection_Diffusion_Magnetic_field::vitesse_aux_elements(DoubleTab& u_elem
  *
  *  The kernel field stores the element gradient at row nb_faces_tot + e*dim+j,
  *  column i (i.e. the transpose of the natural per-element layout, as
- *  documented in KERNEL_REUSE_NOTES.md "Getting a velocity gradient for
+ *  documented in docs/content/dev_corner/kernel_reuse.md "Getting a velocity gradient for
  *  free", used by Terme_Source_Induction_stretching).
  */
 void Convection_Diffusion_Magnetic_field::gradient_vitesse_elements(DoubleTab& g) const

@@ -89,7 +89,10 @@ else
                 tests/UnitTests/unit_induction_source.cpp
                 tests/UnitTests/unit_lorentz_source.cpp
                 tests/UnitTests/unit_induction_kernel.cpp
-                tests/UnitTests/unit_mhd_posttraitement_kernel.cpp)
+                tests/UnitTests/unit_mhd_posttraitement_kernel.cpp
+                tests/UnitTests/unit_turbulent_closure.cpp
+                tests/UnitTests/unit_champ_fonc.cpp
+                tests/UnitTests/unit_boundary_conditions.cpp)
   module_sources=(src/Convection_Diffusion_Magnetic_field.cpp
                   src/Convection_Diffusion_K_Magnetic.cpp
                   src/Convection_Diffusion_Epsilon_Magnetic.cpp
@@ -104,6 +107,7 @@ else
                   src/Terme_Source_Induction_stretching.cpp
                   src/Terme_Source_Lorentz.cpp
                   src/Paroi_isolante_magnetique.cpp
+                  src/Paroi_conductrice_magnetique.cpp
                   src/Champ_Fonc_MHD.cpp
                   src/Champ_Fonc_Somme.cpp
                   src/Champ_Fonc_Eta_Turbulent.cpp)

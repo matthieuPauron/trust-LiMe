@@ -1,3 +1,5 @@
+@page TrustLiMe_endgoal End goal: VKS experiment
+
 # End Goal: Full Simulation of the CEA VKS Experiment
 
 ## 1. Introduction to the VKS Experiment
@@ -118,7 +120,7 @@ Implementation approach:
 - `k-epsilon` model implemented through source terms
 - LES possible through `Schema_LES` and subgrid-scale models
 - User-defined source terms via `Terme_Source` for custom MHD terms
-- *Note: the magnetic induction equation in trust-LiMe assumes molecular magnetic diffusivity η only (no turbulent EDM); see turbulence section of END_GOAL.md §2.2 and AGENTS.md "Known gaps" for the deferral rationale.*
+- *Note: the magnetic induction equation in trust-LiMe assumes molecular magnetic diffusivity η only (no turbulent EDM); see turbulence section of docs/content/end_goal.md §2.2 and AGENTS.md "Known gaps" for the deferral rationale.*
 **VKS-specific TRUST features:**
 - Spherical geometry handling through polyhedral meshes
 - Two impeller rotation implemented through moving mesh or body force

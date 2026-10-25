@@ -116,7 +116,7 @@ Because the assembler is never overridden, `Equation_base::assembler_blocs`
 handles the `Polymac_p0` case directly (for a poly family, the concrete energy
 equation delegates to it as well).
 
-See `KERNEL_REUSE_NOTES.md` (repository root) for the kernel facts this design
+See `docs/content/dev_corner/kernel_reuse.md` (repository root) for the kernel facts this design
 relies on, with pointers to the exact kernel sources.
 
 ---
@@ -140,7 +140,7 @@ Inside the `Convection_Diffusion_Magnetic_field` block:
 | `sources` | block | inherited | — | Kernel source framework; enables the M1 `induction_stretching` term. |
 | `initial_conditions` | block | **yes** | — | `magnetic_field <Champ_...> ...` |
 | `boundary_conditions` | block | **yes** | — | Kernel scalar CLs (see *Boundary conditions*). |
-| `modele_turbulence_magnetique` | block | no | off | Independent magnetic k-ε closure (k_b, epsilon_b transport equations): `eta_t = C_mu_b*k_b^2/(epsilon_b*Pm_t_b)`, Alfvén-normalized. Mutually exclusive with explicit eta_t / k / epsilon fields. See PLAN_induction_turbulence.md. |
+| `modele_turbulence_magnetique` | block | no | off | Independent magnetic k-ε closure (k_b, epsilon_b transport equations): `eta_t = C_mu_b*k_b^2/(epsilon_b*Pm_t_b)`, Alfvén-normalized. Mutually exclusive with explicit eta_t / k / epsilon fields. See docs/content/plans/induction_turbulence.md. |
 | `correction_divergence` | block | no | off | Opt-in projection enforcing the equation's Pass-1 magnetic divergence; see below. |
 
 **Ordering matters:** keywords are processed in the order they appear in the
@@ -284,7 +284,7 @@ equation:
 - \f$\nabla\mathbf{b}\f$ comes from the same Green-Gauss
   `gradient_b_elements()` used by the post-treatment fields (exact at interior
   cells, O(h) wall bias — see the divergence note above and
-  `KERNEL_REUSE_NOTES.md`);
+  `docs/content/dev_corner/kernel_reuse.md`);
 - divided by the fluid density: momentum sources are per **unit mass**
   (gravity/Boussinesq convention);
 - assembled on the face-based velocity unknown following the kernel

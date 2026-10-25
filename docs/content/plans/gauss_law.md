@@ -1,3 +1,5 @@
+@page TrustLiMe_plan_gausslaw Plan: Gauss' law enforcement
+
 # Plan — Gauss' law enforcement (Path 2: opt-in divergence correction)
 
 **Status (2026-10-24): 2D/3D validation and incompatible-flux rejection pass.**
@@ -29,7 +31,7 @@ rationale, then the concrete implementation plan.
   `divergence_magnetique` probe — is `tr(∇b)` from Green–Gauss with centred
   face averages (`gradient_b_elements`, Pass 1 + B2).
 - Without the opt-in `correction_divergence` block, that divergence remains an
-  assumption (Path 1, `KERNEL_REUSE_NOTES.md` §11bis). With the block enabled,
+  assumption (Path 1, `docs/content/dev_corner/kernel_reuse.md` §11bis). With the block enabled,
   the implementation projects the field in this discrete measure; it does not
   enforce every flux-based divergence associated with other discretizations.
 
@@ -146,7 +148,7 @@ A per-step magnetic Hodge projection owned by
    `ErrorInputs` assertion pass. The full PDF sweep ran 31/32 reportable forms;
    the only failure is the unrelated in-progress `HartmannTwoWay` scan reset.
    The full kernel-linked unit run and sanitizer validation remain open.
-   Synchronize `KERNEL_REUSE_NOTES.md` §11bis and `AGENTS.md`.
+   Synchronize `docs/content/dev_corner/kernel_reuse.md` §11bis and `AGENTS.md`.
 
 ---
 
@@ -202,7 +204,7 @@ by `tension_magnetique` / `force_lorentz`) is driven to solver tolerance.
    divergence assertion sequentially on odd x-cell counts. The merged
    `ErrorInputs` form asserts clean rejection of incompatible net flux.
 6. **Docs — updated:** `model.md`, `test_cases.md`, `docs/content/plans.md`,
-   `docs/content/validation.md`, `KERNEL_REUSE_NOTES.md` §11bis and `AGENTS.md`
+   `docs/content/validation.md`, `docs/content/dev_corner/kernel_reuse.md` §11bis and `AGENTS.md`
    document the mechanism, coverage and remaining regression/sanitizer gates.
 
 ### 6.3 Sequence

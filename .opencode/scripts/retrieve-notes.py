@@ -5,7 +5,7 @@ Usage:
     retrieve-notes.py <query words...> [--top N] [--max-lines M] [--list]
     retrieve-notes.py --list [file]
 
-Searches KERNEL_REUSE_NOTES.md, PLAN_*.md and docs/content/*.md, splits them
+Searches docs/content/dev_corner/kernel_reuse.md, PLAN_*.md and docs/content/*.md, splits them
 into heading-delimited sections, ranks them with BM25, and prints the best
 sections with their source location.
 """
@@ -21,11 +21,14 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 
 def default_files():
     out = []
-    krn = os.path.join(REPO, "KERNEL_REUSE_NOTES.md")
+    krn = os.path.join(REPO, "docs/content/dev_corner/kernel_reuse.md")
     if os.path.exists(krn):
         out.append(krn)
-    for p in sorted(glob.glob(os.path.join(REPO, "PLAN_*.md"))):
+    for p in sorted(glob.glob(os.path.join(REPO, "docs", "content", "plans", "*.md"))):
         out.append(p)
+    endgoal = os.path.join(REPO, "docs/content/end_goal.md")
+    if os.path.exists(endgoal):
+        out.append(endgoal)
     for p in sorted(glob.glob(os.path.join(REPO, "docs", "content", "*.md"))):
         out.append(p)
     return out

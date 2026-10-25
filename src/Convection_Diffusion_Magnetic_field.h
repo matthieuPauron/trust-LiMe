@@ -163,7 +163,7 @@ public:
 
   // Velocity interpolated at the elements.  The field is face-centred; its
   // element values are auxiliary variables, requested on first need
-  // (see KERNEL_REUSE_NOTES.md "Getting a velocity gradient for free").
+  // (see docs/content/dev_corner/kernel_reuse.md "Getting a velocity gradient for free").
   void vitesse_aux_elements(DoubleTab& u_elem) const;
 
   // Element block of the kernel `gradient_vitesse` field, re-extracted in the
@@ -196,8 +196,8 @@ protected:
   // Magnetic diffusivity eta, read from the `diffusivite_magnetique` keyword.
   // Assumed molecular (no turbulent EDM ηₜ): the validation suite uses laminar or
   // prescribed‑mean‑flow velocity fields.  A turbulent contribution
-  // (ηₜ from k‑ε → ∇×(u'×b'̄) ≈ −ηₜ∇×B̄) is deferred to END_GOAL.md Phase 3
-  // (dynamo threshold); see turbulence section of END_GOAL.md §2.2 and TRUST §3.1.
+  // (ηₜ from k‑ε → ∇×(u'×b'̄) ≈ −ηₜ∇×B̄) is deferred to docs/content/end_goal.md Phase 3
+  // (dynamo threshold); see turbulence section of docs/content/end_goal.md §2.2 and TRUST §3.1.
   OWN_PTR(Champ_Don_base) diffusivite_magnetique_;
   OWN_PTR(Champ_Don_base) diffusivite_turbulente_magnetique_;
   OWN_PTR(Champ_Don_base) diffusivite_effective_;

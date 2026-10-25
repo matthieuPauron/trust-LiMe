@@ -166,7 +166,7 @@ void Terme_Source_Induction_stretching::maj_grad_u() const
 
   // Refresh the velocity's element values (auxiliary rows of the face field)
   // so the gradient operator reads the current u.  Idempotent, same recipe
-  // as initialiser() -- see KERNEL_REUSE_NOTES.md "Getting a velocity
+  // as initialiser() -- see docs/content/dev_corner/kernel_reuse.md "Getting a velocity
   // gradient for free".
   if (sub_type(Champ_Face_PolyMAC_MPFA, vit))
     {

@@ -1,3 +1,5 @@
+@page TrustLiMe_plan_vks Plan: VKS simulation
+
 # VKS (Von Kármán Sodium) Simulation Plan — trust-LiMe baltik
 
 **Status (2026-10-24): VKS simulation not started; enabling foundations are
@@ -81,7 +83,7 @@ with **turbulent magnetic diffusivity** η_t (EDM) added:
 The equation accepts molecular η plus an effective η_t supplied as a field,
 computed from magnetic k/ε fields, or obtained from the hydraulic k-ε model.
 The magnetic-fluctuation transport equations and a calibrated VKS EDM closure
-remain deferred (see `PLAN_induction_turbulence.md` and `END_GOAL.md` §2.2).
+remain deferred (see `docs/content/plans/induction_turbulence.md` and `docs/content/end_goal.md` §2.2).
 
 ### 2.2 Momentum equation (TRUST Navier-Stokes)
 ```

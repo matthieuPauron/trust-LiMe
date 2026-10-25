@@ -12,7 +12,7 @@
  * same problem (found by unknown name "magnetic_field", the Terme_Boussinesq
  * pattern).  b is lagged (the source is explicit: dimensionner_blocs()
  * contributes nothing to the Jacobian), consistent with the kinematic
- * low-Rm approximation of the coupled plan (PLAN_mhd_coupled.md, D6).
+ * low-Rm approximation of the coupled plan (docs/content/plans/mhd_coupled.md, D6).
  *
  * The force is divided by the fluid density: like every TRUST Navier-Stokes
  * volumetric source (gravity/Boussinesq precedent), the second member is a

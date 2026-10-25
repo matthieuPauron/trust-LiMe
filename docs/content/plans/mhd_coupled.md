@@ -1,3 +1,5 @@
+@page TrustLiMe_plan_mhdcoupled Plan: coupled MHD
+
 # Coupled MHD Simulations Plan — trust-LiMe baltik
 
 > **STATUS (2026-10-24): COUPLING FOUNDATION COMPLETE — historical plan.**
@@ -10,7 +12,7 @@
 > this is not an inertial-Re regime map. The validated 3D Shercliff duct remains open.
 > Magnetic fluctuation transport, MHD turbulence closure,
 > Ohmic heating, and high-Rm dynamo physics remain future work. The low-Rm
-> sign/boundary/matrix review is documented in KERNEL_REUSE_NOTES.md §22;
+> sign/boundary/matrix review is documented in docs/content/dev_corner/kernel_reuse.md §22;
 > the sanitizer pass is still open. The checkboxes
 > below were never ticked and are superseded by `AGENTS.md` and
 > `docs/content/plans.md`; read this file as original design intent, not as a
@@ -66,7 +68,7 @@ where `J = curl B / μ₀` is the current density and `J × B` is the **Lorentz 
 
 ---
 
-## 2. Improvement Over `PLAN_magnetic_standalone.md`
+## 2. Improvement Over `docs/content/plans/magnetic_standalone.md`
 
 | Aspect | Standalone (M0/M1) | Coupled MHD |
 |--------|-------------------|-------------|
@@ -141,7 +143,7 @@ benchmark cases pass.
 - [ ] **4.2** Fill `docs/content/test_cases.md` (coupled MHD cases + how to run)
 - [ ] ** ] 4.3 Sanitizer pass: ASan/UBSan on coupled cases
 - [ ] **4.4** Review checklist: sign conventions, Lorentz force, div-b, matrix symmetry
-- [ ] **4.5** Append to `KERNEL_REUSE_NOTES.md`: coupled MHD sign conventions,
+- [ ] **4.5** Append to `docs/content/dev_corner/kernel_reuse.md`: coupled MHD sign conventions,
        Ha-Re-M matrix, low-Rm approximation limits
 
 **Acceptance**: all notebooks execute; sanitizers pass; documentation complete.

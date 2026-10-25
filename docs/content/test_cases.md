@@ -237,7 +237,7 @@ Design choices worth knowing:
   therefore compared **tightly in the duct core** and only against a
   **documented bound** inside the Hartmann layer; the deviation is odd, converges
   at first order, and that bound is a regression guard to be tightened once the
-  boundary treatment is fixed (see `KERNEL_REUSE_NOTES.md`).
+  boundary treatment is fixed (see `docs/content/dev_corner/kernel_reuse.md`).
 - **Negative cases are run directly** with the `trust` command rather than
   through `runCases()` (which would abort the notebook); each negative form
   (`Error*`) asserts a non-zero exit code and a non-empty diagnostic.
@@ -274,7 +274,7 @@ one notebook, one form folder):
 | `pulsation_cyclotronique` | \f$ (q/m)|b| = 10 \f$ (vector), \f$ 2 \f$ (scalar) | \f$ (0.45,0.55) \f$; \f$ (0.375)^3 \f$ |
 | `helicite_cinetique` | \f$ u\cdot(\nabla\times u) = -(x+y+z) \f$ | \f$ (0.375)^3 \f$ |
 
-Design notes (details in `KERNEL_REUSE_NOTES.md` §11ter):
+Design notes (details in `docs/content/dev_corner/kernel_reuse.md` §11ter):
 
 - **Every constant is non-default** (\f$ \mu_0 \f$, \f$ q/m \f$, \f$ \mu \f$,
   \f$ \rho \f$, \f$ \eta \f$), so an implementation with a hard-coded \f$ 1 \f$

@@ -11,9 +11,9 @@ warnings/errors.
 
 # trust-LiMe coding (C++ baltik module)
 
-## First: read KERNEL_REUSE_NOTES.md
+## First: read docs/content/dev_corner/kernel_reuse.md
 
-`KERNEL_REUSE_NOTES.md` (repo root) is the accumulated knowledge base:
+`docs/content/dev_corner/kernel_reuse.md` (repo root) is the accumulated knowledge base:
 kernel class choices, keyword-reading order, CL compatibility rules, the
 `Champ_Inc_base` transporting-velocity requirement, field factories, and
 pointers to exact kernel sources. **Read it before extending the module;

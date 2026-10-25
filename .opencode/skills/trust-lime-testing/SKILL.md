@@ -35,7 +35,7 @@ parsing — no mesh, no solver.
 
 Baltik generates no `unit` target; the script drives the build itself using
 flags from `compile_commands.json` and the link line from baltik's recorded
-`link.txt`. See `tests/UnitTests/README.txt` and `KERNEL_REUSE_NOTES.md`
+`link.txt`. See `tests/UnitTests/README.txt` and `docs/content/dev_corner/kernel_reuse.md`
 §7ter. Run these before notebook validation — seconds vs minutes.
 
 ## Build orchestration

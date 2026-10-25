@@ -10,7 +10,7 @@ own sources (`src/`), tests (`tests/`, `share/Validation/`) and documentation.
 - Kernel headers are included **with** `.h`: `#include <Convection_Diffusion_Temperature.h>`.
 - `.clang-format` is provided; auto-format on write is off.
 - Reuse kernel base classes rather than reimplementing (see
-  `KERNEL_REUSE_NOTES.md`).
+  `docs/content/dev_corner/kernel_reuse.md`).
 
 ## Validation rules
 

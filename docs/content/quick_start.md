@@ -9,7 +9,7 @@ generated copy of this documentation.
 - The TRUST Python environment (`venv_trust`).
 - CMake / the baltik toolchain provided by TRUST.
 
-See the project `README.md` and `AGENTS.md` for host-specific notes (laptop vs.
+See the project `docs/content/readme.md` and `AGENTS.md` for host-specific notes (laptop vs.
 workstation, thread counts).
 
 ## Sourcing the environment

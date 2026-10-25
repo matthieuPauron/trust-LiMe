@@ -1,3 +1,5 @@
+@page TrustLiMe_plan_magstandalone_improved Plan: improved MHD integration
+
 # Improved Work Plan — MHD Integration in trust-LiMe baltik
 
 > **STATUS (2026-10-24): SUPERSEDED — historical design record.** M0/M1,
@@ -14,7 +16,7 @@
 This plan describes how to integrate Magnetohydrodynamics (MHD) models described in the
 documentation textbooks (Davidson 2001, Gérard-Varet 2006, Tassone et al. 2024) into the
 trust-LiMe baltik application. It improves upon both the current implementation and the
-existing `PLAN_magnetic_standalone.md` plan by:
+existing `docs/content/plans/magnetic_standalone.md` plan by:
 
 - **Proper vector treatment** of the magnetic field `b` (ndim components, not scalar)
 - **Consistent sign conventions** matching the MHD literature
@@ -78,7 +80,7 @@ is explicit with lagged `b`, consistent with kinematic MHD.
 
 ---
 
-## 2. Improvement Areas Over `PLAN_magnetic_standalone.md`
+## 2. Improvement Areas Over `docs/content/plans/magnetic_standalone.md`
 
 | Aspect | Original Plan | Improved Plan |
 |--------|--------------|---------------|
@@ -168,7 +170,7 @@ toggling `source_etirement` off reproduces Phase 2 results.
        run M0/M1/Lorentz cases, revert `project.cfg`.
 - [ ] **5.4** Review via `.opencode/commands/review.md` checklist (sign conventions,
        BCs, Gauss-law handling, matrix symmetry, Lorentz infrastructure).
-- [ ] **5.5** Append findings to `KERNEL_REUSE_NOTES.md`: vector BCs, MHD sign conventions,
+- [ ] **5.5** Append findings to `docs/content/dev_corner/kernel_reuse.md`: vector BCs, MHD sign conventions,
        Ha-number post-processing, low-Rm approximation.
 
 **Acceptance**: all notebooks execute; sanitizers pass; documentation complete;

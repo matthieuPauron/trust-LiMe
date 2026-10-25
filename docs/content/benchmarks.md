@@ -112,7 +112,7 @@ merged per category) are excluded by design.
   `b×n = 0`, needs per-component CL class.
 - **3D twins** for `HartmannTwoWay`, `ForceLorentzBalance`, `Coupled_Feedback`.
 - **div-b enforcement** (Path 2, pressure-correction approach).
-- **Turbulent EDM/VKS** (END_GOAL.md Phase 3).
+- **Turbulent EDM/VKS** (docs/content/end_goal.md Phase 3).
 - **§18.2 kernel fix** (upstream code audit of `Op_Diff_PolyMAC_MPFA_Elem`).
 
 ## Unit tests

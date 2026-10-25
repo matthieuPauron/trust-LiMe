@@ -44,7 +44,7 @@
       "unit": "W m^-1 K^-1",
       "source": "Monchaux2007",
       "location": "Properties table: thermal conductivity",
-      "notes": "Used in the thermal property table of PLAN_vks.md."
+      "notes": "Used in the thermal property table of docs/content/plans/vks.md."
     },
     {
       "id": "sodium_specific_heat",
@@ -53,7 +53,7 @@
       "unit": "J kg^-1 K^-1",
       "source": "Monchaux2007",
       "location": "Properties table: specific heat",
-      "notes": "Used in the thermal property table of PLAN_vks.md."
+      "notes": "Used in the thermal property table of docs/content/plans/vks.md."
     },
     {
       "id": "sodium_magnetic_diffusivity",

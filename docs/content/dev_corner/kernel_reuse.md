@@ -1,3 +1,5 @@
+@page TrustLiMe_dc_kernelreuse Kernel reuse notes
+
 # trust-LiMe × trust-code kernel reuse notes
 
 Running notes collected while building the standalone magnetic module. The goal is
@@ -168,7 +170,7 @@ existing CL family, the equation must report a domain that family declares.
   `Neumann_Paroi_adiabatique`; `paroi_flux_impose` → `Neumann_Paroi`.
 
 Dedicated magnetic CL keyword aliases are deferred (they would need small new
-classes). See `PLAN_magnetic_standalone.md` (D4).
+classes). See `docs/content/plans/magnetic_standalone.md` (D4).
 
 ---
 
@@ -1422,7 +1424,7 @@ computed successfully".
 
 ## 22. Consolidation review of the coupled (low-Rm) path (2026-10-24)
 
-Review checklist requested by `PLAN_mhd_coupled.md` §4.4, applied to the
+Review checklist requested by `docs/content/plans/mhd_coupled.md` §4.4, applied to the
 low-Rm two-way path (`Pb_MHD`, `Pb_MHD_Turbulent`, `Terme_Source_Lorentz`,
 `MHD_Coupling`, `vitesse_hydraulique` / `induction_stretching`).
 
@@ -1519,7 +1521,7 @@ preserve history. They are status reports, not live guidance.
   its detection was tripped by a `# … #` comment line, mangling
   `solveur_pression Petsc Cholesky { }` into `Petsc GCP { … }`, which diverged
   (`KSP_DIVERGED_NANORINF`). The comment now mentions PETSc on every line. See
-  `KERNEL_REUSE_NOTES.md` §15 (make_PAR.data text-processing traps).
+  `docs/content/dev_corner/kernel_reuse.md` §15 (make_PAR.data text-processing traps).
 - **MMS forms (2D + 3D twins, all parallel-ported and passing)**: the MMS notebooks now carry
   asserts — Diff2D/Trig2D and Poly_3D/Trig3D pin the invariance of the uniform (0, 1) field
   (the datasets as written are invariance cases, not decaying modes), Diff2D…3D pin the
@@ -1533,7 +1535,7 @@ preserve history. They are status reports, not live guidance.
   `courant_magnetique`; it is the **only** 3D standalone form exercising the
   full vector model, `nb_composantes 3`). Its standard/fine scan levels run on
   1 rank with `execOptions="1"` — the missing argv count is a §18.2 crash
-  layout; see the form's notebook and `KERNEL_REUSE_NOTES.md` §18.2.
+  layout; see the form's notebook and `docs/content/dev_corner/kernel_reuse.md` §18.2.
   `Hartmann1D` 2D/3D differ in probe sets by design. (The `MMS_Poly_2D`
   gap closed itself: the four 2D MMS forms are merged into `MMS_2D`, the
   four 3D twins into `MMS_3D`.) Fine for now, worth a sweep once the
@@ -1558,9 +1560,9 @@ preserve history. They are status reports, not live guidance.
   `Solve` and the closure is not validated. Two discretisation limits remain
   upstream: `Op_Diff_VEF_Face` aborts for a vector magnetic unknown on VEF,
   and no PolyMAC wall law exists, so a turbulent *validation form* is not
-  wired yet — see `PLAN_induction_turbulence.md` Phases 3-4.
+  wired yet — see `docs/content/plans/induction_turbulence.md` Phases 3-4.
 - **§18.2 kernel heisenbug (guarded 2026-10-22)**: `Op_Diff_PolyMAC_MPFA_Elem::calculer_dt_stab()` now skips denormal `volumes_entrelaces`/flux contributions, so parallel forms (e.g. Champs3D fine scale) run cleanly on 2 ranks. The underlying uninitialized read in the kernel parallel init path is not pinned; the guard is robustness, not a root-cause fix.
-- **Strong (Picard) coupling (opt-in, 2026-10-22)**: `couplage_fort { }` (+ `nb_iterations_couplage`, `tolerance_couplage`) on the magnetic equation enables Picard sweeps of the two-way magnetic<->momentum coupling. Default off preserves the green baseline. See `KERNEL_REUSE_NOTES.md` §20.
+- **Strong (Picard) coupling (opt-in, 2026-10-22)**: `couplage_fort { }` (+ `nb_iterations_couplage`, `tolerance_couplage`) on the magnetic equation enables Picard sweeps of the two-way magnetic<->momentum coupling. Default off preserves the green baseline. See `docs/content/dev_corner/kernel_reuse.md` §20.
 
 Authoring/running rules, trustutils API, dataset syntax, and the headless
 nbconvert recipe: **`trust-lime-notebooks` skill**. The gate for adding new
@@ -1586,7 +1588,7 @@ Reuse kernel base classes (e.g. subclass `Convection_Diffusion_Temperature`)
 rather than reimplementing; see the recipe in the `trust-lime-coding` skill.
 Kernel sources are available as the `trust-kernel` / `trust-include` references.
 
-**`KERNEL_REUSE_NOTES.md` (repository root) is the accumulated knowledge base**:
+**`docs/content/dev_corner/kernel_reuse.md` (repository root) is the accumulated knowledge base**:
 kernel class choices, keyword-reading order, CL compatibility rules, the
 `Champ_Inc_base` requirement for the transporting velocity, field factories, and
 pointers to the exact kernel sources. Read it before extending the module, and
@@ -1610,9 +1612,9 @@ append new findings there.
   part of the contract — equation 0 is always the momentum equation (the
   medium is discretised through it). The kernel matches data-file blocks by
   name, so either order works, but every dataset writes the momentum block
-  first. See `KERNEL_REUSE_NOTES.md` §20.
+  first. See `docs/content/dev_corner/kernel_reuse.md` §20.
 - The module solves the **standalone** magnetic induction equation
-  (see `docs/content/model.md` and `PLAN_magnetic_standalone.md`).
+  (see `docs/content/model.md` and `docs/content/plans/magnetic_standalone.md`).
 - Validation cases: `share/Validation/Rapports_automatiques/MagneticStandalone/`
   (2D) and `MagneticStandalone3D/` (the 3D twins, same form names) —
   self-contained `Mailler`/`Pave` meshes (3D uses `Polyedriser dom`),
@@ -1652,15 +1654,15 @@ append new findings there.
   dimension**: `Champs2D/` (eleven 2D fields, two datasets — the `η = 0`
   gradient family and the `η > 0` transport family) and `Champs3D/` (the two
   fields with no meaningful 2D image, plus the `nb_composantes 1` scalar
-  branch of the `|b|²` fields). The recipe lives in `KERNEL_REUSE_NOTES.md`
+  branch of the `|b|²` fields). The recipe lives in `docs/content/dev_corner/kernel_reuse.md`
   §11.
 - The `induction_stretching` source needs the velocity face field's
   **auxiliary element variables** or `grad_u` reads garbage — see
-  `KERNEL_REUSE_NOTES.md` ("Getting a velocity gradient for free"). Its element
+  `docs/content/dev_corner/kernel_reuse.md` ("Getting a velocity gradient for free"). Its element
   gradient is also **biased in the two cells adjacent to a wall** (the kernel
   averages face gradients and a boundary face only gets a Dirichlet
   contribution; measured exactly halved for a linear velocity). `Hartmann1D`
-  documents and bounds that effect — see `KERNEL_REUSE_NOTES.md`.
+  documents and bounds that effect — see `docs/content/dev_corner/kernel_reuse.md`.
 - **Divergence of the magnetic field** `∇·b`: by default it remains an
   assumption (as for the thermalhydraulics velocity), but the magnetic equation
   now has an opt-in `correction_divergence { }` Hodge projection. It assembles
@@ -1674,8 +1676,8 @@ append new findings there.
   cells with homogeneous Neumann walls have O(h) accuracy from the zero-normal-
   gradient trace (`bf = b(e0)`). Non-homogeneous Dirichlet magnetic data are
   not preserved, and the projection does not cover every flux-based divergence
-  notion used by other discretizations. See `KERNEL_REUSE_NOTES.md` §11bis and
-  `PLAN_Gauss_law.md`.
+  notion used by other discretizations. See `docs/content/dev_corner/kernel_reuse.md` §11bis and
+  `docs/content/plans/gauss_law.md`.
 - **Coupled low-Rm mode (Lorentz force) is wired**: `Pb_MHD` accepts optional
   extra equations (kernel `eq_opt_` mechanism) — adding
   `Navier_Stokes_standard` to the problem block gives a two-equation coupled
@@ -1713,7 +1715,7 @@ append new findings there.
   benchmark. The Ha scan reproduces σ(Ha) = Ha²/(2(1−1/cosh Ha)) within 1.5 %.
   Recipe and traps (source-typing suffix, `solveur_pression`, the static
   `trust-lime_opt` rebuild, the `Operateur_Conv` wrapper two-hop binding)
-  in `KERNEL_REUSE_NOTES.md` §12bis/§12ter.
+  in `docs/content/dev_corner/kernel_reuse.md` §12bis/§12ter.
 - **Unit tests** live in `tests/UnitTests/` (GoogleTest, kernel conventions).
   The recorded full suite has 45 tests from 11 suites, including the
   `Terme_Source_Lorentz` data-file contract (`unit_lorentz_source.cpp`) and the

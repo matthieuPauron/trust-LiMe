@@ -110,7 +110,7 @@ skipped.
 
 - Move `paroi_conductrice_magnetique` from "deferred (Phase B.2)" to
   "implemented" in `docs/content/model.md` §4.
-- Update `docs/content/plans.md` §3 and `KERNEL_REUSE_NOTES.md` item 9.
+- Update `docs/content/plans.md` §3 and `docs/content/dev_corner/kernel_reuse.md` item 9.
 - Add a validation case: a Hartmann-type channel with conducting side walls,
   with 2D and 3D twins, run sequentially per the suite rules.
 
@@ -145,7 +145,7 @@ and physically important:
 - **Pressure drop and field screening** depend smoothly on \f$C\f$; the perfect-
   conductor limit over-predicts screening and can mis-estimate pressure drops in
   real components.
-- **VKs / industrial goals** (`END_GOAL.md`): impeller housings, ducts and
+- **VKs / industrial goals** (`docs/content/end_goal.md`): impeller housings, ducts and
   blankets are not superconductors; their finite conductance affects the dynamo
   threshold and the saturated field.
 

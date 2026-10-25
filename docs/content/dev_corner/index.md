@@ -5,12 +5,13 @@ how to contribute, and how the documentation itself is produced.
 
 - @subpage TrustLiMe_dc_contrib
 - @subpage TrustLiMe_dc_build
+- @subpage TrustLiMe_dc_kernelreuse
 - @subpage TrustLiMe_docsys
 - @subpage TrustLiMe_hermes
 
 ## Developer documentation
 
 - `AGENTS.md` (repository root) — agent/build conventions, skills, validation
-  rules.
-- `KERNEL_REUSE_NOTES.md` — accumulated kernel-reuse knowledge base.
-- `PLAN_*.md` / `END_GOAL.md` — planning documents.
+  rules (kept at root; not migrated).
+- `docs/content/dev_corner/kernel_reuse.md` — accumulated kernel-reuse knowledge base.
+- `docs/content/end_goal.md` and `docs/content/plans/*.md` — planning documents.

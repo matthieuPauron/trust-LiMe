@@ -1,7 +1,7 @@
 @page TrustLiMe_plans Roadmap and Next Steps
 
 This page condenses the project's planning documents — the `PLAN_*.md` and
-`END_GOAL.md` files at the repository root — into one view of what is **done**,
+`docs/content/end_goal.md` files at the repository root — into one view of what is **done**,
 what comes **next**, and what is deliberately **deferred**. The plain-Markdown
 originals remain the working documents: they are updated as work proceeds, and
 this page follows them.
@@ -43,14 +43,14 @@ Ohmic heating and high-\f$\mathrm{Rm}\f$ dynamo capability remain larger extensi
 
 | Stage | Content | Status | Plan document |
 |---|---|---|---|
-| Standalone M0/M1 | induction equation + stretching source | done | `PLAN_magnetic_standalone.md` |
-| Coupled C0 | kernel plumbing: optional equations, Lorentz source | done | `PLAN_mhd_coupled.md` |
-| Coupled C1 | low-Rm momentum coupling | **done** — one-way `force_lorentz`, two-way `vitesse_hydraulique` | `PLAN_mhd_coupled.md` |
-| Coupled C2 | low-\f$\mathrm{Rm}\f$ two-way NS+MHD coupling | **done**; close the Re scan and Shercliff 3D benchmark | `PLAN_mhd_coupled.md` |
-| Gauss-law projection | opt-in cell-centred Hodge projection | **implemented and validated** in 2D/3D; full-suite and sanitizer follow-up documented | `PLAN_Gauss_law.md` |
-| Turbulent induction | effective \f$\eta_t\f$ from fields or hydraulic k-\f$\varepsilon\f$ | **implemented**; magnetic fluctuation equations remain scaffolded | `PLAN_induction_turbulence.md` |
-| Coupled advanced physics | magnetic fluctuation transport, Ohmic heating, other benchmarks | open / staged | `PLAN_mhd_coupled.md` |
-| Dynamo / VKS | turbulent EDM, high-Rm regime | long term | `END_GOAL.md` |
+| Standalone M0/M1 | induction equation + stretching source | done | `docs/content/plans/magnetic_standalone.md` |
+| Coupled C0 | kernel plumbing: optional equations, Lorentz source | done | `docs/content/plans/mhd_coupled.md` |
+| Coupled C1 | low-Rm momentum coupling | **done** — one-way `force_lorentz`, two-way `vitesse_hydraulique` | `docs/content/plans/mhd_coupled.md` |
+| Coupled C2 | low-\f$\mathrm{Rm}\f$ two-way NS+MHD coupling | **done**; close the Re scan and Shercliff 3D benchmark | `docs/content/plans/mhd_coupled.md` |
+| Gauss-law projection | opt-in cell-centred Hodge projection | **implemented and validated** in 2D/3D; full-suite and sanitizer follow-up documented | `docs/content/plans/gauss_law.md` |
+| Turbulent induction | effective \f$\eta_t\f$ from fields or hydraulic k-\f$\varepsilon\f$ | **implemented**; magnetic fluctuation equations remain scaffolded | `docs/content/plans/induction_turbulence.md` |
+| Coupled advanced physics | magnetic fluctuation transport, Ohmic heating, other benchmarks | open / staged | `docs/content/plans/mhd_coupled.md` |
+| Dynamo / VKS | turbulent EDM, high-Rm regime | long term | `docs/content/end_goal.md` |
 
 ---
 
@@ -138,7 +138,7 @@ varying knob is `C_mu_magnetique`.
 
 ## 4. Coupled MHD — the C-phases {#TrustLiMe_plans_coupled}
 
-From `PLAN_mhd_coupled.md`. Both coupling directions are now implemented:
+From `docs/content/plans/mhd_coupled.md`. Both coupling directions are now implemented:
 the Lorentz force \f$J\times B\f$ (explicit, lagged \f$b\f$) acts on the
 momentum equation, and — with the `vitesse_hydraulique` keyword — the
 magnetic equation transports with the **solved NS velocity**
@@ -197,14 +197,14 @@ The time stepping is a lagged staggered scheme,
 ### C4 — consolidation
 
 Sign conventions, boundary conditions and matrix properties were reviewed and
-documented in `KERNEL_REUSE_NOTES.md` §22 (2026-10-24). The Lorentz force is
+documented in `docs/content/dev_corner/kernel_reuse.md` §22 (2026-10-24). The Lorentz force is
 \f$\mathbf{J}\times\mathbf{B}\f$ (per unit mass), the magnetic-pressure
 profile is required at open boundaries, and the explicit lagged source does not
 enter the Jacobian, so matrix symmetry stays a kernel-level property. The
 wall-gradient bias of `induction_stretching` remains a documented limitation.
 Still open: a full-kernel ASan/UBSan pass (the module-only environment is not
-configured here; the recipe is in `KERNEL_REUSE_NOTES.md` §18.2) and keeping
-`KERNEL_REUSE_NOTES.md` / the validation docs aligned as the implementation
+configured here; the recipe is in `docs/content/dev_corner/kernel_reuse.md` §18.2) and keeping
+`docs/content/dev_corner/kernel_reuse.md` / the validation docs aligned as the implementation
 evolves.
 
 ### Planned coupled validation targets
@@ -221,7 +221,7 @@ evolves.
 
 ## 5. The long view — VKS and the dynamo regime {#TrustLiMe_plans_vks}
 
-`END_GOAL.md` targets the **CEA VKS experiment** (Von Kármán Sodium): two
+`docs/content/end_goal.md` targets the **CEA VKS experiment** (Von Kármán Sodium): two
 counter-rotating impellers in liquid sodium, magnetic Reynolds numbers up to
 \f$\mathrm{Rm}\sim 1000\f$ and \f$\mathrm{Pm}\sim 10^{-5}\f$ — a high-Rm,
 low-Pm dynamo. The gap from the current validated mode:
@@ -234,7 +234,7 @@ low-Pm dynamo. The gap from the current validated mode:
 | laminar/prescribed-flow validation, plus a VEF turbulent coupling case | validated turbulent MHD (k-\f$\varepsilon\f$, LES, RSM) |
 | forms running at 2 ranks | large 3D spherical meshes, impeller forcing |
 
-Roadmap phases (month ranges are `END_GOAL.md` estimates):
+Roadmap phases (month ranges are `docs/content/end_goal.md` estimates):
 
 1. **Code preparation (0–6)** — two-equation coupled mode, impeller rotation
    BCs, temperature-dependent sodium properties, spherical-shell meshing.
@@ -288,13 +288,28 @@ first if one must change.
 
 | Document | Content |
 |---|---|
-| `PLAN_magnetic_standalone.md` | original M0→M1 plan — all phases complete |
-| `PLAN_magnetic_standalone_improved.md` | improved plan: vector unknown, sign conventions, div-b groundwork, Lorentz skeleton, analytic validation suite |
-| `PLAN_mhd_coupled.md` | coupled C0–C4 phases, decisions, migration path, timeline |
-| `END_GOAL.md` | VKS end goal, governing equations, 0–30-month roadmap |
-| `KERNEL_REUSE_NOTES.md` | accumulated kernel knowledge — the recipes the plans rely on |
+| `docs/content/plans/magnetic_standalone.md` | original M0→M1 plan — all phases complete |
+| `docs/content/plans/magnetic_standalone_improved.md` | improved plan: vector unknown, sign conventions, div-b groundwork, Lorentz skeleton, analytic validation suite |
+| `docs/content/plans/mhd_coupled.md` | coupled C0–C4 phases, decisions, migration path, timeline |
+| `docs/content/end_goal.md` | VKS end goal, governing equations, 0–30-month roadmap |
+| `docs/content/dev_corner/kernel_reuse.md` | accumulated kernel knowledge — the recipes the plans rely on |
 | `AGENTS.md` | "Known gaps / open items" — the short list kept current per session |
 
 @note The plan documents are frozen at the time they were last edited; when a
 statement here and a statement there disagree, the repository state — as
 checked by the validation suite — wins.
+
+---
+
+## Detailed plan documents (migrated from repository root)
+
+The full text of the former root-level planning documents now lives under
+`docs/content/plans/` (and `docs/content/end_goal.md`):
+
+- @subpage TrustLiMe_plan_gausslaw
+- @subpage TrustLiMe_plan_inductturb
+- @subpage TrustLiMe_plan_magstandalone
+- @subpage TrustLiMe_plan_magstandalone_improved
+- @subpage TrustLiMe_plan_mhdcoupled
+- @subpage TrustLiMe_plan_vks
+- @subpage TrustLiMe_endgoal

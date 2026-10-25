@@ -1,3 +1,5 @@
+@page TrustLiMe_plan_magstandalone Plan: standalone magnetic models
+
 # Work plan — Standalone magnetic models (M0 → M1)
 
 > **STATUS (2026-10-24): M0/M1 COMPLETE — historical record.** The standalone
@@ -192,7 +194,7 @@ to M0 diffusion behavior.
   implemented hierarchy uses `Pb_Induction` for standalone, `Pb_MHD` or
   `Pb_MHD_Turbulent` for momentum + magnetic, and `Pb_MHD_Thermal` for momentum,
   temperature and magnetic equations. `force_lorentz` is a momentum source,
-  not an equation-count switch; see `PLAN_mhd_coupled.md`.
+  not an equation-count switch; see `docs/content/plans/mhd_coupled.md`.
 - **D2 — discretization**: `Polymac_p0` as baseline (D2 from original plan),
   with optional `Polymac_p1` for M1 stretching source when mesh resolves `∇u`.
   P0-friendly: elementwise constant gradients or analytic profiles, else refine
@@ -239,7 +241,7 @@ to M0 diffusion behavior.
 
 ## Coupled MHD Plan
 
-A new plan `PLAN_mhd_coupled.md` describes the integration of fully coupled MHD simulations beyond standalone M0/M1. See the new plan for details on Lorentz force coupling, Hartmann validation, and advanced features.
+A new plan `docs/content/plans/mhd_coupled.md` describes the integration of fully coupled MHD simulations beyond standalone M0/M1. See the new plan for details on Lorentz force coupling, Hartmann validation, and advanced features.
 
 Notebooks for verification are in `share/Validation/Rapports_automatiques/MagneticStandalone/`:
 - `phase1_lorentz_force.ipynb`
@@ -262,7 +264,7 @@ Run_fiche [-help] [[-not_run] -export_pdf [-xpdf] [-o name_rapport.pdf]] [-exec 
 
 ## Coupled MHD Plan
 
-A new plan `PLAN_mhd_coupled.md` describes the integration of fully coupled MHD simulations beyond standalone M0/M1. See the new plan for details on Lorentz force coupling, Hartmann validation, and advanced features.
+A new plan `docs/content/plans/mhd_coupled.md` describes the integration of fully coupled MHD simulations beyond standalone M0/M1. See the new plan for details on Lorentz force coupling, Hartmann validation, and advanced features.
 
 Notebooks for verification are in `share/Validation/Rapports_automatiques/MagneticStandalone/`:
 - `phase1_lorentz_force.ipynb`

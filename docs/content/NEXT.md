@@ -6,9 +6,9 @@ nightly by the `trust-lime-docs-coherence` Hermes cron job, which checks the
 tasks below against the repository state and appends new tasks derived from the
 gaps highlighted elsewhere in the documentation.
 
-@note This page follows the planning documents (`PLAN_*.md`, `END_GOAL.md` at
-the repository root) and `docs/content/plans.md`; those remain the working
-documents. This page is the consolidated, user-facing view.
+@note This page follows the planning documents under `docs/content/plans/` and
+`docs/content/end_goal.md`; those remain the working documents. This page is
+the consolidated, user-facing view.
 
 ---
 
@@ -19,7 +19,7 @@ documents. This page is the consolidated, user-facing view.
 | Standalone magnetic induction equation (M0/M1) | `Pb_Induction`, `MagneticStandalone/` forms |
 | Coupled low-Rm mode (one- and two-way Lorentz force) | `Pb_MHD`, `force_lorentz`, `vitesse_hydraulique` |
 | Post-treatment fields (`Champ_Fonc_MHD`) | merged into `Champs2D` / `Champs3D` |
-| Gauss-law projection (opt-in, 2D/3D) | `PLAN_Gauss_law.md`, `correction_divergence` |
+| Gauss-law projection (opt-in, 2D/3D) | `docs/content/plans/gauss_law.md`, `correction_divergence` |
 | Turbulent magnetic diffusivity paths | prescribed fields, hydraulic k-ε, independent magnetic k-ε |
 | Strong two-way coupling (Picard, opt-in) | `couplage_fort` |
 
@@ -30,7 +30,7 @@ documents. This page is the consolidated, user-facing view.
 | `HartmannTwoWay` validation case | failed at `run.reset()` on non-empty scan dir | resume after cleanup |
 | Full 45-test GoogleTest run | SIGSEGV at first kernel-linked registration test | `--arith-only` (29 tests) passes |
 | Magnetic k-ε closure smoke case | aborts at `Solve` | source-level only |
-| Gauss-law full-suite / sanitizer follow-up | documented | see `PLAN_Gauss_law.md` |
+| Gauss-law full-suite / sanitizer follow-up | documented | see `docs/content/plans/gauss_law.md` |
 
 ## 3. Prescribed for the next weeks
 
@@ -49,7 +49,7 @@ Tasks derived from gaps highlighted in the documentation and open items in
    `TurbulentDiffusion`.
 6. **Documentation coherence** — keep this page and `plans.md` aligned with
    `PLAN_*.md` and `AGENTS.md` (automated nightly).
-7. **High-Rm dynamo / VKS** — long-term; see `END_GOAL.md`.
+7. **High-Rm dynamo / VKS** — long-term; see `docs/content/end_goal.md`.
 
 ## 4. How this page is maintained
 
