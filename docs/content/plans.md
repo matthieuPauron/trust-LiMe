@@ -28,7 +28,7 @@ still outstanding. See @ref TrustLiMe_validation "Validation cases" and
 | Unit tests (GoogleTest) | **29 arith-only tests pass**; the full 45-test run currently exits by SIGSEGV at the first kernel-linked registration test |
 | Two-way coupling — NS velocity feeds the magnetic convection (`vitesse_hydraulique`) | **done** (lagged staggered scheme; commits `9e5b13b`, `d484fbd`) |
 | \f$\nabla\cdot b = 0\f$ enforcement | **implemented, opt-in** via `correction_divergence`; 2D MPI and 3D serial mesh scans plus incompatible-flux rejection pass |
-| Turbulent magnetic diffusivity | **implemented**: prescribed fields, hydraulic k-\f$\varepsilon\f$, and an independent magnetic k-\f$\varepsilon\f$ closure (source-level; smoke case still aborts at `Solve`) |
+| Turbulent magnetic diffusivity | **implemented**: prescribed fields, hydraulic k-\f$\varepsilon\f$, and an independent magnetic k-\f$\varepsilon\f$ closure (source-level; smoke case still aborts at `Solve`); a molecular-vs-k-ε comparison form is being added to `TurbulentDiffusion` |
 | Strong two-way coupling | **implemented, opt-in** Picard iteration via `couplage_fort`; default staggered mode unchanged |
 | High-\f$\mathrm{Rm}\f$ dynamo | **open / long term** — section 5 |
 
@@ -122,6 +122,20 @@ The longer-term Nedelec/vector-potential route remains open. It would change the
 unknown/discretization and could also enable the missing `helicite_magnetique`
 and `helicite_generalisee` fields; it is not required for the implemented
 projection's narrower contract.
+
+### `TurbulentDiffusion` — molecular vs k-ε comparison (planned)
+
+The existing `MagneticStandalone/TurbulentDiffusion/` form (hydraulic
+k-ε handoff, VEF) is to be extended with a molecular
+(`C_mu_magnetique = 0`) twin dataset,
+`turbulent_diffusion_molecular.data`, sharing the same mesh, problem class
+(`Pb_MHD_Turbulent`), boundary/initial data and timing. The notebook will
+then run both cases and compare their magnetic-field decay rates: the
+molecular case must match `exp(-0.05 π² t)` (within 5 %), while the k-ε
+case must decay strictly faster (within 25 % of the initial-η_t estimate
+`(0.05 + 0.09·0.5²/0.5) π²`). Both cases stay `excluNR=True` and
+sequential. This gives an apples-to-apples comparison on VEF where the only
+varying knob is `C_mu_magnetique`.
 
 ---
 

@@ -1,0 +1,78 @@
+# ============================================================================= #
+# Magnetic turbulence: independent k_b/epsilon_b closure (Phase 3).             #
+# ============================================================================= #
+dimension 2
+Pb_Induction pb
+Domaine dom
+
+# BEGIN MESH #
+Mailler dom
+{
+    Pave pave
+    {
+        Origine 0. 0.
+        Nombre_de_Noeuds $nx $ny
+        Longueurs 1. 1.
+    }
+    {
+        Bord gauche X = 0. 0. <= Y <= 1.
+        Bord droite X = 1. 0. <= Y <= 1.
+        Bord bas Y = 0. 0. <= X <= 1.
+        Bord haut Y = 1. 0. <= X <= 1.
+    }
+}
+# END MESH #
+
+Polymac_p0 dis
+
+Associate pb dom
+
+Schema_Euler_Implicite sch
+Read sch
+{
+    tinit 0.
+    tmax 0.01
+    dt_max 0.001
+    facsec 1e6
+    facsec_max 1e6
+    solveur implicite { solveur petsc cli { } }
+}
+
+Associate pb sch
+Discretize pb dis
+
+Read pb
+{
+    nb_composantes 1
+    fluide_incompressible
+    {
+        mu      Champ_Uniforme 1 1.
+        rho     Champ_Uniforme 1 1.
+        lambda  Champ_Uniforme 1 1.
+        Cp      Champ_Uniforme 1 1.
+        beta_th Champ_Uniforme 1 0.
+    }
+    Convection_Diffusion_Magnetic_field
+    {
+        diffusivite_magnetique Champ_Uniforme 1 0.05
+        diffusion { }
+        convection { amont }
+        boundary_conditions
+        {
+            gauche Neumann_Paroi_adiabatique
+            droite Neumann_Paroi_adiabatique
+            bas Temperature_imposee_paroi Champ_front_uniforme 1 0.
+            haut Temperature_imposee_paroi Champ_front_uniforme 1 0.
+        }
+        initial_conditions { magnetic_field Champ_Fonc_xyz dom 1 sin(pi*y) }
+    }
+    Postraitement
+    {
+        Sondes
+        {
+            sonde_y050 grav magnetic_field Periode 1e-6 Points 1 0.5 0.50
+        }
+    }
+}
+
+Solve pb
