@@ -43,8 +43,7 @@
 # Baltik executables
 trust*
 # ... but the agent skill directory also matches `trust*`: keep it.
-!.opencode/skills/trust-lime-docs/
-
+!.opencode/skills/trust*
 # Baltik environment
 *env_trust*.sh
 
