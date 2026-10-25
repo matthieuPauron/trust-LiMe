@@ -15,18 +15,24 @@ time integration, data-file parsing, and boundary/source machinery for free.
 
 ---
 
+- @subpage TrustLiMe_quickstart
 - @subpage TrustLiMe_intro
 - @subpage TrustLiMe_model
 - @subpage TrustLiMe_conducting_walls
+- @subpage TrustLiMe_userguide
 - @subpage TrustLiMe_testcases
 - @subpage TrustLiMe_validation
+- @subpage TrustLiMe_validation_overview
 - @subpage TrustLiMe_magnetic_turbulence_validation
 - @subpage TrustLiMe_benchmarks
+- @subpage TrustLiMe_tutorials
 - @subpage TrustLiMe_plans
 - @subpage TrustLiMe_next
 - @subpage TrustLiMe_api
+- @subpage TrustLiMe_devcorner
 - @subpage TrustLiMe_docsys
 - @subpage TrustLiMe_hermes
+- @subpage TrustLiMe_references
 - @subpage KeywordsReference
 
 ---
