@@ -1,4 +1,5 @@
 {
+  "_comment": "# Low-Rm induction measurements\n\nSource paper: `Bourgoin2002`.\n\n| Quantity | Value | Unit | Notes |\n|---|---:|---|---|\n| Omega-effect Rm^i at 8 Hz | 0.5 | - | Rm = 20 |\n| Omega-effect Rm^i at 17 Hz | 1.0 | - | Rm = 43 |\n| Transverse/alpha-type ratio at 8 Hz | 0.5 | - | Axial induced field / applied transverse field |\n| Transverse/alpha-type ratio at 17 Hz | 1.0 | - | Rm = 43 |\n| Induced-field fluctuation level | 20-50 | % of mean | Isotropic at all rotation rates |\n| Pressure-induction cross-correlation | -0.2 | - | At zero lag |\n| Magnetic diffusion time | 0.15 | s | Pulse-decay measurement |\n| Velocity fluctuation intensity K_u | 0.42 | - | rms / disk rim speed |\n| Power number K_P | 34 | - | Sodium; water prototype gave 31 |\n| High-frequency spectrum exponent | -11/3 | - | f > Omega |\n| Intermediate spectrum exponent | -1 | - | Omega/10 < f < Omega |\n| Peak-to-peak scaling | B0 log(Omega Delta_t) | - | For Delta_t > Omega^-1 |\n",
   "quantities": [
     {
       "id": "omega_effect_rm_i_8hz",

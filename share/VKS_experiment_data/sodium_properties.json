@@ -1,4 +1,5 @@
 {
+  "_comment": "# Sodium properties and operating conditions\n\nSource papers: `Bourgoin2002`, `Monchaux2007`, `Monchaux2009`.\n\n| Quantity | Symbol | Value | Unit | Source / notes |\n|---|---|---:|---|---|\n| Density | rho | 929 | kg m^-3 | Monchaux2009; Bourgoin2002 uses 930 |\n| Dynamic viscosity | mu | 6.9e-4 | Pa s | Monchaux2007, about 120 C |\n| Kinematic viscosity | nu | 7.4e-7 | m^2 s^-1 | Monchaux2007 |\n| Electrical conductivity | sigma(T) | 108/(6.225+0.0345 T) | S m^-1 | Monchaux2009, Eq. (1), T in C |\n| Thermal conductivity | lambda | 85 | W m^-1 K^-1 | Monchaux2007 |\n| Specific heat | Cp | 1380 | J kg^-1 K^-1 | Monchaux2007 |\n| Magnetic diffusivity | eta | 0.078 | m^2 s^-1 | Monchaux2007 |\n| Magnetic Prandtl number | Pm | 1e-5 | - | Monchaux2009 |\n| Operating temperature | T_op | 110-160 | deg C | Monchaux2009 |\n| Impeller efficiency | K | 0.6 | - | Monchaux2009; 0.7 for opposite rotation direction |\n| Maximum impeller frequency | F_max | 27 | Hz | Monchaux2009 |\n| Maximum Rm | Rm_max | 49 | - | Monchaux2009 (52 in Ravelet2008) |\n| Maximum Re | Re_max | 5e6 | - | Monchaux2009 |\n\nAt 120 C, sigma is approximately 1.03e7 S m^-1.\n",
   "quantities": [
     {
       "id": "sodium_density",
@@ -12,7 +13,7 @@
     {
       "id": "sodium_dynamic_viscosity",
       "symbol": "mu",
-      "value": 6.9e-4,
+      "value": 0.00069,
       "unit": "Pa s",
       "source": "Monchaux2007",
       "location": "Sec. I.B / properties table: mu = 6.9e-4 Pa s at about 120 C",
@@ -21,7 +22,7 @@
     {
       "id": "sodium_kinematic_viscosity",
       "symbol": "nu",
-      "value": 7.4e-7,
+      "value": 7.4e-07,
       "unit": "m^2 s^-1",
       "source": "Monchaux2007",
       "location": "Properties table: nu approx. 7.4e-7 m^2 s^-1",
@@ -66,7 +67,7 @@
     {
       "id": "magnetic_prandtl_number",
       "symbol": "Pm",
-      "value": 1.0e-5,
+      "value": 1e-05,
       "unit": "dimensionless",
       "source": "Monchaux2009",
       "location": "Sec. I.B: Pm about 1e-5 for sodium",
@@ -111,7 +112,7 @@
     {
       "id": "max_kinetic_reynolds_number",
       "symbol": "Re_max",
-      "value": 5.0e6,
+      "value": 5000000.0,
       "unit": "dimensionless",
       "source": "Monchaux2009",
       "location": "Sec. I.C: Re can be increased up to 5e6",

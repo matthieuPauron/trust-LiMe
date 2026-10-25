@@ -1,57 +1,82 @@
 {
+  "_comment": "# Dynamical regimes\n\nSource papers: `Ravelet2008`, `Monchaux2009`.\n\n## Regime map in |Theta|\n\n| Regime | |Theta| range | Notes |\n|---|---|---|\n| Stat1 | 0.00-0.09 | Stationary, supercritical threshold around Rm = 31 |\n| Limit cycle | 0.09-0.11 | Dipole-quadrupole interaction |\n| Stat2 | 0.11-0.13 | Stationary, hysteretic behavior |\n| Reversals | 0.15-0.18 | Random reversals; temperature affects periodicity |\n| Bursts/extinctions | 0.18-0.22 | Bursts exceed 100 G |\n| Stat3 | 0.20-0.40 | Slow oscillations; amplitude extrema at 0.27 and 0.37 |\n| Oscillatory | 0.40-0.60 | Threshold Theta_o approx. 0.41 |\n| Stat4 | 1.00 | Single-impeller dynamo |\n\n## Key quantities\n\n| Quantity | Value | Unit | Notes |\n|---|---:|---|---|\n| Hydrodynamic one/two-cell transition | 0.16 | Theta | Sudden transition |\n| Oscillatory threshold | 0.41 | Theta | Secondary bifurcation |\n| Mean positive reversal duration | 120 | s | F1 = 22 Hz, F2 = 16 Hz |\n| Mean negative reversal duration | 50 | s | Same run |\n| Burst most probable azimuthal field | 20 | G | Bursts exceed 100 G |\n| Equal-rotation critical frequency | 16 | Hz | Ravelet2008; Rm_c approx. 30 |\n| Reversal field decay time | about 5 | s | Longer than flow and Ohmic times |\n",
   "regimes": [
     {
       "id": "Stat1",
-      "theta_range": [0.0, 0.09],
+      "theta_range": [
+        0.0,
+        0.09
+      ],
       "source": "Monchaux2009",
       "location": "Sec. III.B",
       "notes": "Stationary dynamos similar to exact counter-rotation; supercritical threshold around Rm = 31."
     },
     {
       "id": "LimitCycle",
-      "theta_range": [0.09, 0.11],
+      "theta_range": [
+        0.09,
+        0.11
+      ],
       "source": "Monchaux2009",
       "location": "Sec. III.B / Fig. 28",
       "notes": "Relaxation cycle from interaction of dipolar and quadrupolar modes."
     },
     {
       "id": "Stat2",
-      "theta_range": [0.11, 0.13],
+      "theta_range": [
+        0.11,
+        0.13
+      ],
       "source": "Monchaux2009",
       "location": "Sec. III.B / Sec. III.C",
       "notes": "Stationary regime with more asymmetric forcing."
     },
     {
       "id": "Reversals",
-      "theta_range": [0.15, 0.18],
+      "theta_range": [
+        0.15,
+        0.18
+      ],
       "source": "Monchaux2009",
       "location": "Sec. III.D / Fig. 21",
       "notes": "Random magnetic-field reversals; temperature can make them nearly periodic."
     },
     {
       "id": "BurstsExtinctions",
-      "theta_range": [0.18, 0.22],
+      "theta_range": [
+        0.18,
+        0.22
+      ],
       "source": "Monchaux2009",
       "location": "Sec. III.E / Fig. 23",
       "notes": "Intermittent bursts up to more than 100 G; extinctions also observed."
     },
     {
       "id": "Stat3",
-      "theta_range": [0.2, 0.4],
+      "theta_range": [
+        0.2,
+        0.4
+      ],
       "source": "Monchaux2009",
       "location": "Sec. III.C / Sec. III.G",
       "notes": "Stationary regime with slow oscillations; amplitude maximum around |Theta| = 0.27 and minimum around 0.37."
     },
     {
       "id": "Oscillatory",
-      "theta_range": [0.4, 0.6],
+      "theta_range": [
+        0.4,
+        0.6
+      ],
       "source": "Monchaux2009",
       "location": "Sec. III.G / Fig. 27",
       "notes": "Oscillatory dynamos; secondary bifurcation threshold Theta_o approx. 0.41."
     },
     {
       "id": "Stat4",
-      "theta_range": [1.0, 1.0],
+      "theta_range": [
+        1.0,
+        1.0
+      ],
       "source": "Monchaux2009",
       "location": "Sec. III.C",
       "notes": "Single-impeller stationary dynamo; amplitude decreases after about 23 Hz."

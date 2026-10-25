@@ -1,4 +1,5 @@
 {
+  "_comment": "# Dimensionless parameters\n\nSource papers: `Bourgoin2002`, `Monchaux2009`.\n\n## Definitions\n\n| Symbol | Definition | Source |\n|---|---|---|\n| Rm | K mu0 sigma 2 pi R_c^2 F | Monchaux2009 |\n| Re | K 2 pi R_c^2 F / nu | Monchaux2009 |\n| Theta | (F1 - F2)/(F1 + F2) | Monchaux2009 |\n| gamma | (Gamma1 - Gamma2)/(Gamma1 + Gamma2) | Monchaux2009 |\n| N | sigma B0^2 L / (rho U) | Bourgoin2002 |\n| Pm | nu / eta = nu mu0 sigma | Bourgoin2002 |\n\n## Typical ranges\n\n| Symbol | Range | Unit | Source |\n|---|---|---|---|\n| Rm | 0-52 | - | Ravelet2008 |\n| Re | 0-5e6 | - | Monchaux2009 |\n| T | 110-160 | deg C | Monchaux2009 |\n",
   "definitions": [
     {
       "id": "magnetic_reynolds_number_symmetric",
@@ -59,7 +60,10 @@
     {
       "id": "vks_rm_range",
       "symbol": "Rm",
-      "range": [0.0, 52.0],
+      "range": [
+        0.0,
+        52.0
+      ],
       "unit": "dimensionless",
       "source": "Ravelet2008",
       "notes": "Laboratory range; high-Rm dynamo regime is far beyond current trust-LiMe validation."
@@ -67,7 +71,10 @@
     {
       "id": "vks_re_range",
       "symbol": "Re",
-      "range": [0.0, 5.0e6],
+      "range": [
+        0.0,
+        5000000.0
+      ],
       "unit": "dimensionless",
       "source": "Monchaux2009",
       "notes": "Turbulent flow; velocity fluctuations are of order 40-50% of the mean."
@@ -75,7 +82,10 @@
     {
       "id": "vks_temperature_range",
       "symbol": "T",
-      "range": [110.0, 160.0],
+      "range": [
+        110.0,
+        160.0
+      ],
       "unit": "deg C",
       "source": "Monchaux2009",
       "notes": "Regulated operating range."

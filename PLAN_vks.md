@@ -11,9 +11,47 @@ validated. This remains a design plan, not a runnable VKS case.
 ## 0. Experimental reference data
 
 Experimental measurements and analysis extracted from the VKS papers are stored
-in `share/VKS_experiment_data/` (Markdown plus JSON). See
-`share/VKS_experiment_data/README.md` and `validation_targets.md` for the
-mapping between experimental observables and future simulation targets.
+in `share/VKS_experiment_data/` (JSON only; the former Markdown summaries are
+preserved as top-level `_comment` fields). The former `README.md` overview is
+reproduced below; `validation_targets.md` is preserved as the `_comment` field
+of `sources.json`.
+
+## 0.1 Experimental reference data (former README.md)
+
+# VKS experimental reference data
+
+This folder collects measurements and analysis extracted from the von Kármán
+Sodium (VKS) experimental papers listed in `sources.json`. It is intended to
+support future VKS validation work in trust-LiMe; it is **not** a runnable
+simulation case.
+
+### Files
+
+| File | Content |
+|---|---|
+| `sources.json` | Bibliographic source inventory (plus validation targets as `_comment`) |
+| `geometry.json` | Experimental geometry and probe locations |
+| `sodium_properties.json` | Sodium properties and operating ranges |
+| `dimensionless_parameters.json` | Dimensionless groups and typical ranges |
+| `induction_lowRm.json` | Low-Rm induction measurements |
+| `dynamo_threshold_saturation.json` | Dynamo threshold, saturation, and power |
+| `fluctuations_spectra.json` | Fluctuations and spectral observations |
+| `dynamical_regimes.json` | Regime map, reversals, bursts, oscillations |
+
+### Units and conventions
+
+- All physical quantities are given in SI units unless explicitly stated.
+- Magnetic field values are given in gauss (G) when quoting experimental plots;
+  convert to tesla (1 G = 1e-4 T) before comparing with simulation output.
+- Source references point to the paper ID in `sources.json` and, where possible,
+  to a section, equation, or figure.
+
+### Important caveat
+
+The current trust-LiMe implementation is a low-Rm solver. The VKS experiment
+operates at Rm ~ 10-50 and is strongly turbulent. These data are therefore
+reference targets and physical constraints for future work, not assertions that
+the current code is expected to reproduce.
 
 ## 1. Overview
 
