@@ -2,10 +2,10 @@
 
 Index of validation-related pages.
 
-- @ref TrustLiMe_testcases
-- @ref TrustLiMe_validation
-- @ref TrustLiMe_magnetic_turbulence_validation
-- @ref TrustLiMe_benchmarks
+- @subpage TrustLiMe_testcases
+- @subpage TrustLiMe_validation
+- @subpage TrustLiMe_magnetic_turbulence_validation
+- @subpage TrustLiMe_benchmarks
 
 See also the `share/Validation/Rapports_automatiques/` directory and the
 `trust-lime-notebooks` skill.
