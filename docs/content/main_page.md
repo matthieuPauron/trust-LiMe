@@ -23,6 +23,7 @@ time integration, data-file parsing, and boundary/source machinery for free.
 - @subpage TrustLiMe_magnetic_turbulence_validation
 - @subpage TrustLiMe_benchmarks
 - @subpage TrustLiMe_plans
+- @subpage TrustLiMe_next
 - @subpage TrustLiMe_api
 - @subpage TrustLiMe_docsys
 - @subpage TrustLiMe_hermes
