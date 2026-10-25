@@ -1,12 +1,12 @@
 ---
 name: trust-LiMe testing
 description: >
-Run and extend trust-LiMe tests: GoogleTest unit tests (unit-tests.sh),
-baltik non-regression suites (make check_*/ctest_*), build orchestration
-(target selection, background builds, polling), and the green-baseline/ASN-28
-gate. Use when writing or running tests, triaging failures, choosing build
-targets, or staging validation cases. Dataset/notebook authoring lives in
-trust-lime-notebooks.
+  Run and extend trust-LiMe tests: GoogleTest unit tests (unit-tests.sh),
+  baltik non-regression suites (make check_*/ctest_*), build orchestration
+  (target selection, background builds, polling), and the green-baseline/ASN-28
+  gate. Use when writing or running tests, triaging failures, choosing build
+  targets, or staging validation cases. Dataset/notebook authoring lives in
+  trust-lime-notebooks.
 ---
 
 # trust-LiMe testing

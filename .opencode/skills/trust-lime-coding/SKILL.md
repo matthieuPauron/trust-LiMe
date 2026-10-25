@@ -1,12 +1,12 @@
 ---
 name: trust-LiMe coding
 description: >
-Write and modify trust-LiMe C++ kernel-extension code: deriving baltik
-classes from TRUST kernel bases, registering dataset keywords, reading
-parameters, association/ref patterns, TRUST coding style rules, strict
-compiler flags, and trustify // XD keyword documentation. Use when
-editing src/*.{h,cpp}, adding a class or keyword, or fixing compile
-warnings/errors.
+  Write and modify trust-LiMe C++ kernel-extension code: deriving baltik
+  classes from TRUST kernel bases, registering dataset keywords, reading
+  parameters, association/ref patterns, TRUST coding style rules, strict
+  compiler flags, and trustify // XD keyword documentation. Use when
+  editing src/*.{h,cpp}, adding a class or keyword, or fixing compile
+  warnings/errors.
 ---
 
 # trust-LiMe coding (C++ baltik module)

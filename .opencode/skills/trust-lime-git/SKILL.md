@@ -1,10 +1,10 @@
 ---
 name: trust-LiMe git workflow
 description: >
-Git hygiene for trust-LiMe: grouping changes into coherent commits, branch and
-worktree usage, reviewing diffs, and committing kernel (trust-code) vs module
-(trust-LiMe) changes separately. Use when staging, committing, creating
-branches/worktrees, or reconciling uncommitted work across the two repos.
+  Git hygiene for trust-LiMe: grouping changes into coherent commits, branch and
+  worktree usage, reviewing diffs, and committing kernel (trust-code) vs module
+  (trust-LiMe) changes separately. Use when staging, committing, creating
+  branches/worktrees, or reconciling uncommitted work across the two repos.
 ---
 
 # trust-LiMe git workflow

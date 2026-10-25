@@ -1,11 +1,11 @@
 ---
 name: trust-code navigation
 description: >
-Navigate the TRUST and TRIOCFD source trees (../trust-code, ~/Development/triocfd-code)
-via prebuilt symbol indexes: build indexes with index-codebases.sh, look up
-definitions with find-symbol.sh, and fall back to ripgrep. Use when you need to
-find where a class/function/macro is defined or declared in the kernel or
-TRIOCFD, or to (re)build the indexes after a codebase update.
+  Navigate the TRUST and TRIOCFD source trees (../trust-code, ~/Development/triocfd-code)
+  via prebuilt symbol indexes: build indexes with index-codebases.sh, look up
+  definitions with find-symbol.sh, and fall back to ripgrep. Use when you need to
+  find where a class/function/macro is defined or declared in the kernel or
+  TRIOCFD, or to (re)build the indexes after a codebase update.
 ---
 
 # trust-code navigation (TRUST + TRIOCFD)
