@@ -510,12 +510,25 @@ cmd_open() {
   fi
 
   # 1. start the LAN listener. This is the only moving part.
+  # systemd-run returns before socat has actually bound the port, so wait
+  # for the listener (and then for an HTTP answer) instead of failing on
+  # the first connection-refused.
   proxy_start "$ip"
   if [[ "$OPT_DRY" == "1" ]]; then
     note "  (dry-run: skipping the reachability probe)"
-  elif ! probe "$ip"; then
-    proxy_stop
-    die "the proxy did not come up on $ip:$PORT"
+  else
+    local proxy_ok=0
+    for _ in $(seq 1 20); do
+      if probe "$ip"; then
+        proxy_ok=1
+        break
+      fi
+      sleep 0.25
+    done
+    if [[ "$proxy_ok" != "1" ]]; then
+      proxy_stop
+      die "the proxy did not come up on $ip:$PORT"
+    fi
   fi
   note "listener      : $ip:$PORT -> 127.0.0.1:$PORT ($(proxy_state))"
 
