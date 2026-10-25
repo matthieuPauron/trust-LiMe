@@ -170,3 +170,38 @@ both light and dark mode.
 - `$TRUST_ROOT/docs/README.md` — shared doc build system.
 - `$TRUST_ROOT/docs/How_to_write_doc.md` — authoring guide.
 - `$TRUST_ROOT/bin/baltik/README_INSTALL.md` — baltik docs pipeline.
+
+## Documentation layout and migration
+
+- `AGENTS.md` stays at the repository root (agent instructions). Every other
+  documentation file lives under `docs/content/`.
+- Do not add new root-level `.md` files except `AGENTS.md`; migrate their
+  content into `docs/content/...` as `@page`s, then delete the root copy.
+- Migration checklist:
+  1. Create the target `docs/content/.../*.md` page with an `@page` id.
+  2. Copy the full text; update internal references to other docs pages.
+  3. Rewrite references in `src/`, notebooks, JSON `_comment` fields, skills,
+     and scripts to the new paths.
+  4. Remove the old root file.
+  5. Run `make docs` and fix any warning mentioning `docs/content/`.
+
+## Navigation integrity (avoid duplicate sidebar entries)
+
+- Each page must be `@subpage` of **exactly one** parent.
+- Use `@ref` (not `@subpage`) for cross-links from secondary pages.
+- Top-level grouping should mirror TRUST/TrioCFD:
+  `QuickStart`, `UserGuide`, `Implementation`, `Validation`, `UserTutorials`,
+  `Plans`, `DevCorner`, `References` (plus `KeywordsReference`).
+- After editing navigation, run the duplicate-parent check:
+  ```bash
+  python3 - <<'PY'
+  import pathlib, re, collections
+  files=sorted(pathlib.Path('docs/content').rglob('*.md'))
+  sub=collections.defaultdict(list)
+  for p in files:
+      for m in re.finditer(r'@subpage\s+(\S+)', p.read_text(errors='ignore')):
+          sub[m.group(1)].append(str(p))
+  print({k:v for k,v in sub.items() if len(v)>1})
+  PY
+  ```
+  It must print `{}`.

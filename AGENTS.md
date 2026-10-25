@@ -183,6 +183,18 @@ Prints the best-matching sections with source locations. Use `--list` to browse
 headings, `--top N` / `--max-lines M` to control output. See `trust-lime-env`
 for the script location.
 
+## Documentation layout
+
+- `AGENTS.md` stays at the repository root (agent instructions).
+- All other documentation lives under `docs/content/` (Doxygen pages).
+- Do not add root-level `.md` files except `AGENTS.md`; migrate content into
+  `docs/content/` and delete the root copy (see `trust-lime-docs` skill).
+- Each docs page is `@subpage` of exactly one parent; cross-links use `@ref`
+  to avoid duplicate sidebar entries.
+- Top-level grouping mirrors TRUST/TrioCFD: `QuickStart`, `UserGuide`,
+  `Implementation`, `Validation`, `UserTutorials`, `Plans`, `DevCorner`,
+  `References`, plus `KeywordsReference`.
+
 ## Current state (summary)
 
 - Sources rewritten; pass `syntax-check.sh`. Problem classes: `Pb_Induction`,
