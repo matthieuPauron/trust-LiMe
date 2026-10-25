@@ -182,3 +182,37 @@ TEST(ParoiConductriceMagnetique, TypeIsRegisteredUnderItsDataFileKeyword)
   Paroi_conductrice_magnetique cl;
   EXPECT_STREQ(cl.le_type(), "paroi_conductrice_magnetique");
 }
+
+// ---------------------------------------------------------------------------
+// Convection_Diffusion_Magnetic_field defaults
+// ---------------------------------------------------------------------------
+
+TEST(MagneticField, CorrectionDivergenceIsOffByDefault)
+{
+  Convection_Diffusion_Magnetic_field eqn;
+  EXPECT_FALSE(eqn.correction_divergence());
+}
+
+TEST(MagneticField, VitesseHydrauliqueIsOffByDefault)
+{
+  Convection_Diffusion_Magnetic_field eqn;
+  EXPECT_FALSE(eqn.vitesse_hydraulique());
+}
+
+TEST(MagneticField, CouplageFortIsOffByDefault)
+{
+  Convection_Diffusion_Magnetic_field eqn;
+  EXPECT_FALSE(eqn.couplage_fort());
+}
+
+TEST(MagneticField, Mu0DefaultsToOne)
+{
+  Convection_Diffusion_Magnetic_field eqn;
+  EXPECT_DOUBLE_EQ(eqn.mu0(), 1.0);
+}
+
+TEST(MagneticField, RapportChargeMasseDefaultsToElectronValue)
+{
+  Convection_Diffusion_Magnetic_field eqn;
+  EXPECT_DOUBLE_EQ(eqn.rapport_charge_masse(), 1.75882001076e11);
+}
