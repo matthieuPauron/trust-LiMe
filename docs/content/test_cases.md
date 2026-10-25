@@ -21,7 +21,7 @@ The module has **two** kinds of tests:
 | File | Covers |
 |---|---|
 | `unit_correction_divergence_kernel.cpp` | Pass-1 divergence and its exact transpose, `D D^T` assembly with nonuniform volumes/reversed boundary orientation, projection, idempotence and net-flux compatibility |
-| `unit_magnetic_field.cpp` | equation keyword, `domaine_application() == "Thermique"` (the BC-compatibility contract), the `Pb_Induction` / `Pb_MHD` problem hierarchy (equation counts, momentum-before-magnetic order), out-of-range index |
+| `unit_magnetic_field.cpp` | equation keyword, `domaine_application() == "Thermique"` (the BC-compatibility contract), the `Pb_Induction` / `Pb_MHD` / `Pb_MHD_Turbulent` / `Pb_MHD_Thermal` problem hierarchy (equation counts and order), the `paroi_conductrice_magnetique` BC keyword, out-of-range index |
 | `unit_induction_source.cpp` | `induction_stretching` keyword; `readOn()` consumes its own braces (regression); unknown keyword is rejected |
 | `unit_induction_kernel.cpp` | the arithmetic of \f$S = (b\cdot\nabla)u\f$: index layout, single-component case, accumulation, element-wise application |
 | `unit_mhd_postraitement_kernel.cpp` | the arithmetic of the post-treatment fields: \f$|b|^2\f$, energy, cyclotron, \f$u\cdot b\f$, Poynting, curl/helicity index order, \f$Rm\f$, \f$Pm\f$ |

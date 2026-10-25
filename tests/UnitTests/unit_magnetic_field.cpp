@@ -18,6 +18,9 @@
 #include <Convection_Diffusion_Magnetic_field.h>
 #include <Pb_Induction.h>
 #include <Pb_MHD.h>
+#include <Pb_MHD_Turbulent.h>
+#include <Pb_MHD_Thermal.h>
+#include <Paroi_conductrice_magnetique.h>
 #include <Probleme_base.h>
 #include <Cond_lim_base.h>
 
@@ -123,4 +126,59 @@ TEST(PbMHDDeath, RejectsAnOutOfRangeEquationIndex)
   Pb_MHD pb;
   EXPECT_DEATH(static_cast<void>(pb.equation(2)), "");
   EXPECT_DEATH(static_cast<void>(pb.equation(-1)), "");
+}
+
+// ---------------------------------------------------------------------------
+// Pb_MHD_Turbulent
+// ---------------------------------------------------------------------------
+
+TEST(PbMHDTurbulent, IsAHydraulicProblem)
+{
+  Pb_MHD_Turbulent pb;
+  EXPECT_NE(dynamic_cast<Pb_Hydraulique_Turbulent *>(&pb), nullptr);
+}
+
+TEST(PbMHDTurbulent, HoldsMomentumThenMagneticField)
+{
+  Pb_MHD_Turbulent pb;
+  EXPECT_EQ(pb.nombre_d_equations(), 2);
+  EXPECT_STREQ(pb.equation(0).le_type(), "Navier_Stokes_Turbulent");
+  EXPECT_STREQ(pb.equation(1).le_type(), "Convection_Diffusion_Magnetic_field");
+}
+
+TEST(PbMHDTurbulentDeath, RejectsAnOutOfRangeEquationIndex)
+{
+  Pb_MHD_Turbulent pb;
+  EXPECT_DEATH(static_cast<void>(pb.equation(2)), "");
+  EXPECT_DEATH(static_cast<void>(pb.equation(-1)), "");
+}
+
+// ---------------------------------------------------------------------------
+// Pb_MHD_Thermal
+// ---------------------------------------------------------------------------
+
+TEST(PbMHDThermal, HoldsMomentumTemperatureThenMagneticField)
+{
+  Pb_MHD_Thermal pb;
+  EXPECT_EQ(pb.nombre_d_equations(), 3);
+  EXPECT_STREQ(pb.equation(0).le_type(), "Navier_Stokes_standard");
+  EXPECT_STREQ(pb.equation(1).le_type(), "Convection_Diffusion_Temperature");
+  EXPECT_STREQ(pb.equation(2).le_type(), "Convection_Diffusion_Magnetic_field");
+}
+
+TEST(PbMHDThermalDeath, RejectsAnOutOfRangeEquationIndex)
+{
+  Pb_MHD_Thermal pb;
+  EXPECT_DEATH(static_cast<void>(pb.equation(3)), "");
+  EXPECT_DEATH(static_cast<void>(pb.equation(-1)), "");
+}
+
+// ---------------------------------------------------------------------------
+// Conducting-wall boundary condition
+// ---------------------------------------------------------------------------
+
+TEST(ParoiConductriceMagnetique, TypeIsRegisteredUnderItsDataFileKeyword)
+{
+  Paroi_conductrice_magnetique cl;
+  EXPECT_STREQ(cl.le_type(), "paroi_conductrice_magnetique");
 }
