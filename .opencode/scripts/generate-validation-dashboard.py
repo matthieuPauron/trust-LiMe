@@ -26,8 +26,8 @@ STATUS_GLYPH = {
     "pass": "✅ pass",
     "fail": "❌ fail",
     "in_progress": "🚧 in progress",
-    "unknown": " ? not run",
-    "not run": " ? not run",
+    "unknown": "⬜ not run",
+    "not run": "⬜ not run",
 }
 
 
@@ -119,6 +119,13 @@ def main():
     units = scan_unit_tests(repo)
     forms = scan_validation(repo)
 
+    vmap = status.get("validation", {}) or {}
+
+    # group forms by category (already sorted within scan_validation)
+    by_category = {}
+    for f in forms:
+        by_category.setdefault(f["category"], []).append(f)
+
     lines = []
     lines.append("@page TrustLiMe_validation_dashboard Validation dashboard")
     lines.append("")
@@ -131,23 +138,74 @@ def main():
     lines.append("")
     lines.append(f"**Last status update:** `{updated}`")
     lines.append("")
+    lines.append("Status legend: ✅ pass · ❌ fail · 🚧 in progress · ⬜ not run.")
+    lines.append("")
+
+    # --- Summary ------------------------------------------------------------
+    lines.append("## Summary")
+    lines.append("")
+    lines.append("| Category | Forms | ✅ pass | 🚧 in progress | ⬜ not run | ❌ fail |")
+    lines.append("|---|---:|---:|---:|---:|---:|")
+    totals = {"forms": 0, "pass": 0, "in_progress": 0, "not_run": 0, "fail": 0}
+    for cat in sorted(by_category):
+        fs = by_category[cat]
+        c = {"pass": 0, "in_progress": 0, "not_run": 0, "fail": 0}
+        for f in fs:
+            st = (vmap.get(f["key"], {}) or {}).get("status", "unknown")
+            if st == "pass":
+                c["pass"] += 1
+            elif st == "in_progress":
+                c["in_progress"] += 1
+            elif st in ("fail",):
+                c["fail"] += 1
+            else:
+                c["not_run"] += 1
+        lines.append(f"| `{cat}` | {len(fs)} | {c['pass']} | {c['in_progress']} | {c['not_run']} | {c['fail']} |")
+        totals["forms"] += len(fs)
+        totals["pass"] += c["pass"]
+        totals["in_progress"] += c["in_progress"]
+        totals["not_run"] += c["not_run"]
+        totals["fail"] += c["fail"]
+    lines.append(f"| **Total** | **{totals['forms']}** | **{totals['pass']}** | "
+                 f"**{totals['in_progress']}** | **{totals['not_run']}** | **{totals['fail']}** |")
+    lines.append("")
+
+    # --- Needs attention ----------------------------------------------------
+    attention = []
+    for f in forms:
+        if f["key"] not in vmap:
+            continue
+        info = vmap.get(f["key"], {}) or {}
+        st = info.get("status", "unknown")
+        if st != "pass":
+            attention.append((f, st, info.get("note")))
+    if attention:
+        lines.append("## Needs attention")
+        lines.append("")
+        for f, st, note in attention:
+            cell = glyph(st)
+            if note:
+                cell += f" — {note}"
+            lines.append(f"- `{f['category']}/{f['form']}`: {cell}")
+        lines.append("")
 
     # --- Unit tests ---------------------------------------------------------
     lines.append("## Unit tests (GoogleTest)")
     lines.append("")
-    lines.append("| Source file | gtest suites | Contains | Status |")
-    lines.append("|---|---|---|---|")
+    lines.append("| Source file | gtest suites | Tests | Status |")
+    lines.append("|---|---|---:|---|")
     ut = status.get("unit_tests", {})
     for u in units:
         st, tests, failures, seen = unit_status_for(status, u["suites"])
+        suites_cell = ", ".join("`" + s + "`" for s in u["suites"]) or "—"
         if seen and tests > 0:
-            contains = f"{tests} tests" + (f", {failures} failing" if failures else "")
+            tests_cell = str(tests)
         else:
-            contains = ", ".join(u["suites"]) if u["suites"] else "(none)"
+            tests_cell = "—"
         status_cell = glyph(st)
         if seen and tests > 0:
             status_cell += f" ({tests - failures}/{tests})"
-        lines.append(f"| `{u['file']}` | {', '.join('`' + s + '`' for s in u['suites']) or '—'} | {contains} | {status_cell} |")
+        lines.append(f"| `{u['file']}` | {suites_cell} | {tests_cell} | {status_cell} |")
     lines.append("")
     agg = ut.get("status", "unknown")
     lines.append(f"Aggregate unit-test status: **{glyph(agg)}**"
@@ -158,24 +216,27 @@ def main():
     # --- Validation forms ---------------------------------------------------
     lines.append("## Validation forms (notebooks)")
     lines.append("")
-    lines.append("| Category | Form | Datasets (src/) | Contains | Status |")
-    lines.append("|---|---|---|---|---|")
-    vmap = status.get("validation", {}) or {}
-    for f in forms:
-        info = vmap.get(f["key"], {}) or {}
-        st = info.get("status", "unknown")
-        ds = ", ".join(f"`{d}`" for d in f["datasets"]) if f["datasets"] else "—"
-        contains = f"{len(f['datasets'])} dataset template(s)" if f["datasets"] else "—"
-        note = info.get("note")
-        cell = glyph(st)
-        if note:
-            cell += f" ({note})"
-        lines.append(f"| `{f['category']}` | [`{f['form']}`]({f['rel']}/{f['form']}.ipynb) | {ds} | {contains} | {cell} |")
-    lines.append("")
-    n = len(forms)
     npass = sum(1 for f in forms if (vmap.get(f["key"], {}) or {}).get("status") == "pass")
-    lines.append(f"Validation forms: **{npass}/{n}** passing (status recorded).")
+    lines.append(f"Validation forms: **{npass}/{len(forms)}** passing (status recorded).")
     lines.append("")
+
+    for cat in sorted(by_category):
+        fs = by_category[cat]
+        cp = sum(1 for f in fs if (vmap.get(f["key"], {}) or {}).get("status") == "pass")
+        lines.append(f"### `{cat}` — {cp}/{len(fs)} passing")
+        lines.append("")
+        lines.append("| Form | Datasets (src/) | Status |")
+        lines.append("|---|---|---|")
+        for f in fs:
+            info = vmap.get(f["key"], {}) or {}
+            st = info.get("status", "unknown")
+            ds = ", ".join(f"`{d}`" for d in f["datasets"]) if f["datasets"] else "—"
+            cell = glyph(st)
+            note = info.get("note")
+            if note:
+                cell += f" ({note})"
+            lines.append(f"| [`{f['form']}`]({f['rel']}/{f['form']}.ipynb) | {ds} | {cell} |")
+        lines.append("")
 
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     with open(args.out, "w") as fh:
