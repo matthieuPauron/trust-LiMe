@@ -27,8 +27,8 @@ OpenCode, and it does not touch the module's build.
 
 Three properties make it useful for this project:
 
-1. **It runs on a schedule** — the nightly arithmetic regression guard
-   (section @ref TrustLiMe_hermes_job "The nightly regression guard").
+1. **It runs on a schedule** — unattended validation/reporting jobs
+   (section @ref TrustLiMe_hermes_inrepo "Hermes assets maintained in-repo").
 2. **It remembers** — findings accumulate in a memory file and in
    agent-authored skills, instead of being re-derived in every session.
 3. **It is model-agnostic** — one fast primary model with an automatic free
@@ -119,48 +119,49 @@ can finish. That review only completes in a long-lived session — the interacti
 
 ---
 
-## 4. The nightly regression guard {#TrustLiMe_hermes_job}
+## 4. Hermes assets maintained in-repo {#TrustLiMe_hermes_inrepo}
 
-The concrete win of the Hermes setup is a cron job that runs the fast arithmetic
-unit-test suite every night and reports failures without anyone logging in:
+Hermes scripts and cron entries are maintained **in the repository**, not
+only in `~/.hermes/`, so they are version-controlled and reproducible:
 
-| Property | Value |
-|---|---|
-| Name | `trust-lime-arith-nightly` |
-| Schedule | `0 3 * * *` (03:00 local) |
-| Script | `~/.hermes/scripts/trust-lime-arith-tests.sh` |
-| Workdir | the TRUST-LiMe repository root |
-| Model | `gemini-3.1-flash-lite` (pinned on the job itself) |
-| Delivery | `local` (failures only) |
+| Piece | In-repo location | Runtime location |
+|---|---|---|
+| Scripts | `.opencode/hermes/scripts/*.sh` | `~/.hermes/scripts/*.sh` (copy) |
+| Cron manifest | `.opencode/hermes/cron-manifest.md` | `~/.hermes/cron/jobs.json` |
+| Installer | `.opencode/scripts/install-hermes.sh` | (run once per machine) |
 
-The script runs `.opencode/scripts/unit-tests.sh --arith-only` and prints a
-compact `RESULT: PASS|FAIL|TIMEOUT` summary. In *agent mode*, Hermes injects that
-output into the job's prompt, so the model reports which tests failed when the
-result is not a pass.
+After cloning or pulling changes that touch Hermes assets, run:
 
-Manage and inspect it with:
+```bash
+bash .opencode/scripts/install-hermes.sh
+```
+
+It copies every script from `.opencode/hermes/scripts/` into
+`~/.hermes/scripts/` (Hermes rejects symlinks that escape the scripts dir)
+and (re)creates the cron jobs listed in the manifest. Hermes resolves
+`--script` against `~/.hermes/scripts/`, so the copy step is mandatory:
+Hermes cannot read scripts directly from the repository.
+
+No nightly regression job is currently scheduled. The only active job is
+`trust-lime-docs-coherence` (02:30). To add unattended runs (e.g. the full
+validation report), create a script under `.opencode/hermes/scripts/`, add its
+`hermes cron create ...` line to the manifest, and re-run the installer.
+
+Manage and inspect jobs with:
 
 ```bash
 hermes cron list                       # all scheduled jobs
 hermes cron status                     # is the scheduler running?
-hermes cron runs trust-lime-arith-nightly   # durable execution history
 hermes cron doctor                     # health checks across jobs
 hermes cron run <id>                   # run on the next scheduler tick
 hermes cron pause <id>                 # stop one job
-hermes cron notepad <id>               # persistent key/value notes across runs
 ```
-
-To widen the nightly coverage, extend `trust-lime-arith-tests.sh` (it is a plain
-Bash script). Keep it to **fast** checks — the per-file diagnostics loop and the
-arithmetic suite — and leave full-kernel builds out of cron, since those are slow
-on every development host.
 
 @note `hermes verify` detects a project's build and test recipe and smoke-tests
 it. A project may declare that recipe explicitly in `.hermes/environment.json`;
 without it, Hermes falls back to generic `Makefile` detection.
 
 ---
-
 ## 5. Memory, skills and the curator
 
 Hermes improves over time in two ways:

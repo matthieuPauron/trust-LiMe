@@ -79,8 +79,8 @@ Switches: `EXTRA_CXXFLAGS="-I/path"` (GoogleTest headers),
 .opencode/scripts/unit-tests.sh                # full TRUST build required
 ```
 
-Conventions/gate: `trust-lime-testing`. Use `UNIT_TEST_SUFFIX=_semi_opt` while
-`optim` archives are stale.
+Conventions/gate: `trust-lime-testing`. The `_semi_opt` archives are no
+longer produced by this checkout; the default auto-detect picks `_opt`.
 
 ## Agent setup (models)
 
@@ -113,10 +113,9 @@ Keep `warming` off; keep Headroom proxy at `--mode cache` (do not switch to
 ## Hermes Agent (unattended runs)
 
 Hermes (`~/.hermes`) drives OpenCode as a delegated worker. Project binding:
-`hermes project show trust-lime`. Nightly job `trust-lime-arith-nightly`
-(`7bd53fa53065`, `0 3 * * *`) runs `.opencode/scripts/unit-tests.sh
---arith-only`, delivers to `local`. Pin a working model on every run
-(`--provider gemini --model gemini-3.1-flash-lite`). Emergency stop:
+`hermes project show trust-lime`. No nightly regression job is currently
+scheduled; Hermes scripts and cron entries are maintained in-repo under
+`.opencode/hermes/` (see `docs/content/hermes.md`). Emergency stop:
 `hermes pause`.
 
 ## Validation (Jupyter)
