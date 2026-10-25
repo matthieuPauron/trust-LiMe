@@ -1,5 +1,7 @@
 @page TrustLiMe_validation Validation cases
 
+See also @ref TrustLiMe_magnetic_turbulence_validation "Magnetic \(k\)-\(\varepsilon\) validation plan".
+
 Validation cases are end-to-end runs driven by Jupyter notebooks, as opposed to
 the mesh-less GoogleTest @ref TrustLiMe_testcases "unit tests". They check the
 module against analytic solutions or exact invariants of the induction equation.
