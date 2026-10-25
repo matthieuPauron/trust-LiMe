@@ -34,14 +34,6 @@ time integration, data-file parsing, and boundary/source machinery for free.
 - @subpage TrustLiMe_hermes
 - @subpage TrustLiMe_references
 - @subpage TrustLiMe_readme
-- @subpage TrustLiMe_endgoal
-- @subpage TrustLiMe_dc_kernelreuse
-- @subpage TrustLiMe_plan_gausslaw
-- @subpage TrustLiMe_plan_inductturb
-- @subpage TrustLiMe_plan_magstandalone
-- @subpage TrustLiMe_plan_magstandalone_improved
-- @subpage TrustLiMe_plan_mhdcoupled
-- @subpage TrustLiMe_plan_vks
 - @subpage KeywordsReference
 
 ---

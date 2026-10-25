@@ -99,4 +99,4 @@ dependency (see @ref TrustLiMe_testcases "the unit-test description"):
 The data-file vocabulary (classes, keywords and their attributes) is
 auto-extracted from the `// XD` tags of the sources:
 
-- @subpage KeywordsReference
+- @ref KeywordsReference
