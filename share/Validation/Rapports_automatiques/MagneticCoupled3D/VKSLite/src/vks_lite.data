@@ -64,10 +64,11 @@ Read pb
     nb_composantes 3
     fluide_incompressible
     {
-        mu      Champ_Uniforme 1 1.0
-        rho     Champ_Uniforme 1 1.0
-        lambda  Champ_Uniforme 1 1.0
-        Cp      Champ_Uniforme 1 1.0
+        # Sodium-like properties substituted from share/VKS_experiment_data/sodium_properties.json
+        mu      Champ_Uniforme 1 $mu
+        rho     Champ_Uniforme 1 $rho
+        lambda  Champ_Uniforme 1 $lambda
+        Cp      Champ_Uniforme 1 $Cp
         beta_th Champ_Uniforme 1 0.0
     }
 
@@ -95,7 +96,8 @@ Read pb
 
     Convection_Diffusion_Magnetic_field
     {
-        diffusivite_magnetique Champ_Uniforme 1 0.1
+        # Sodium-like magnetic diffusivity substituted from share/VKS_experiment_data/sodium_properties.json
+        diffusivite_magnetique Champ_Uniforme 1 $eta
         vitesse_hydraulique
 
         diffusion  { }
