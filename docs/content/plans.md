@@ -198,7 +198,7 @@ The time stepping is a lagged staggered scheme,
 
 Sign conventions, boundary conditions and matrix properties were reviewed and
 documented in `KERNEL_REUSE_NOTES.md` §22 (2026-10-24). The Lorentz force is
-$\mathbf{J}\times\mathbf{B}$ (per unit mass), the magnetic-pressure
+\f$\mathbf{J}\times\mathbf{B}\f$ (per unit mass), the magnetic-pressure
 profile is required at open boundaries, and the explicit lagged source does not
 enter the Jacobian, so matrix symmetry stays a kernel-level property. The
 wall-gradient bias of `induction_stretching` remains a documented limitation.
