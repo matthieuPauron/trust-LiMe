@@ -6,6 +6,7 @@ how to contribute, and how the documentation itself is produced.
 - @subpage TrustLiMe_dc_contrib
 - @subpage TrustLiMe_dc_build
 - @subpage TrustLiMe_dc_kernelreuse
+- @subpage TrustLiMe_dc_skills
 - @subpage TrustLiMe_docsys
 - @subpage TrustLiMe_hermes
 - @subpage TrustLiMe_api
