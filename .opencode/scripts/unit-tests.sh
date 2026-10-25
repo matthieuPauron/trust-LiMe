@@ -230,4 +230,23 @@ fi
 
 # --- run --------------------------------------------------------------------
 echo
-exec "$exe" "$@"
+gtest_json="$build_dir/gtest_results.json"
+set +e
+"$exe" "$@" --gtest_output="json:$gtest_json"
+rc=$?
+set -e
+
+# Record the run outcome into the validation status file (best-effort).
+status="pass"
+if [[ $rc -ne 0 ]]; then status="fail"; fi
+python3 "$repo_root/.opencode/scripts/record-validation-status.py" \
+    --repo "$repo_root" --kind unit --status "$status" \
+    --gtest-json "$gtest_json" --returncode "$rc" >/dev/null 2>&1 || true
+
+# Refresh the generated dashboard markdown (best-effort; HTML updated by `make docs`).
+python3 "$repo_root/.opencode/scripts/generate-validation-dashboard.py" \
+    --repo "$repo_root" \
+    --status "$repo_root/.opencode/validation_status.json" \
+    --out "$repo_root/docs/build/generated_content/validation_dashboard.md" >/dev/null 2>&1 || true
+
+exit $rc

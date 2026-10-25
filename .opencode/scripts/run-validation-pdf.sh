@@ -46,8 +46,13 @@ for cat in $cats; do
     if [ $r -ne 0 ]; then
       log "FAILED (execute): $cat/$form"
       rc_total=1
+      python3 "$repo/.opencode/scripts/record-validation-status.py" \
+        --repo "$repo" --kind validation --key "$cat/$form" --status fail \
+        --note "notebook execution failed" >/dev/null 2>&1 || true
       continue
     fi
+    python3 "$repo/.opencode/scripts/record-validation-status.py" \
+      --repo "$repo" --kind validation --key "$cat/$form" --status pass >/dev/null 2>&1 || true
     jupyter nbconvert --to pdf --output-dir "$pdfdir" --output "$tag" \
       "$outdir/${tag}.ipynb" >> "$runlog" 2>&1
     r=$?
@@ -72,6 +77,11 @@ if [ "${#pdfs[@]}" -gt 0 ]; then
     log "FAILED (pdfunite rc=$r)"
     rc_total=1
   fi
+fi
+
+log "--- regenerating documentation dashboard"
+if [ -f "$repo/docs/Makefile" ]; then
+  ( cd "$repo/docs" && make run_doxygen ) >> "$runlog" 2>&1 && log "dashboard updated" || { log "dashboard rebuild failed"; rc_total=1; }
 fi
 
 log "run-all rc=$rc_total  (log: $runlog)"

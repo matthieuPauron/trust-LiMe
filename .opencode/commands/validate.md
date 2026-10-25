@@ -40,3 +40,15 @@ contains tests of **one single ASN28 category**; see `docs/content/test_cases.md
 
 Use a generous timeout. Summarize the outputs; if a cell errors, show its
 traceback and stop. Do not modify the notebook unless I ask.
+
+After a successful run, record the result in the validation status file so the
+documentation dashboard stays current:
+
+    python3 .opencode/scripts/record-validation-status.py --repo . --kind validation \
+      --key "<Category>/<FormName>" --status pass
+
+Then refresh the dashboard page:
+
+    python3 .opencode/scripts/generate-validation-dashboard.py --repo . \
+      --status .opencode/validation_status.json \
+      --out docs/build/generated_content/validation_dashboard.md

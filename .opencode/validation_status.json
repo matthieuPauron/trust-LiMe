@@ -1,0 +1,14 @@
+{
+  "unit_tests": {
+    "note": "arith-only (29 tests) passes; full 45-test run SIGSEGVs at first kernel-linked registration test",
+    "status": "pass",
+    "suites": {}
+  },
+  "updated": "2026-10-25T11:26:04.068525+00:00",
+  "validation": {
+    "MagneticCoupled/HartmannTwoWay": {
+      "note": "failed at run.reset() on non-empty scan dir",
+      "status": "in_progress"
+    }
+  }
+}
