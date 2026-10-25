@@ -261,25 +261,3 @@ Run_fiche [-help] [[-not_run] -export_pdf [-xpdf] [-o name_rapport.pdf]] [-exec 
 
 **Note:** PDF export requires `jupyter-nbconvert`, available on systems with full Jupyter installation.
 
-
-## Coupled MHD Plan
-
-A new plan `docs/content/plans/mhd_coupled.md` describes the integration of fully coupled MHD simulations beyond standalone M0/M1. See the new plan for details on Lorentz force coupling, Hartmann validation, and advanced features.
-
-Notebooks for verification are in `share/Validation/Rapports_automatiques/MagneticStandalone/`:
-- `phase1_lorentz_force.ipynb`
-- `phase2_shercliff_benchmark.ipynb`
-- `phase3_advanced_features.ipynb`
-- `phase4_documentation.ipynb`
-
-**Run_fiche -export_pdf syntax** (TRUST documentation):
-```
-Run_fiche [-help] [[-not_run] -export_pdf [-xpdf] [-o name_rapport.pdf]] [-exec binary_path] [-parallel_run] [-parallel_sjob] [-doc] [-create]
-```
-- `-export_pdf`: Produce PDF report directly `build/rapport.pdf` (PRM format)
-- `-xpdf`: Open PDF report at end of build
-- `-o name_rapport.pdf`: Change default PDF report name
-- `-not_run`: Build PDF without running TRUST calculations
-- `-create`: Build minimal .ipynb data files found in src directory
-
-**Note:** PDF export requires `jupyter-nbconvert`, available on systems with full Jupyter installation.
