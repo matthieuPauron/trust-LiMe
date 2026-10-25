@@ -4,6 +4,7 @@
  ****************************************************************************/
 
 #include <Convection_Diffusion_Magnetic_field.h>
+#include <Paroi_conductrice_magnetique.h>
 #include <Correction_Divergence_kernel.h>
 #include <Array_tools.h>
 #include <Champ_Fonc_MHD.h>
@@ -859,10 +860,30 @@ void Convection_Diffusion_Magnetic_field::gradient_b_elements(DoubleTab& gb) con
   const DoubleVect& volumes = dvf.volumes();
   const int nfe = elem_faces.dimension(1);
 
+  // Identify conducting-wall faces (Paroi_conductrice_magnetique) so that Pass 1
+  // can use 0 for the tangential components (Dirichlet) and the cell value for
+  // the normal component (Neumann), instead of the default zero normal
+  // gradient on every component.
+  std::vector<char> is_cond_face(dvf.nb_faces_tot(), 0);
+  {
+    const Domaine_Cl_dis_base& dom_cl = domaine_Cl_dis();
+    for (int icl = 0; icl < dom_cl.nb_cond_lim(); icl++)
+      {
+        const Cond_lim_base& cl = dom_cl.les_conditions_limites(icl).valeur();
+        if (sub_type(Paroi_conductrice_magnetique, cl))
+          {
+            const Front_VF& fvf = ref_cast(Front_VF, cl.frontiere_dis());
+            for (int k = 0; k < fvf.nb_faces_tot(); k++)
+              is_cond_face[fvf.num_face(k)] = 1;
+          }
+      }
+  }
+
   // Pass 1 — standard Green-Gauss (interior exact for linear fields), built
   // element-wise from elem_faces(): valid for every element up to ne_tot in
   // parallel, the same pattern as the kernel PolyMAC field operators.
-  // Boundary faces take the element's own value (zero normal gradient).
+  // Boundary faces take the element's own value (zero normal gradient), except
+  // on conducting walls where tangential components use 0 (Dirichlet).
   for (int e = 0; e < ne_tot; e++)
     {
       const double inv_ve = 1. / volumes(e);
@@ -875,9 +896,36 @@ void Convection_Diffusion_Magnetic_field::gradient_b_elements(DoubleTab& gb) con
           const bool is_e0 = (face_voisins(f, 0) == e);
           const int e_other = is_e0 ? face_voisins(f, 1) : face_voisins(f, 0);
           const double sgn = is_e0 ? 1. : -1.;
+          const bool cond = (e_other < 0) && (f < (int)is_cond_face.size()) && is_cond_face[f];
+          // Normal component index for this face (only meaningful for full
+          // vector fields; -1 means "all components tangential").
+          int normal_idx = -1;
+          if (cond && nb_b == dim)
+            {
+              int idx = 0;
+              double best = std::fabs(face_normales(f, 0));
+              for (int d = 1; d < dim; d++)
+                {
+                  const double v = std::fabs(face_normales(f, d));
+                  if (v > best)
+                    {
+                      best = v;
+                      idx = d;
+                    }
+                }
+              normal_idx = idx;
+            }
           for (int c = 0; c < nb_b; c++)
             {
-              const double bf = (e_other < 0) ? b(e, c) : 0.5 * (b(e, c) + b(e_other, c));
+              double bf;
+              if (e_other >= 0)
+                bf = 0.5 * (b(e, c) + b(e_other, c));
+              else if (cond && normal_idx >= 0 && c == normal_idx)
+                bf = b(e, c); // Neumann on normal component
+              else if (cond)
+                bf = 0.; // Dirichlet 0 on tangential components
+              else
+                bf = b(e, c); // default zero normal gradient
               for (int d = 0; d < dim; d++)
                 gb(e, c * dim + d) += sgn * bf * face_normales(f, d) * inv_ve;
             }

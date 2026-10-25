@@ -366,20 +366,17 @@ Two physics-specific magnetic BCs are now tracked:
   `Neumann_paroi_adiabatique`, registered under the magnetic keyword with
   app-domains `Magnetique` / `Thermique` / `indetermine`.
 - `paroi_conductrice_magnetique` -- perfect conductor (`b x n = 0`,
-  tangential components clamped to Dirichlet 0). **TBD (Phase B.2)**: the
-  mixed per-component conditioning (Dirichlet on tangential vs. Neumann on
-  the normal) is not expressible in the current one-CL-per-boundary CL model
-  and needs a dedicated class at the PolyMAC face level. Deferred pending an
-  API investigation; the insulating (`paroi_isolante_magnetique`) and
-  zero-flux (`Neumann_Paroi_adiabatique` / `Paroi`) keywords are the
-  available substitutes in the meantime.
+  tangential components clamped to Dirichlet 0, normal component Neumann).
+  **Implemented** in Phase B.2: dedicated `Cond_lim_base` subclass plus
+  per-component handling in the PolyMAC face operators and in the module's
+  gradient reconstruction. See @ref TrustLiMe_conducting_walls.
 | Physical magnetic wall | Best available today | Honest status |
 |---|---|---|
 | imposed field `b = b₀` | `Temperature_imposee_paroi` (Dirichlet, per component) | correct |
 | zero‑flux / `∂b/∂n = 0` | `Neumann_Paroi_adiabatique` / `Paroi` | correct |
 | insulating wall, zero normal flux | `paroi_isolante_magnetique` (homogeneous Neumann, every component) | **implemented** (Phase B.1) |
 | strict `b·n = 0` (field tangent to the wall) | none (needs Dirichlet on the normal component only) | **deferred** |
-| perfect conductor `b×n = 0` | none (needs a per-component CL class) | **deferred** (Phase B.2) |
+| perfect conductor `b×n = 0` | `paroi_conductrice_magnetique` | **implemented** (Phase B.2) |
 | far‑field / vacuum outside | none (non‑local) | **deferred** |
 
 ---

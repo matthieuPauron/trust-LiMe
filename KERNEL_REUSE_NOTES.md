@@ -1461,6 +1461,11 @@ low-Rm two-way path (`Pb_MHD`, `Pb_MHD_Turbulent`, `Terme_Source_Lorentz`,
 - Insulating walls are homogeneous Neumann on all components; the
   `∇b` reconstruction at a wall cell uses the zero-normal-gradient trace
   \f$ b_f = b(e_0) \f$, which is O(h) accurate there (see §11bis).
+- Conducting walls (`paroi_conductrice_magnetique`) clamp the tangential
+  components of \f$\mathbf b\f$ to Dirichlet 0 and keep the normal component
+  Neumann; the \f$\nabla b\f$ reconstruction (Pass 1) now uses 0 for the
+  tangential components and the cell value for the normal component on those
+  faces (Phase B.2).
 - `force_lorentz` skips Dirichlet-velocity faces (`fcl(f,0) >= 2`) in the
   face block and carries the force through the element block, exactly as the
   kernel `Terme_Boussinesq_PolyMAC_CDO_Face` source does.

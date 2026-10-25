@@ -140,8 +140,7 @@ public:
   //  (homogeneous Neumann) is now declared here
   // (Phase B.1, subdir-free in src/, no new runtime dependency).  Remaining
   // vocabulary: magnetic_field_impose (Dirichlet), paroi_conductrice_magnetique
-  // (perfect conductor: b x n = 0; deferred until the per-component CL API is
-  // validated -- see Phase B.2 in the roadmap).
+  // (perfect conductor: b x n = 0; implemented in Phase B.2).
   const Motcle& domaine_application() const override;
 
   // --- Post-treatment fields ----------------------------------------------

@@ -60,14 +60,11 @@ Small, self-contained items that do not change the solver's scope.
 
 ### `paroi_conductrice_magnetique` — perfect-conductor wall
 
-The physical condition \f$b \times n = 0\f$ needs per-component conditioning
-(Dirichlet on the tangential components, Neumann on the normal one), which the
-current one-CL-per-boundary model cannot express. It needs a dedicated CL class
-at the PolyMAC face level — deferred pending an API investigation (Phase B.2
-of the improved plan). Available substitutes today:
-`paroi_isolante_magnetique`, `Neumann_Paroi_adiabatique`, `Paroi`. A
-far-field / vacuum boundary condition (non-local by nature) is deferred with
-it.
+**Implemented** in Phase B.2: a dedicated `Cond_lim_base` subclass
+(`paroi_conductrice_magnetique`) plus per-component handling in the PolyMAC
+face operators (tangential Dirichlet 0, normal Neumann) and in the module's
+gradient reconstruction. See @ref TrustLiMe_conducting_walls. A far-field /
+vacuum boundary condition (non-local by nature) remains deferred.
 
 ### Magnetic-named boundary conditions
 
