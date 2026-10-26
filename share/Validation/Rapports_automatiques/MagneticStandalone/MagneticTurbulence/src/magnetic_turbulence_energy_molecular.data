@@ -1,0 +1,80 @@
+# Magnetic k-epsilon manufactured-term verification (PolyMAC_P0).              #
+# Analytic fields satisfy homogeneous no-flux conditions; equations are frozen. #
+Dimension 2
+Pb_Induction pb
+
+Domaine dom
+Mailler dom
+{
+    Pave pave
+    {
+        Origine 0. 0.
+        Nombre_de_Noeuds $nx $ny
+        Longueurs 1. 1.
+    }
+    {
+        Bord gauche X = 0. 0. <= Y <= 1.
+        Bord droite X = 1. 0. <= Y <= 1.
+        Bord bas Y = 0. 0. <= X <= 1.
+        Bord haut Y = 1. 0. <= X <= 1.
+    }
+}
+
+Polymac_p0 dis
+Schema_Euler_Implicite sch
+Read sch
+{
+    tinit 0.
+    tmax $tmax
+    dt_min $dt
+    dt_max $dt
+    dt_impr $dt
+    facsec 1e6
+    facsec_max 1e6
+    nb_pas_dt_max 200
+    solveur implicite { solveur petsc cli { } }
+}
+
+Associate pb dom
+Associate pb sch
+Discretize pb dis
+
+Read pb
+{
+    nb_composantes 1
+    fluide_incompressible
+    {
+        mu      Champ_Uniforme 1 1.
+        rho     Champ_Uniforme 1 1.
+        lambda  Champ_Uniforme 1 1.
+        Cp      Champ_Uniforme 1 1.
+        beta_th Champ_Uniforme 1 0.
+    }
+    Convection_Diffusion_Magnetic_field
+    {
+        diffusivite_magnetique Champ_Uniforme 1 0.01
+        vitesse_magnetique Champ_Fonc_xyz dom 2 sin(2*pi*x)*cos(2*pi*y) -cos(2*pi*x)*sin(2*pi*y)
+        diffusion { }
+        convection { amont }
+        boundary_conditions
+        {
+            gauche Neumann_Paroi_adiabatique
+            droite Neumann_Paroi_adiabatique
+            bas Neumann_Paroi_adiabatique
+            haut Neumann_Paroi_adiabatique
+        }
+        initial_conditions
+        {
+            magnetic_field Champ_Fonc_xyz dom 1 cos(2*pi*y)+0.2*cos(2*pi*x)
+        }
+    }
+
+    Post_processing
+    {
+        Sondes
+        {
+            SONDE_B grav magnetic_field periode $dt Points 1 0.25 0.25
+        }
+    }
+}
+Solve pb

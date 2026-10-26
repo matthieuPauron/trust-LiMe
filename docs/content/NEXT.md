@@ -23,6 +23,7 @@ the consolidated, user-facing view.
 | Strong two-way coupling (Picard, opt-in) | `couplage_fort` |
 | `HartmannTwoWay` targeted rerun | all 18 cases passed (2026-10-26) |
 | Solved spatial-transport verification for magnetic k-ε | `MagneticTurbulence/` solved spatial-transport case (nonuniform k_b/ε_b, positivity/finite/convergence) |
+| Extend magnetic k-ε coverage (partial) | energy-transfer case + molecular twin in `MagneticTurbulence/` (23 cases pass); restart, ladder, VEF remain open |
 
 ## 2. In progress
 
@@ -41,10 +42,9 @@ report run is required.
 
 Priorities below are ordered by closure value and dependency.
 
-1. **Extend magnetic k-ε coverage** — add energy-transfer and restart checks, a coarse/standard/fine ladder, and the planned molecular-versus-k-ε comparison; then pursue VEF and physical validation.
-2. **Run sanitizer coverage** — ASan/UBSan remains open, especially for the divergence-projection assembly and full-kernel interactions.
-3. **Add remaining 3D twins and an inertial-Re benchmark** — `ShercliffDuct3D` is already present and passing; full-suite status is tracked by the nightly report.
-4. **Long term: advanced coupled physics and VKS** — magnetic fluctuation transport/full turbulent MHD closure, Ohmic heating, high-Rm nonlinear coupling, dynamo threshold and saturation; see `docs/content/end_goal.md`.
+1. **Run sanitizer coverage** — ASan/UBSan remains open, especially for the divergence-projection assembly and full-kernel interactions.
+2. **Add remaining 3D twins and an inertial-Re benchmark** — `ShercliffDuct3D` is already present and passing; full-suite status is tracked by the nightly report.
+3. **Long term: advanced coupled physics and VKS** — magnetic fluctuation transport/full turbulent MHD closure, Ohmic heating, high-Rm nonlinear coupling, dynamo threshold and saturation; see `docs/content/end_goal.md`.
 
 ## 4. How this page is maintained
 
