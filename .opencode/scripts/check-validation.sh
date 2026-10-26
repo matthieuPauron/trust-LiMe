@@ -118,6 +118,7 @@ parallel_ok=(
   "$base/VKS_experiment/VKSTurbulent/"
   "$base/MagneticCoupled3D/SmoothDiskMHD/"
   "$base/MagneticCoupled3D/ShercliffDuct3D/"
+  "$base/MagneticCoupled3D/ForceLorentzBalance3D/"
   # --- Industrial examples (2-rank coupled MHD smoke cases) ---
   "$base/Industrial_Examples/"
   # --- Postraitement_fields (merged: one form per dimension) ---
