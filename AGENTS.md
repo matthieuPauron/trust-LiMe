@@ -42,6 +42,18 @@ Sanitizers: set in `project.cfg` (`cpp_flags`/`ld_flags` with
 `-fsanitize=address,undefined ...`), then `./configure && make module_custom`;
 revert `project.cfg` after. See `trust-lime-coding`.
 
+**Resource-heavy builds (RAM guard).** `make module_custom` and full-kernel
+builds (`make optim`/`semi_optim`/`debug`) are RAM-intensive and can exhaust
+RAM on either host (laptop or workstation) and crash the machine (observed).
+**Never start one during daytime (08:00–20:00 local) or when free RAM is below
+~6 GB without explicit user confirmation.** Before running, check time-of-day
+and free RAM; if daytime or low memory, warn and require explicit
+confirmation. Run at night when possible, prefer background builds with
+notification + generous timeouts, and never run two heavy builds concurrently.
+Revert `project.cfg` sanitizer flags afterwards. Helper:
+`.opencode/scripts/check-heavy-build.sh` (exits non-zero with a reason unless
+`TRUST_ALLOW_HEAVY_BUILD=1`).
+
 ## Getting diagnostics fast
 
 OpenCode V2 LSP is disabled (clangd would index the ~25 MB kernel
