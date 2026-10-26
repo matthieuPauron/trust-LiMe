@@ -53,8 +53,13 @@ The nightly backlog job runs each task in its own worktree under
 worktree, then remove it with `git worktree remove <path>` (or `hermes
 worktree`) after merging.
 
-## Pitfalls
+When a task directly follows the previous one (continuation, refinement, or
+sub-task), **reuse the same worktree** instead of creating a new one: record a
+clear transition, execute the second task there, and require validation for
+each task before the worktree is cleared. A shared worktree entry lists
+`tasks: [title1, title2, ...]`.
 
+## Pitfalls
 - Worktrees share the same `.git` object store but have independent working
   trees; do not run two heavy builds concurrently.
 - Worktrees are not version-controlled state; re-run `install-git-hooks.sh`
