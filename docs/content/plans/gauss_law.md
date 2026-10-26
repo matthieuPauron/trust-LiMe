@@ -2,7 +2,7 @@
 
 # Plan — Gauss' law enforcement (Path 2: opt-in divergence correction)
 
-**Status (2026-10-24): 2D/3D validation and incompatible-flux rejection pass.**
+**Status (2026-10-26): 2D/3D validation and incompatible-flux rejection pass.**
 The implementation uses the exact sparse transpose of the Pass-1 divergence
 (`L = D D^T`), with a `1e-12` relative diagonal regularization, and sums the
 boundary-flux compatibility check across MPI while counting only owned
@@ -11,11 +11,11 @@ post-initialization probe maxima `1.74e-13`, `5.79e-14`, and `4.75e-14`. The
 sequential 3D twin passes at `1.17e-14`, `4.64e-14`, and `1.43e-13`; it uses an
 x-only full-vector field and three cells in y/z to avoid a parity-sensitive
 3D null mode while retaining the shared active-x refinement ladder. `ErrorInputs` also
-confirms rejection of incompatible net boundary flux. The full PDF sweep ran
-31/32 reportable forms; its only failure was the in-progress `HartmannTwoWay`
-scan calling `run.reset()` on a non-empty generated directory. The full
-45-test GoogleTest run currently SIGSEGVs before its first test; all 29
-arith-only tests pass. Sanitizer validation remains open.
+confirms rejection of incompatible net boundary flux. The latest recorded full
+PDF sweep ran 31/32 reportable forms; the remaining `HartmannTwoWay` run stopped
+when `run.reset()` encountered a non-empty generated directory. The current
+GoogleTest run passes all 38 arithmetic-only and 74 full tests. Sanitizer
+validation remains open.
 
 Built on the full picture from both sides — the module's ∇·b state and the
 kernel's incompressible machinery — the sections below give the design
@@ -145,9 +145,10 @@ A per-step magnetic Hodge projection owned by
       held;
     - coarse/standard/fine mesh scan on 2 MPI ranks.
 3. **Validation coverage complete:** the 3D twin and incompatible-net-flux
-   `ErrorInputs` assertion pass. The full PDF sweep ran 31/32 reportable forms;
-   the only failure is the unrelated in-progress `HartmannTwoWay` scan reset.
-   The full kernel-linked unit run and sanitizer validation remain open.
+    `ErrorInputs` assertion pass. The latest recorded PDF sweep ran 31/32
+    reportable forms; `HartmannTwoWay` still needs a clean rerun after its scan
+    directory caused `run.reset()` to fail. The full kernel-linked unit suite
+    passes 74/74; sanitizer validation remains open.
    Synchronize `docs/content/dev_corner/kernel_reuse.md` §11bis and `AGENTS.md`.
 
 ---
@@ -223,9 +224,8 @@ syntax-check loop → unit tests (--arith-only) → make optim
 - Green-baseline gate: stage per `trust-lime-testing`; the keyword must be
   opt-in everywhere, including the coupled forms.
 
-**Next step:** resolve the full kernel-linked unit-test SIGSEGV, rerun the
-complete reportable suite after the in-progress `HartmannTwoWay` form is
-cleanable, and run sanitizers on the matrix assembly.
+**Next step:** rerun the complete reportable suite after cleaning the
+`HartmannTwoWay` scan output, then run sanitizers on the matrix assembly.
 
 ---
 

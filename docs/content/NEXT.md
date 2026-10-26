@@ -1,10 +1,9 @@
 @page TrustLiMe_next Next Steps and Task Backlog
 
 This page is the **living backlog** for TRUST-LiMe: which tasks are done, which
-are in progress, and which are prescribed for the coming weeks. It is regenerated
-nightly by the `trust-lime-docs-coherence` Hermes cron job, which checks the
-tasks below against the repository state and appends new tasks derived from the
-gaps highlighted elsewhere in the documentation.
+are in progress, and which are prescribed for the coming weeks. Update it from
+verified repository state; do not carry forward tasks already completed or
+superseded by newer validation evidence.
 
 @note This page follows the planning documents under `docs/content/plans/` and
 `docs/content/end_goal.md`; those remain the working documents. This page is
@@ -27,33 +26,25 @@ the consolidated, user-facing view.
 
 | Task | Status | Notes |
 |---|---|---|
-| `HartmannTwoWay` validation case | failed at `run.reset()` on non-empty scan dir | resume after cleanup |
-| Magnetic k-ε VEF/physical validation | next | frozen manufactured terms and zero-production analytic decay pass on PolyMAC_P0; spatial transport/restart/calibration gaps remain |
-| Gauss-law full-suite / sanitizer follow-up | documented | see `docs/content/plans/gauss_law.md` |
+| `HartmannTwoWay` validation case | rerun needed | the 2026-10-26 run record notes `run.reset()` failed on a non-empty generated scan directory; clean that scan output and rerun |
+| Full reportable validation sweep | 31/32 PDFs recorded | rerun after fixing `HartmannTwoWay`; the other targeted forms, including GaussLaw and ShercliffDuct3D, are recorded passing |
+| Magnetic k-ε verification and validation | partial | frozen manufactured terms and zero-production analytic decay pass on PolyMAC_P0; solved spatial transport, VEF coverage, restart, calibration and physical validation remain open |
+| Gauss-law sanitizer follow-up | open | 2D/3D forms pass; 38 arithmetic-only and 74 full unit tests pass, but sanitizer coverage is not recorded |
 
 ## 3. Prescribed for the next weeks
 
-Tasks derived from gaps highlighted in the documentation and open items in
-`AGENTS.md`. The nightly job re-evaluates and refreshes this list.
+Priorities below are ordered by closure value and dependency.
 
-1. **Close validation gaps** — fix the two reported validation-check violations
-   (missing `# BEGIN MESH #` marker in `Fusion_Blanket`; sequential-only
-   compliance in `VKSTurbulent`).
-2. **Full baseline regression** — run the complete 32-form suite after the recent
-   VEF/VKS coupling changes; refresh PDF sweep.
-3. **Unit-test sanitizer** — resolve the SIGSEGV in the full GoogleTest run so
-   all 45 tests execute.
-4. **3D coupled duct case** — add the missing 3D coupled duct validation form.
-5. **Turbulence comparison form** — add molecular-vs-k-ε comparison to
-   `TurbulentDiffusion`.
-6. **Documentation coherence** — keep this page and `plans.md` aligned with
-   `PLAN_*.md` and `AGENTS.md` (automated nightly).
-7. **High-Rm dynamo / VKS** — long-term; see `docs/content/end_goal.md`.
+1. **Close the regression gap** — clean the generated `HartmannTwoWay` scan directory, rerun that form, then regenerate the complete 32-form report.
+2. **Add solved spatial-transport verification for magnetic k-ε** — the current manufactured-term and analytic-decay checks do not exercise evolving nonuniform k-ε fields under advection and diffusion.
+3. **Extend magnetic k-ε coverage** — add energy-transfer and restart checks, a coarse/standard/fine ladder, and the planned molecular-versus-k-ε comparison; then pursue VEF and physical validation.
+4. **Run sanitizer coverage** — ASan/UBSan remains open, especially for the divergence-projection assembly and full-kernel interactions.
+5. **Add remaining 3D twins and an inertial-Re benchmark** — prioritize scientific value after the current reportable suite is green. `ShercliffDuct3D` is already present and is not a missing task.
+6. **Long term: advanced coupled physics and VKS** — magnetic fluctuation transport/full turbulent MHD closure, Ohmic heating, high-Rm nonlinear coupling, dynamo threshold and saturation; see `docs/content/end_goal.md`.
 
 ## 4. How this page is maintained
 
-- Updated nightly by the `trust-lime-docs-coherence` Hermes cron job.
-- The job checks each task above against the repository (commits, sources,
-  validation forms) and marks completed items, then prescribes new tasks from
-  documented gaps.
-- Manual edits are welcome; the nightly run reconciles them with project state.
+- Reconcile this page with `docs/content/plans.md`, validation records and
+  `AGENTS.md` whenever project status changes.
+- A passing formatting check is not evidence that a validation computation
+  passed; distinguish formatting, targeted runs and the full reportable sweep.

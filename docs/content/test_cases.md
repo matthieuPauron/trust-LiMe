@@ -18,6 +18,9 @@ The module has **two** kinds of tests:
 .opencode/scripts/unit-tests.sh                # needs the full TRUST build
 ```
 
+Latest run (2026-10-26): **38/38 arithmetic-only** and **74/74 full tests
+passed**.
+
 | File | Covers |
 |---|---|
 | `unit_correction_divergence_kernel.cpp` | Pass-1 divergence and its exact transpose, `D D^T` assembly with nonuniform volumes/reversed boundary orientation, projection, idempotence and net-flux compatibility |
@@ -166,9 +169,10 @@ validated grid.
 `HartmannTwoWay` now covers the full discrete \f$Re_H\times Ha\f$ parameter
 grid for the exact Hartmann solution. Because this fully developed channel has
 \f$u\cdot\nabla u=0\f$, the grid does not validate inertial Re dependence; a
-non-fully-developed geometry is still needed for that, as is the coupled
-**Shercliff 3D duct** (Tassone et al. Fig. 6). The coupled mode itself is
-documented in @ref TrustLiMe_model "Problems, equations and boundary conditions".
+non-fully-developed geometry is still needed for that. The coupled
+**Shercliff 3D duct** (Tassone et al. Fig. 6) is implemented as
+`MagneticCoupled3D/ShercliffDuct3D/` and its latest recorded run passes. The
+coupled mode itself is documented in @ref TrustLiMe_model "Problems, equations and boundary conditions".
 
 Every dataset is **self-contained**: the mesh is generated inline with `Mailler`/`Pave`,
 so no `.med` file is required and the cases can be run from a clean checkout.

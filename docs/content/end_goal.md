@@ -143,7 +143,7 @@ Implementation approach:
 **MHD Implementation in trust-LiMe:**
 - `Convection_Diffusion_Magnetic_field` equation class
 - `Pb_MHD` problem extension with optional `Navier_Stokes_standard`
-- `force_lorentz` keyword for enabling J\times B coupling
+- `force_lorentz` keyword for enabling \f$J\times B\f$ coupling
 - `induction_stretching` source term for M1 effects
 - Velocity field from `vitesse_magnetique` (standalone) or
   `vitesse_hydraulique` (coupled mode)
@@ -166,13 +166,16 @@ Implementation approach:
   scheme `bˢ⁺¹ = F(bˢ,uˢ)`, `uˢ⁺¹ = G(uˢ,bˢ)` linearizes both the Lorentz and the
   stretching terms — not the nonlinear high-Rm MHD a dynamo needs
 - Linearized convective term `(u·\nabla)b - (b·\nabla)u - \eta\Delta b = 0`
-- Turbulent magnetic diffusivity is now available on three paths: a
-  prescribed field, an explicit k/epsilon pair, and (in coupled mode) the
-  hydraulic k-ε model's own k and ε; an independent magnetic k-ε closure
-  (k_b, epsilon_b) is implemented in source but not yet validated.
+- Turbulent magnetic diffusivity is available from prescribed fields, hydraulic
+  k-ε fields, and an independent magnetic k-ε closure. The independent closure
+  has initial manufactured-term and analytic-decay verification on PolyMAC_P0,
+  but solved spatial transport, VEF, restart, calibration and physical
+  validation remain open.
 - No MHD modifications to the hydraulic turbulence model (Tassone et al.
   §4) and no high-Rm dynamo saturation are implemented yet.
-- Div-b not enforced (assumed but not proven globally)
+- `correction_divergence` provides an opt-in cell-centred Hodge projection of
+  the module's reported divergence, validated in 2D and 3D. It is not enabled
+  by default and does not preserve non-homogeneous Dirichlet magnetic data.
 
 ### 3.3 TrioCFD (Turbulence CFD Solver)
 
@@ -211,7 +214,7 @@ Implementation approach:
 | Feature | TRUST | trust-LiMe | TrioCFD |
 |---|---|---|---|
 | **MHD equations** | Full implementation | Standalone + coupled mode | Full implementation |
-| **Turbulence models** | k-epsilon, LES | Basic, no turbulent MHD | k-epsilon variants, LES |
+| **Turbulence models** | k-epsilon, LES | Effective turbulent diffusivity and experimental magnetic k-epsilon closure; no validated full turbulent-MHD closure | k-epsilon variants, LES |
 | **Geometry** | General polyhedral | Spherical preferred | General unstructured |
 | **Parallel scalability** | Excellent (MPI) | Good (sequential default) | Excellent (MPI) |
 | **VKS suitability** | Excellent (native) | Good (needs extensions) | Excellent (native MHD) |
@@ -226,6 +229,11 @@ Implementation approach:
 5. **Parameter scanning** across Rm, Re, Pm using different codes
 
 ## 5. Roadmap for VKS Simulation
+
+@note Status snapshot (2026-10-26): full VKS simulation has not started. The
+implemented scope is standalone induction and low-Rm, lagged coupled MHD, plus
+early magnetic k-ε verification. The phases below are a proposed research
+roadmap, not a claim that VKS milestones are underway or committed dates.
 
 ### Phase 1: Code Preparation (0-6 months)
 - Extend trust-LiMe to full two-equation coupled mode — **done** (low-Rm,

@@ -6,12 +6,13 @@ what comes **next**, and what is deliberately **deferred**. The plain-Markdown
 originals remain the working documents: they are updated as work proceeds, and
 this page follows them.
 
-@note Status snapshot: 24 October 2026. The established baseline is 32
-reportable validation forms and 45 unit tests (29 arith-only pass). The opt-in Gauss-law
-projection and recent VEF/VKS coupling changes are newer than that baseline;
-their targeted checks pass where noted below, but a full baseline regression is
-still outstanding. See @ref TrustLiMe_validation "Validation cases" and
-@ref TrustLiMe_testcases "Test cases".
+@note Status snapshot: 26 October 2026. The suite contains 32 reportable
+validation forms; the latest recorded full PDF sweep produced 31/32 because the
+`HartmannTwoWay` notebook stopped at `run.reset()` on a non-empty generated scan
+directory. The formatting gate currently passes (92 files, zero violations).
+The current unit-test run passes all 38 arithmetic-only and 74 full tests. A
+sanitizer run remains outstanding. See @ref TrustLiMe_validation
+"Validation cases" and @ref TrustLiMe_testcases "Test cases".
 
 ---
 
@@ -24,8 +25,8 @@ still outstanding. See @ref TrustLiMe_validation "Validation cases" and
 | Coupled low-Rm mode — `force_lorentz` on a hydraulic problem | **done** (one-way \f$b \to\f$ momentum; PolyMAC and VEF source assembly) |
 | Post-treatment fields (`Champ_Fonc_MHD`) and their forms (merged 2026-10-21 into `Champs2D` / `Champs3D`) | **done** |
 | Coupled validation forms (7) | **done** |
-| Full validation suite — 2D, 3D twins, coupled, post-treatment | **32 reportable forms**; latest full PDF sweep ran 31/32 (2026-10-24). `HartmannTwoWay` is currently in progress and failed at `run.reset()` on a non-empty generated scan directory; the other forms, including both Gauss-law dimensions and the flux-error case, passed. |
-| Unit tests (GoogleTest) | **38 arith-only and 74 full tests pass** (2026-10-25) |
+| Full validation suite — 2D, 3D twins, coupled, post-treatment | **32 reportable forms**; latest recorded full PDF sweep ran 31/32. `HartmannTwoWay` needs a clean rerun after `run.reset()` encountered a non-empty generated scan directory; targeted records for the other forms include passing Gauss-law dimensions and the flux-error case. |
+| Unit tests (GoogleTest) | **38 arithmetic-only and 74 full tests pass** (rerun 2026-10-26) |
 | Two-way coupling — NS velocity feeds the magnetic convection (`vitesse_hydraulique`) | **done** (lagged staggered scheme; commits `9e5b13b`, `d484fbd`) |
 | \f$\nabla\cdot b = 0\f$ enforcement | **implemented, opt-in** via `correction_divergence`; 2D MPI and 3D serial mesh scans plus incompatible-flux rejection pass |
 | Turbulent magnetic diffusivity | **implemented**: prescribed fields, hydraulic k-\f$\varepsilon\f$, and independent magnetic k-\f$\varepsilon\f$ closure; frozen PolyMAC_P0 manufactured terms and zero-production analytic decay with a 3×3 mesh/time scan pass; solved spatial transport, VEF, and physical validation remain open |
@@ -33,9 +34,11 @@ still outstanding. See @ref TrustLiMe_validation "Validation cases" and
 | High-\f$\mathrm{Rm}\f$ dynamo | **open / long term** — section 5 |
 
 The standalone induction and low-Rm coupling foundations are complete. Current
-near-term work is closing validation and benchmark gaps (especially the Gauss
-projection sanitizer/full-unit-test follow-up and 3D coupled duct case); new turbulence equations,
-Ohmic heating and high-\f$\mathrm{Rm}\f$ dynamo capability remain larger extensions.
+near-term work is to rerun `HartmannTwoWay` and close the full regression gap,
+then deepen magnetic k-ε verification and run sanitizers. The 3D coupled
+`ShercliffDuct3D` form already exists and is recorded passing. New turbulence
+physics, Ohmic heating and high-\f$\mathrm{Rm}\f$ dynamo capability remain
+larger extensions.
 
 ---
 
@@ -46,9 +49,9 @@ Ohmic heating and high-\f$\mathrm{Rm}\f$ dynamo capability remain larger extensi
 | Standalone M0/M1 | induction equation + stretching source | done | `docs/content/plans/magnetic_standalone.md` |
 | Coupled C0 | kernel plumbing: optional equations, Lorentz source | done | `docs/content/plans/mhd_coupled.md` |
 | Coupled C1 | low-Rm momentum coupling | **done** — one-way `force_lorentz`, two-way `vitesse_hydraulique` | `docs/content/plans/mhd_coupled.md` |
-| Coupled C2 | low-\f$\mathrm{Rm}\f$ two-way NS+MHD coupling | **done**; close the Re scan and Shercliff 3D benchmark | `docs/content/plans/mhd_coupled.md` |
+| Coupled C2 | low-\f$\mathrm{Rm}\f$ two-way NS+MHD coupling | **implemented**; HartmannTwoWay reportable rerun remains; inertial-Re benchmark is future coverage | `docs/content/plans/mhd_coupled.md` |
 | Gauss-law projection | opt-in cell-centred Hodge projection | **implemented and validated** in 2D/3D; full-suite and sanitizer follow-up documented | `docs/content/plans/gauss_law.md` |
-| Turbulent induction | effective \f$\eta_t\f$ from fields or hydraulic k-\f$\varepsilon\f$ | **implemented**; magnetic fluctuation equations remain scaffolded | `docs/content/plans/induction_turbulence.md` |
+| Turbulent induction | effective \f$\eta_t\f$ from fields, hydraulic k-\f$\varepsilon\f$ or independent magnetic k-\f$\varepsilon\f$ | **implemented, early verification only**; solved spatial transport and physical validation remain open | `docs/content/plans/induction_turbulence.md` |
 | Coupled advanced physics | magnetic fluctuation transport, Ohmic heating, other benchmarks | open / staged | `docs/content/plans/mhd_coupled.md` |
 | Dynamo / VKS | turbulent EDM, high-Rm regime | long term | `docs/content/end_goal.md` |
 
@@ -90,9 +93,9 @@ itself lives in the kernel
 carries the full vector model. `MMS_Coupled` carries its 3D twin as a second
 dataset, and `VKSTurbulent` exercises a 3D VEF turbulent case. Still without
 3D counterparts are `HartmannTwoWay/`, `ForceLorentzBalance/` and
-`Coupled_Feedback/`; the coupled `ShercliffDuct3D` case also remains to be
-completed and validated. The `Hartmann1D` 2D/3D forms differ in probe sets by
-design. Keep this twin sweep as a coverage goal once the form set stabilises.
+`Coupled_Feedback/`. The coupled `ShercliffDuct3D` form is implemented and its
+latest recorded run passes. The `Hartmann1D` 2D/3D forms differ in probe sets by
+design. Keep the remaining twins as a future coverage goal.
 
 ### \f$\nabla\cdot b = 0\f$ handling
 
@@ -110,8 +113,8 @@ confirms that nonzero net boundary
 flux is rejected with the Gauss-law diagnostic. The full PDF sweep passed
 31/32 reportable forms; the remaining failure is the in-progress
 `HartmannTwoWay` scan's `run.reset()` on a non-empty generated build directory.
-The 45-test kernel-linked unit suite also currently SIGSEGVs before its first
-test, while all 29 arith-only tests pass. Sanitizer validation remains open.
+The current GoogleTest run passes all 38 arithmetic-only and 74 full tests.
+Sanitizer validation remains open.
 The projection supports homogeneous Neumann magnetic walls; non-homogeneous
 Dirichlet data are not preserved, and this does not enforce every flux-based
 divergence notion used by other discretizations.

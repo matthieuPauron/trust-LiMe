@@ -520,10 +520,10 @@ kernel function mhd_tension_magnetique asserts nb_b == dim.
   The 3D case uses the shared active-x refinement ladder and three cells in
   each transverse direction to avoid a parity-sensitive null mode. The 2D case
   verifies MPI ghost and global-flux handling.
-- The latest reportable full sweep passed 31/32 forms; `HartmannTwoWay` was
-  still in progress and failed at `run.reset()` on a non-empty generated scan
-  directory. The full kernel-linked unit test and sanitizer follow-ups remain
-  open (arith-only tests pass).
+- The latest recorded reportable full sweep passed 31/32 forms; `HartmannTwoWay`
+  needs a clean rerun after `run.reset()` encountered a non-empty generated scan
+  directory. The current full kernel-linked unit suite passes 74/74; sanitizer
+  follow-up remains open.
 
 ## 11ter. Merging the post-treatment validation forms (2026-10-21)
 
@@ -760,55 +760,37 @@ failure is a genuine test failure (not just a plot mismatch).
 ### Business-logic contracts (what the tests actually pin)
 
 "Testing" here means the **modelling decisions**, not the discretisation
-dimensions. Scope is 2D *and* 3D: every form exists in both
-`MagneticStandalone/` and `MagneticStandalone3D/` (the 3D twins keep the same
-assertions). For each decision: is it pinned by a test, and where?
+dimensions. Coverage is mixed: paired standalone forms carry 2D/3D datasets,
+while `MMS_3D`, `Shercliff3D`, and the coupled 3D forms are separate forms.
+Not every coupled case has a 3D twin. For each decision: is it pinned by a
+test, and where?
 
 | # | Modelling decision | Pinned? | By |
 |---|---|:--:|---|
-| 1 | **No $\rho C_p$ factor.** The equation is magnetic, not thermal; the time factor must be exactly 1. This is the single most dangerous inherited decision (the base class is the *energy* equation). | ✅ | `diffusion`, `diffusion_refined` — the *absolute* decay rate $e^{-\eta\pi^2t}$ pins the constant; a $\rho C_p$ factor would be off by ~10³ |
-| 2 | **η is used verbatim** as the diffusion coefficient (not a transformed quantity). | ✅ | `diffusion` (rate), `steady_state` (divergence form) |
-| 3 | **η is used for the operator *and* for the time-step estimate** (`diffusivite_pour_transport` / `..._pour_pas_de_temps` both return η). | ⚠️ partial | only indirectly (a wrong value changes dt, not the converged solution) |
-| 4 | **Components are transported independently** — no coupling, no projection. | ❌ **not testable today** | the module is scalar-only (`nb_composantes = 1`); the multi-component vector case is deferred with M3. Two distinct eigen-rates would pin it — see the `vector_components` note below |
-| 5 | **No spurious source**: equilibria are preserved exactly. | ✅ | `invariance` (1e-10), `steady_state` (1e-8) |
-| 6 | **Diffusion is in divergence form** $\nabla\!\cdot\!(\eta\nabla b)$, so a spatially varying η behaves correctly. | ✅ | `steady_state` ($\eta=1+x$, exact equilibrium) |
-| 7 | **Velocity is given data and is frozen**; no feedback from $b$ to $u$. | ✅ | `advection`, `varying_velocity` |
-| 7b | **M1 source $S=(b\cdot\nabla)u$** has the right magnitude, sign and gradient-index order (scalar transport). | ✅ | `source_stretching` ($b=B_0e^t$) |
-| 7c | The source is **explicit (lagged)** and adds nothing to the Jacobian. | ✅ by construction | `dimensionner_blocs()` is empty; verified by the growth rate matching $e^t$ to <1% |
-| 8 | **BC semantics**: Dirichlet prescribes $b$, Neumann means zero *flux* $\partial b/\partial n=0$. | ✅ | implied by `diffusion` (a wrong Dirichlet would change the eigenvalue set, so the analytic rate would not match) |
-| 9 | **Only insulated (Neumann) and prescribed (Dirichlet) walls are supported** — the conducting-wall condition (interface current / Ohm's law) is out of scope. | 📋 declared | `docs/content/model.md` §6 |
-| 10 | **$\nabla\cdot b=0$ is assumed, not enforced** (Gauss law is the user's responsibility). | ❌ **not testable** | see the caveat below |
-| 11 | Malformed input fails cleanly with a readable message. | ✅ | `error_missing_eta`, `error_bad_nbcomposantes`, `error_bad_bc` |
-| 12 | Equation form is advection–diffusion, **not** the $-\nabla\times(u\times b)$ form. | 📋 by review | `docs/content/model.md` §1 |
+| 1 | **No \f$\rho C_p\f$ factor.** The equation is magnetic, not thermal; the time factor must be exactly 1. | ✅ | The absolute decay rate \f$e^{-\eta\pi^2t}\f$ in `Diffusion` pins the constant. |
+| 2 | **\f$\eta\f$ is used verbatim** as the diffusion coefficient. | ✅ | `Diffusion` and `SteadyState` analytic checks. |
+| 3 | **\f$\eta\f$ is used for the operator and time-step estimate.** | ✅ by implementation | `diffusivite_pour_transport` / `diffusivite_pour_pas_de_temps`. |
+| 4 | **Components are transported independently**; vector unknowns are supported. | ✅ | Multi-component Hartmann/Shercliff and post-treatment forms. |
+| 5 | **No spurious source**: equilibria are preserved exactly. | ✅ | `Invariance`, `SteadyState`. |
+| 6 | **Diffusion is in divergence form** \f$\nabla\cdot(\eta\nabla b)\f$. | ✅ | `SteadyState` with spatially varying \f$\eta\f$. |
+| 7 | Standalone velocity is prescribed; coupled mode can use solved NS velocity. | ✅ | `vitesse_magnetique` / `vitesse_hydraulique` paths. |
+| 7b | M1 source \f$S=(b\cdot\nabla)u\f$ has the right sign and gradient-index order. | ✅ | `SourceStretching`, `HartmannTwoWay`. |
+| 7c | Coupling sources are explicit/lagged in the default scheme; opt-in Picard coupling is available. | ✅ | `couplage_fort`; neither path makes the default source implicit. |
+| 8 | Dirichlet prescribes \f$b\f$; Neumann is zero flux. | ✅ | Analytic diffusion and boundary-condition forms. |
+| 9 | Insulating and perfect-conductor magnetic walls are available; finite-conductivity/vacuum walls are deferred. | ✅ / deferred | `paroi_isolante_magnetique`, `paroi_conductrice_magnetique`. |
+| 10 | \f$\nabla\cdot b=0\f$ is not imposed by default; an opt-in projection enforces the module's reported discrete divergence under its supported boundary/flux conditions. | ✅, scoped | `correction_divergence`; see §11bis and `docs/content/plans/gauss_law.md`. |
+| 11 | Malformed input fails with a diagnostic. | ✅ | Merged `ErrorInputs` forms. |
+| 12 | Equation form is advection–diffusion with the M1 stretching source, not the full nonlinear high-Rm induction equation. | ✅ / scope limit | `docs/content/model.md` §1. |
 
-### Why decision 10 cannot be tested in 2D (and what to do about it)
+### Gauss-law enforcement: implemented scope and limits
 
-The Gauss law cannot be verified by a test case, and this is a genuine
-limitation of the current design rather than an oversight:
-
-- A divergence-free field that vanishes on the **whole** boundary must be
-  identically zero in 2D: the div–curl identity gives
-  $\int|\nabla b|^2 = \oint b\cdot n\,dl = 0$.
-- So a non-trivial divergence-free transient needs mixed BCs. With a single
-  component varying only in $y$ (so $\nabla\cdot b=\partial_y b_x=0$), the other
-  component must be $y$-independent — which demands **different BCs per
-  component**, while TRUST scalar CLs apply one uniform condition to all
-  components.
-
-Consequences for how the cases must be read:
-
-| Case | Physically admissible magnetic state? |
-|---|---|
-| `invariance`, `diffusion`, `steady_state`, `varying_velocity` | **yes** ($\nabla\cdot b=0$) |
-| `advection` | **no** — convection-operator test only |
-
-(The former `vector_components` form — a machinery test for multi-component
-handling — was removed: the scalar-only module cannot run it. Its two-distinct-
-eigen-rates idea is the natural test once vector `nb_composantes` lands.)
-
-If Gauss-law correctness ever becomes a requirement, it needs an M3-style
-projection or a vector-potential formulation, plus **per-component boundary
-conditions**. Both are deferred (see `docs/content/model.md` §6).
+The opt-in `correction_divergence` projection is verified in 2D (two-rank
+coarse/standard/fine scan) and 3D (sequential scan); incompatible net boundary
+flux is rejected. It projects the cell-centred field for the module's reported
+Green--Gauss divergence. It assumes compatible flux and homogeneous Neumann
+magnetic walls; non-homogeneous Dirichlet data are not preserved. A
+vector-potential/Nedelec formulation remains a separate deferred approach, not
+a prerequisite for the implemented projection.
 
 Useful technique: give two components or two runs **different** analytic
 behaviour (different eigen-rates, coarse vs refined mesh) so a plumbing bug
@@ -1508,8 +1490,8 @@ was last exercised on 2026-10-20 (module-instrumented build), where it
 localised the §18.2 kernel FPE. A full-kernel instrumented pass
 (`make custom` in the TRUST checkout) is still required to instrument
 kernel-side reads; until then, the coupled paths are validated by the
-analytic notebooks (ForceLorentzBalance, MMS_Coupled, HartmannTwoWay,
-Coupled_Feedback) and the 29-test arith-only unit suite, not by ASan.
+  analytic notebooks (ForceLorentzBalance, MMS_Coupled, HartmannTwoWay,
+  Coupled_Feedback) and the 38-test arith-only unit suite, not by ASan.
 
 ## Archive: AGENTS.md status history (moved 2026-10-24)
 
@@ -1719,9 +1701,10 @@ append new findings there.
   `trust-lime_opt` rebuild, the `Operateur_Conv` wrapper two-hop binding)
   in `docs/content/dev_corner/kernel_reuse.md` §12bis/§12ter.
 - **Unit tests** live in `tests/UnitTests/` (GoogleTest, kernel conventions).
-  The recorded full suite has 45 tests from 11 suites, including the
+  The current full suite has 74 tests from 26 suites, including the
   `Terme_Source_Lorentz` data-file contract (`unit_lorentz_source.cpp`) and the
-  `Pb_Induction` / `Pb_MHD` hierarchy checks. The latest full run (2026-10-24)
-  SIGSEGVed at the first kernel-linked registration test, with both default and
-  `_semi_opt` suffixes; the 29-test `--arith-only` path passes. Use
-  `UNIT_TEST_SUFFIX=_semi_opt` while the `optim` kernel archives are stale.
+  `Pb_Induction` / `Pb_MHD` hierarchy checks. Both the full suite (74/74) and
+  `--arith-only` suite (38/38) passed on 2026-10-26. Earlier SIGSEGV reports
+  (including the 45-test run) are historical and no longer describe the current
+  result. Use `UNIT_TEST_SUFFIX=_semi_opt` only when the `optim` kernel archives
+  are stale.
