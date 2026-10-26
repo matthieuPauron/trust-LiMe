@@ -127,3 +127,18 @@ The nightly job may append follow-up tasks to section 4 of `docs/content/NEXT.md
 - A proposal is not evidence of completion; do not move it to "Completed".
 - Only the user can promote a proposal; the cron job must never auto-promote.
 - Keep the Proposed section empty when there are no pending proposals.
+
+
+## Shared worktrees (multiple tasks)
+
+When the nightly job places several directly-following tasks in the same
+worktree, the worktree entry has `tasks: [title1, title2, ...]`. Each task
+requires its own validation:
+
+- Do not mark the worktree validated until every task in `tasks` is validated.
+- When validating, the user may validate them one at a time or together; if
+  together, append all titles to `validated_tasks` and clear `current_tasks`.
+- On rejection of one task, keep the others in `current_tasks` (or split the
+  worktree) and record feedback in `last_run_summary`.
+- A reused worktree keeps a single branch/path; the transition between tasks
+  is documented in `last_run_summary`.
