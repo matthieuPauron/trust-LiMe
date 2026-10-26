@@ -520,10 +520,10 @@ kernel function mhd_tension_magnetique asserts nb_b == dim.
   The 3D case uses the shared active-x refinement ladder and three cells in
   each transverse direction to avoid a parity-sensitive null mode. The 2D case
   verifies MPI ghost and global-flux handling.
-- The latest recorded reportable full sweep passed 31/32 forms; `HartmannTwoWay`
-  needs a clean rerun after `run.reset()` encountered a non-empty generated scan
-  directory. The current full kernel-linked unit suite passes 74/74; sanitizer
-  follow-up remains open.
+- The last recorded pre-merge full sweep passed 31/32 forms (30/31 after the
+  Shercliff merge). The subsequent targeted `HartmannTwoWay` rerun passed 18/18
+  cases; full-suite reporting is nightly. The current full kernel-linked unit
+  suite passes 74/74; sanitizer follow-up remains open.
 
 ## 11ter. Merging the post-treatment validation forms (2026-10-21)
 
@@ -661,7 +661,7 @@ mechanism described here is unchanged; only the class holding it changed.*
 - **Matrix symmetry (P5, resolved).** `Terme_Source_Lorentz::ajouter_blocs`
   modifies only `secmem` (the RHS vector) — it never touches the
   matrices. The Lorentz force is an explicit, lagged source
-  ($\mathbf{J}\times\mathbf{B}\f$ evaluated at $b^s$), so it
+  (\f$\mathbf{J}\times\mathbf{B}\f$ evaluated at \f$b^s\f$), so it
   does not enter the momentum matrix at all. Matrix symmetry is therefore
   determined by the kernel operators: the PolyMAC_MPFA diffusion operator
   is symmetric, the convection operator is non-symmetric (upwind). This is a

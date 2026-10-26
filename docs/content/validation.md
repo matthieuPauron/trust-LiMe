@@ -34,7 +34,7 @@ share/Validation/Rapports_automatiques/
 ```
 
 The paired forms `Advection`, `Diffusion`, `ErrorInputs`, `GaussLaw`,
-`Hartmann1D`, `Invariance`, `SourceStretching`, `SteadyState`,
+`Hartmann1D`, `Invariance`, `SourceStretching`, `SteadyState`, and
 `VaryingVelocity`, and `Shercliff` now each have one notebook under `MagneticStandalone/` that
 runs both dimensions from one shared data template. Each dimension keeps its
 own mesh ladder and build subtree. In `GaussLaw`, the 2D case exercises the MPI
@@ -92,10 +92,12 @@ forms merged into one `ErrorInputs` notebook per category), via
 lives in the `trust-lime-notebooks` skill ("PDF export & the repository
 report").
 
-Status snapshot (2026-10-26): the latest recorded pre-merge full sweep
-generated 31 of 32 PDFs (30 of 31 after the Shercliff merge). The merged
-2D/3D Shercliff notebook passed and reproduced all 20 pre-merge coarse probe
-files exactly. The full report is generated nightly. The targeted records
+Status snapshot (2026-10-26): the latest recorded pre-merge full sweep generated
+31 of 32 PDFs; after merging the Shercliff forms, that historical result
+corresponds to 30 of 31 forms. The merged 2D/3D Shercliff notebook was run and
+its 20 baseline probe files reproduced exactly. The targeted
+`HartmannTwoWay` rerun has since passed all 18 cases; the full report is
+generated nightly, so no manual regeneration was done. The targeted records
 for both Gauss-law dimensions and `ShercliffDuct3D` are passing. The formatting
 gate was rerun on 2026-10-26: 92 files scanned, zero violations.
 

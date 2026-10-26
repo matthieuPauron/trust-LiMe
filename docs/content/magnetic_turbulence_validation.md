@@ -105,8 +105,10 @@ Status: the frozen PolyMAC_P0 term comparison is implemented in
 - The uniform-field analytic-decay scan now sets \f$P_b=0\f$ and checks
   source-driven decay, zero advection/diffusion, positivity, timestep
   convergence, and mesh independence.
-- Advection/diffusion are covered by the frozen manufactured terms; a solved
-  spatially varying transport-only case remains useful follow-up coverage.
+- Advection/diffusion are now also exercised by a solved spatially varying
+  transport-only case in `MagneticTurbulence` (nonuniform `k_b`/`epsilon_b`
+  under the divergence-free velocity field, uniform `b` so `P_b=0`), checking
+  positivity, finiteness and mesh/time convergence on the 17/33/65-node ladder.
 
 ### 4. Energy-transfer verification
 In a closed domain:
@@ -183,6 +185,91 @@ In a closed domain:
 12. **Quantitative coupled feedback**  
     `VKSTurbulent` validates integration, not a quantitative turbulent feedback
     effect.
+
+## Next steps
+
+### Immediate (verification coverage)
+
+1. **Solved spatial transport-only case.** The frozen manufactured case verifies
+   each operator in isolation at \f$t=0\f$; the uniform-field decay verifies the
+   source ODE. Neither exercises advection and diffusion during time evolution
+   with spatial gradients. Add a case with nonuniform initial \f$k_b\f$,
+   \f$\varepsilon_b\f$, and a tangent velocity, \f$P_b=0\f$ (uniform magnetic
+   field), and check positivity, mesh/timestep convergence, and self-convergence.
+
+2. **Energy-transfer verification.** DONE (2026-10-26): solved manufactured case (`energy_coarse`/`energy_standard`) checks finite/positive k_b, epsilon_b and magnetic_field; molecular-only twin (`mol_*`) confirms the turbulent contribution changes the result. Boundary fluxes still reported separately.
+
+3. **Restart and state persistence.** Save and restore \f$k_b\f$,
+   \f$\varepsilon_b\f$, and model constants; verify identical continuation.
+
+### Medium term (discretization and robustness)
+
+4. **VEF port.** The independent closure is PolyMAC-only. `Op_Diff_VEF_Face`
+   aborts for a vector magnetic unknown on VEF, and no PolyMAC wall law exists.
+   Porting the closure to VEF would enable cross-discretization comparison with
+   the hydraulic handoff path (which is VEF-only).
+
+5. **Mesh-convergence ladder.** Promote `MagneticTurbulence` from its current
+   single-mesh frozen check to a coarse/standard/fine scan with assertions, as
+   for the established magnetic forms.
+
+6. **Boundary and wall treatment.** Only closed-domain, no-flux scope is
+   realistic today. Inlet, outlet, wall-function, and low-Reynolds magnetic
+   corrections are missing.
+
+### Physical benchmark candidates
+
+7. **Frick et al. (2010)** — *Direct Measurement of Effective Magnetic
+   Diffusivity in Turbulent Flow of Liquid Sodium*, *Phys. Rev. Lett.* 105,
+   184502 ([doi:10.1103/PhysRevLett.105.184502](https://doi.org/10.1103/PhysRevLett.105.184502)).
+   Measures the turbulent increase in effective magnetic diffusivity
+   (\f$\beta\f$-effect) from phase shift in a turbulent sodium toroidal channel:
+   up to \f$\sim 50\%\f$, at \f$Re \approx 3\times10^6\f$,
+   \f$Rm \approx 30\f$. This is the best available physical target for
+   validating the closure's \f$\eta_t\f$ prediction, but reproducing the
+   experiment's geometry and transient flow is substantial work, and no
+   \f$k_b\f$, \f$\varepsilon_b\f$ measurements are reported.
+
+8. **Meng et al. (2018)** — *A K-Epsilon RANS turbulence model for
+   incompressible MHD flow at high Hartmann number in fusion liquid metal
+   blankets*, *Int. J. Energy Res.* 42(1), 314–320
+   ([doi:10.1002/er.3891](https://doi.org/10.1002/er.3891)). Compares mean
+   velocity and turbulent kinetic energy against high-Hartmann-number duct
+   experiments. However, its \f$k\f$, \f$\varepsilon\f$ are **hydraulic**
+   turbulence variables with electromagnetic damping terms — not LiMe's
+   magnetic-fluctuation \f$k_b\f$, \f$\varepsilon_b\f$. The underlying
+   experiment is Burr et al. (2000), *Turbulent transport of momentum and
+   heat in magnetohydrodynamic rectangular duct flow with strong sidewall
+   jets*, *J. Fluid Mech.* 406, 247–279
+   ([doi:10.1017/S0022112099007405](https://doi.org/10.1017/S0022112099007405)).
+
+9. **Eckert et al. (2001)** — *MHD turbulence measurements in a sodium
+   channel flow exposed to a transverse magnetic field*, *Int. J. Heat Fluid
+   Flow* 22(3), 358–364. Reports turbulence intensity and energy spectra in
+   mercury/sodium flows under transverse magnetic fields — useful for
+   qualitative comparison of turbulence suppression.
+
+**Conclusion:** No published experiment directly measures magnetic-fluctuation
+\f$k_b\f$ or \f$\varepsilon_b\f$. A direct physical validation of LiMe's
+transport equations would require experimental magnetic-fluctuation statistics
+sufficient to derive \f$k_b\f$ and \f$\varepsilon_b\f$. The best available
+targets are Frick et al. (for \f$\eta_t\f$) and the Meng/Burr duct (for
+broader MHD turbulence comparison), neither of which directly validates the
+magnetic \f$k_b\f$-\f$\varepsilon_b\f$ transport model.
+
+### Long term
+
+10. **Coefficient calibration and documentation.** Magnetic coefficients
+    currently reuse hydraulic defaults (\f$C_{\mu,b}=0.09\f$,
+    \f$C_{\varepsilon1,b}=1.44\f$, \f$C_{\varepsilon2,b}=1.92\f$) without
+    calibration or citations. The equations and validation status are now
+    documented; calibration against DNS or experiment remains open.
+
+11. **3D twin.** Add a 3D version under `MagneticStandalone3D/`.
+
+12. **High-\f$\mathrm{Rm}\f$ / VKS.** Use a high-\f$\mathrm{Rm}\f$ or
+    VKS-like case only after calibration, and document it as a physical
+    benchmark rather than a smoke test.
 
 ## Bottom line
 
