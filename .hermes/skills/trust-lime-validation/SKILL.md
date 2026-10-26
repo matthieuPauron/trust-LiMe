@@ -55,6 +55,7 @@ metadata:
 - A 3D form needs all six boundary faces defined in BOTH the Navier-Stokes and magnetic blocks; missing front/back faces break meshing or the solve.
 - `check-validation.sh` defaults to git-tracked files; use `--all` to scan new untracked forms. Re-run it after editing `parallel_ok[]`.
 - Heavy builds (sanitizer/full-kernel) follow the RAM guard in `AGENTS.md` and `.opencode/scripts/check-heavy-build.sh`.
+- The nightly backlog job runs each task in its own worktree under `trust-LiMe-worktrees/`; changes are NOT in the main tree. Validate by inspecting the worktree paths in `nightly-backlog-state.json` (`worktrees`), then remove the worktree after merge.
 - A dataset using `$nx`/`$ny`/`$nz` placeholders is a template: the notebook must call `run.addCaseFromTemplate(..., dic={...})`. Calling `run.addCase(".", ...)` leaves the placeholders in the generated `DEC_`/`PAR_` files and fails with `Error converting a string to type int: $nx`.
 - In 3D, keep the analytic solution z-independent where possible and place probes at the mid-plane (`z = 0.0` or `0.5` matching the mesh); always read effective coordinates from the `.son` header rather than nominal ones.
 - `SonFile(path)` (single argument) is not supported; use `SonFile(path, None)` then `getEntries()`/`getValues()`.
