@@ -1725,4 +1725,3 @@ append new findings there.
   SIGSEGVed at the first kernel-linked registration test, with both default and
   `_semi_opt` suffixes; the 29-test `--arith-only` path passes. Use
   `UNIT_TEST_SUFFIX=_semi_opt` while the `optim` kernel archives are stale.
-

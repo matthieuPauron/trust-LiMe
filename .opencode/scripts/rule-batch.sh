@@ -8,19 +8,13 @@ cd "$repo" || exit 1
 
 forms=(
   MagneticStandalone/Advection
+  MagneticStandalone/Diffusion
   MagneticStandalone/Hartmann1D
   MagneticStandalone/Invariance
   MagneticStandalone/Shercliff2D
   MagneticStandalone/SourceStretching
   MagneticStandalone/SteadyState
   MagneticStandalone/VaryingVelocity
-  MagneticStandalone3D/Advection
-  MagneticStandalone3D/Diffusion
-  MagneticStandalone3D/Hartmann1D
-  MagneticStandalone3D/Invariance
-  MagneticStandalone3D/SourceStretching
-  MagneticStandalone3D/SteadyState
-  MagneticStandalone3D/VaryingVelocity
   MagneticCoupled/ForceLorentzBalance
   MagneticCoupled/MMS_Coupled
   Postraitement_fields/Champs2D

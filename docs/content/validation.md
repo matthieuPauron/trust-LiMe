@@ -11,7 +11,7 @@ Each case lives in its own folder under
 
 ```
 share/Validation/Rapports_automatiques/
-├── MagneticStandalone/             # standalone induction equation (2D)
+├── MagneticStandalone/             # standalone induction; paired 2D/3D forms
 │   ├── Invariance/                 # one validation form per test case
 │   │   ├── Invariance.ipynb        # notebook named after its form folder
 │   │   └── src/invariance.data
@@ -22,9 +22,9 @@ share/Validation/Rapports_automatiques/
 │   ├── GaussLaw/                   # opt-in 2D discrete divergence projection
 │   ├── MagneticTurbulence/         # PolyMAC_P0 manufactured terms + zero-production decay
 │   └── ErrorInputs/                # malformed inputs incl. incompatible net flux
-├── MagneticStandalone3D/           # 3D twins of the established standalone forms
-│   ├── GaussLaw/                   # sequential 3D projection twin
-│   └── <FormName>/…                # (Polyedriser dom after Mailler — see below)
+├── MagneticStandalone3D/           # dimension-specific standalone forms
+│   ├── MMS_3D/                     # four historical 3D MMS cases
+│   └── Shercliff3D/                # full-vector 3D channel case
 ├── MagneticCoupled/                # coupled low-Rm MHD (2D, incl. the merged
 │   └── <FormName>/…                #   one-way + two-way feedback form)
 ├── MagneticCoupled3D/              # 3D-only coupled forms (the MMS twin now
@@ -33,15 +33,16 @@ share/Validation/Rapports_automatiques/
     └── Champs2D/ Champs3D/         # (∇b / |b|² / u·b based — two datasets each)
 ```
 
-`MagneticStandalone3D/GaussLaw/` is the 3D twin of the 2D `GaussLaw` form. It
-uses a compatible non-solenoidal full-vector field and a sequential mesh scan
-on the shared active-x ladder; three y/z cells avoid a parity-sensitive null
-mode. The 2D form separately exercises the MPI path. Other
-`MagneticStandalone3D` forms differ from their 2D counterpart in the
-dataset: `dimension 3`, three-component vector data, three-coordinate probes,
-and **`Polyedriser dom`** right after `Mailler` (PolyMAC_MPFA requires polyhedral
-cells in 3D; the `Pave` hexahedra are converted in place). The notebooks and the
-asserted tolerances are shared with the 2D forms.
+The paired forms `Advection`, `Diffusion`, `ErrorInputs`, `GaussLaw`,
+`Hartmann1D`, `Invariance`, `SourceStretching`, `SteadyState`, and
+`VaryingVelocity` now each have one notebook under `MagneticStandalone/` that
+runs both dimensions from one shared data template. Each dimension keeps its
+own mesh ladder and build subtree. In `GaussLaw`, the 2D case exercises the MPI
+path while the 3D full-vector case remains sequential; its transverse mesh
+uses three cells to avoid a parity-sensitive null mode. The 3D mesh block
+includes **`Polyedriser dom`** after `Mailler` because PolyMAC_MPFA requires
+polyhedral cells in 3D. The remaining `MagneticStandalone3D/` forms are the
+dimension-specific `MMS_3D` and `Shercliff3D` cases.
 
 Four formatting rules are enforced by `.opencode/scripts/check-validation.sh`
 (`/check-validation`): the notebook lives at the form root only —

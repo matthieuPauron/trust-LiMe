@@ -1,14 +1,146 @@
 {
   "unit_tests": {
     "note": "arith-only (29 tests) passes; full 45-test run SIGSEGVs at first kernel-linked registration test",
+    "returncode": 0,
     "status": "pass",
-    "suites": {}
+    "suites": {
+      "CorrectionDivergenceKernel": {
+        "failures": 0,
+        "tests": 4
+      },
+      "InductionStretchingKernel": {
+        "failures": 0,
+        "tests": 7
+      },
+      "MHDPosttraitement": {
+        "failures": 0,
+        "tests": 18
+      },
+      "MagneticTurbulenceKernel": {
+        "failures": 0,
+        "tests": 9
+      }
+    }
   },
-  "updated": "2026-10-25T11:26:04.068525+00:00",
+  "updated": "2026-10-26T05:33:09.081079+00:00",
   "validation": {
+    "MagneticCoupled/Coupled_Feedback": {
+      "last_run": "2026-10-26T00:27:35.205771+00:00",
+      "status": "pass"
+    },
+    "MagneticCoupled/ErrorInputs": {
+      "last_run": "2026-10-26T00:27:43.339826+00:00",
+      "status": "pass"
+    },
+    "MagneticCoupled/ForceLorentzBalance": {
+      "last_run": "2026-10-26T00:27:51.274808+00:00",
+      "status": "pass"
+    },
     "MagneticCoupled/HartmannTwoWay": {
+      "last_run": "2026-10-26T00:28:56.306900+00:00",
       "note": "failed at run.reset() on non-empty scan dir",
-      "status": "in_progress"
+      "status": "pass"
+    },
+    "MagneticCoupled/MMS_Coupled": {
+      "last_run": "2026-10-26T00:29:07.086410+00:00",
+      "status": "pass"
+    },
+    "MagneticCoupled/TemperatureDependentEta": {
+      "last_run": "2026-10-26T00:29:14.953226+00:00",
+      "status": "pass"
+    },
+    "MagneticCoupled3D/ShercliffDuct3D": {
+      "last_run": "2026-10-26T00:29:22.422289+00:00",
+      "status": "pass"
+    },
+    "MagneticCoupled3D/SmoothDiskMHD": {
+      "last_run": "2026-10-26T00:29:29.736728+00:00",
+      "status": "pass"
+    },
+    "MagneticCoupled3D/VKSLite": {
+      "last_run": "2026-10-26T00:29:36.846773+00:00",
+      "status": "pass"
+    },
+    "MagneticCoupled3D/VKSTurbulent": {
+      "last_run": "2026-10-26T00:29:44.014929+00:00",
+      "status": "pass"
+    },
+    "MagneticStandalone/Advection": {
+      "last_run": "2026-10-26T00:00:29.976527+00:00",
+      "status": "pass"
+    },
+    "MagneticStandalone/ConductingWall": {
+      "last_run": "2026-10-26T00:00:37.776538+00:00",
+      "status": "pass"
+    },
+    "MagneticStandalone/Diffusion": {
+      "last_run": "2026-10-26T05:04:46.458979+00:00",
+      "status": "pass"
+    },
+    "MagneticStandalone/ErrorInputs": {
+      "last_run": "2026-10-26T05:06:48.738808+00:00",
+      "note": "All seven 2D/3D diagnostics are asserted; TRUST returns 139 after printing its expected fatal diagnostic.",
+      "status": "pass"
+    },
+    "MagneticStandalone/GaussLaw": {
+      "last_run": "2026-10-26T05:04:46.504600+00:00",
+      "status": "pass"
+    },
+    "MagneticStandalone/Hartmann1D": {
+      "last_run": "2026-10-26T05:04:46.525397+00:00",
+      "status": "pass"
+    },
+    "MagneticStandalone/Invariance": {
+      "last_run": "2026-10-26T05:04:46.547006+00:00",
+      "status": "pass"
+    },
+    "MagneticStandalone/MMS_2D": {
+      "last_run": "2026-10-26T00:02:13.702650+00:00",
+      "status": "pass"
+    },
+    "MagneticStandalone/MagneticTurbulence": {
+      "last_run": "2026-10-26T00:02:28.551976+00:00",
+      "status": "pass"
+    },
+    "MagneticStandalone/Shercliff2D": {
+      "last_run": "2026-10-26T00:02:39.901806+00:00",
+      "status": "pass"
+    },
+    "MagneticStandalone/SourceStretching": {
+      "last_run": "2026-10-26T05:04:46.568691+00:00",
+      "status": "pass"
+    },
+    "MagneticStandalone/SteadyState": {
+      "last_run": "2026-10-26T05:04:46.591231+00:00",
+      "status": "pass"
+    },
+    "MagneticStandalone/TurbulenceDiffusion": {
+      "last_run": "2026-10-26T00:13:34.621830+00:00",
+      "status": "pass"
+    },
+    "MagneticStandalone/TurbulentDiffusion": {
+      "last_run": "2026-10-26T00:13:42.644842+00:00",
+      "status": "pass"
+    },
+    "MagneticStandalone/VaryingVelocity": {
+      "last_run": "2026-10-26T05:04:46.613214+00:00",
+      "status": "pass"
+    },
+    "MagneticStandalone3D/MMS_3D": {
+      "last_run": "2026-10-26T00:15:23.505322+00:00",
+      "status": "pass"
+    },
+    "MagneticStandalone3D/Shercliff3D": {
+      "last_run": "2026-10-26T00:16:31.169880+00:00",
+      "status": "pass"
+    },
+    "Postraitement_fields/Champs2D": {
+      "last_run": "2026-10-26T00:29:52.223507+00:00",
+      "status": "pass"
+    },
+    "Postraitement_fields/Champs3D": {
+      "last_run": "2026-10-26T00:30:01.356232+00:00",
+      "status": "pass"
     }
   }
 }

@@ -27,11 +27,11 @@ in one invocation (see `.opencode/scripts/with-trust-env.sh`):
 
 Notebooks (under share/Validation/Rapports_automatiques/): one
 `Rapports_automatiques/<Category>/<FormName>/<FormName>.ipynb` per test case.
-The standalone magnetic forms are `MagneticStandalone/*/` (2D) and
-`MagneticStandalone3D/*/` (the 3D twins, same form names):
-`Invariance/`, `Diffusion/`, `DiffusionRefined/`, `Advection/`,
-`SteadyState/`, `VaryingVelocity/`, `SourceStretching/`, `Hartmann1D/`, and the
-negative `Error*` forms.
+The paired standalone magnetic forms live under `MagneticStandalone/*/`; each
+notebook runs its 2D and 3D datasets from one shared template. The remaining
+dimension-specific forms are `MagneticStandalone/MMS_2D/`,
+`MagneticStandalone/Shercliff2D/`, `MagneticStandalone3D/MMS_3D/`, and
+`MagneticStandalone3D/Shercliff3D/`.
 
 HartmannFlow and Shercliff_3D_duct were removed; recreate them only when the
 coupled MHD problem lands. A notebook runs **one and only one test case** and

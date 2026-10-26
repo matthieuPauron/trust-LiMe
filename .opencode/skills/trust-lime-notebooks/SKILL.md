@@ -55,13 +55,16 @@ Four rules, R1–R3 enforced mechanically by
     form). The two ladders are independent, and every case needs its **own**
     build subfolder (`build/<dataset>/<scale>/`) so the partitioned
     `DOM_000*.Zones` cannot collide — see "Mesh-convergence scan" below.
-- **R5 — 2D/3D twins.** Every standalone-magnetic form exists in 2D
-  (`MagneticStandalone/<FormName>/`) and in 3D (`MagneticStandalone3D/<FormName>/`,
-  same form name, same assertions). A 3D dataset differs from its 2D
-  counterpart only by `dimension 3`, three-component vector/probe
-  coordinates, six borders, and **`Polyedriser dom` right after `Mailler`**
-  (PolyMAC_MPFA requires polyhedral cells in 3D). Keep twins in sync when a
-  case changes. (The `Case` folder is the ASN 28 category grouping.)
+- **R5 — 2D/3D standalone coverage.** Paired forms may share one notebook and
+  one `.data` template under `MagneticStandalone/<FormName>/`, with dimension-
+  specific mesh, boundaries, vectors, and probes injected by template
+  substitutions. This is the pattern for `Advection`, `Diffusion`,
+  `ErrorInputs`, `GaussLaw`, `Hartmann1D`, `Invariance`, `SourceStretching`,
+  `SteadyState`, and `VaryingVelocity`. Keep both dimension ladders and their
+  assertions independent in the merged notebook. 3D meshes require
+  **`Polyedriser dom` right after `Mailler`** (PolyMAC_MPFA needs polyhedra).
+  Dimension-specific forms such as `MMS_3D` and `Shercliff3D` remain under
+  `MagneticStandalone3D/`. (The `Case` folder is the ASN 28 category grouping.)
 - **R2 — sequential-only datasets (default).** A `.data` file **must not
   contain any TRUST parallelism machinery**: `Decouper`, `Partitionneur`,
   `Partition`, `Partition_tool`, `Scatter`, `Larg_joint`, `Nom_Zones`,

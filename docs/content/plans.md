@@ -101,11 +101,12 @@ magnetic field onto the null space of the module's reported Green–Gauss
 divergence, using the exact discrete operator \f$L = D D^T\f$. The 2D
 `GaussLaw` case passes on 2 ranks over coarse/standard/fine meshes, with
 post-initialization maximum divergence below \f$2\times10^{-13}\f$.
-The 3D `MagneticStandalone3D/GaussLaw` twin passes a sequential
-coarse/standard/fine scan on the shared 16/32/64 active-x-cell ladder, with
+The 3D dataset in the merged `MagneticStandalone/GaussLaw` form passes a
+sequential coarse/standard/fine scan on the shared 16/32/64 active-x-cell ladder, with
 maximum probe divergence \f$1.43\times10^{-13}\f$. Three cells in y/z avoid a
 parity-sensitive null mode in this 3D cell-centred operator.
-`ErrorInputs/error_incompatible_flux.data` confirms that nonzero net boundary
+The incompatible-flux variant of `MagneticStandalone/ErrorInputs/error_inputs.data`
+confirms that nonzero net boundary
 flux is rejected with the Gauss-law diagnostic. The full PDF sweep passed
 31/32 reportable forms; the remaining failure is the in-progress
 `HartmannTwoWay` scan's `run.reset()` on a non-empty generated build directory.

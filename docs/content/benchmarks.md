@@ -11,8 +11,8 @@ The validation suite covers 27 forms across five categories:
 
 | Category | Forms | What it exercises |
 |---|---|---|
-| `MagneticStandalone` (2D) | 15 | Standalone induction equation: advection, diffusion, invariance, steady state, varying velocity, source stretching, Hartmann 1D, MMS (4 cases), Shercliff 2D, error inputs |
-| `MagneticStandalone3D` (3D) | 16 | 3D twins of the 2D forms plus `Shercliff3D` (full vector model) |
+| `MagneticStandalone` (shared 2D/3D forms) | 15 | Standalone induction equation: paired dimension cases plus MMS_2D, Shercliff2D, turbulence, and error inputs |
+| `MagneticStandalone3D` (3D-only forms) | 2 | `MMS_3D` (four historical cases) and `Shercliff3D` (full vector model) |
 | `MagneticCoupled` (2D) | 6 | Coupled low-Rm MHD: ForceLorentzBalance, MMS_Coupled (with 3D dataset), Coupled_Feedback, HartmannTwoWay (+ Ha scan), ErrorInputs |
 | `MagneticCoupled3D` | 2 | Coupled 3D: VKSLite (smoke), ShercliffDuct3D (coupled duct) |
 | `Postraitement_fields` | 2 | Post-treatment fields: `Champs2D`, `Champs3D` (merged forms) |

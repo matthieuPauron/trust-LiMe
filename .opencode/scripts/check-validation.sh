@@ -94,29 +94,20 @@ fi
 # form here when it is ported — never disable R2/R3 globally. Each entry is a
 # directory prefix under $base, with a trailing slash.
 parallel_ok=(
-  # --- MagneticStandalone (2D) ---
+  # --- MagneticStandalone (merged 2D/3D twin forms plus 2D-only forms) ---
   "$base/MagneticStandalone/Advection/"
   "$base/MagneticStandalone/Diffusion/"
   "$base/MagneticStandalone/GaussLaw/"
   "$base/MagneticStandalone/MMS_2D/"
-  "$base/MagneticStandalone/ErrorInputs/"
   "$base/MagneticStandalone/Hartmann1D/"
   "$base/MagneticStandalone/Invariance/"
   "$base/MagneticStandalone/Shercliff2D/"
   "$base/MagneticStandalone/SourceStretching/"
   "$base/MagneticStandalone/SteadyState/"
   "$base/MagneticStandalone/VaryingVelocity/"
-  # --- MagneticStandalone3D (3D twins) ---
-  "$base/MagneticStandalone3D/Advection/"
-  "$base/MagneticStandalone3D/Diffusion/"
+  # --- MagneticStandalone3D (dimension-specific 3D forms) ---
   "$base/MagneticStandalone3D/MMS_3D/"
-  "$base/MagneticStandalone3D/ErrorInputs/"
-  "$base/MagneticStandalone3D/Hartmann1D/"
-  "$base/MagneticStandalone3D/Invariance/"
   "$base/MagneticStandalone3D/Shercliff3D/"
-  "$base/MagneticStandalone3D/SourceStretching/"
-  "$base/MagneticStandalone3D/SteadyState/"
-  "$base/MagneticStandalone3D/VaryingVelocity/"
   # --- MagneticCoupled ---
   "$base/MagneticCoupled/ForceLorentzBalance/"
   "$base/MagneticCoupled/HartmannTwoWay/"

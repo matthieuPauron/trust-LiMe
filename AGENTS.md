@@ -198,8 +198,10 @@ for the script location.
 - Sources rewritten; pass `syntax-check.sh`. Problem classes: `Pb_Induction`,
   `Pb_MHD`, `Pb_MHD_Turbulent`, `Pb_MHD_Thermal` (equation 0 is always
   momentum). See `docs/content/dev_corner/kernel_reuse.md` §20.
-- Standalone magnetic induction equation; validation cases in
-  `MagneticStandalone/` (2D) and `MagneticStandalone3D/` (3D twins).
+- Standalone magnetic induction equation; paired 2D/3D validation notebooks
+  are merged under `MagneticStandalone/`. Dimension-specific forms remain in
+  `MagneticStandalone/MMS_2D/`, `MagneticStandalone3D/MMS_3D/`, and
+  `MagneticStandalone3D/Shercliff3D/`.
 - Kernel/module built (`trust-lime`, `trust-lime_semi_opt`, `trust-lime_opt`).
 - Reportable suite: 32 forms (31/32 in latest sweep). Most baselines on 2
   ranks; `GaussLaw` 3D and `Shercliff3D` standard/fine sequential. PDFs

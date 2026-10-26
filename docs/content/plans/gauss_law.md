@@ -199,9 +199,9 @@ by `tension_magnetique` / `force_lorentz`) is driven to solver tolerance.
 4. **Unit tests** (`tests/UnitTests/`, arith-only friendly): `Lφ == D(D^Tφ)`
    to machine precision on a 3×3 patch; synthetic divergence annihilated in
    one pass; idempotence; net-flux rejection.
-5. **Validation — implemented:** `GaussLaw` 2D covers non-solenoidal cleanup
-   and the MPI mesh ladder; `MagneticStandalone3D/GaussLaw/` covers the same
-   divergence assertion sequentially on odd x-cell counts. The merged
+ 5. **Validation — implemented:** the merged `MagneticStandalone/GaussLaw/`
+    notebook covers 2D non-solenoidal cleanup and the MPI mesh ladder, plus
+    the 3D full-vector divergence assertion sequentially on odd x-cell counts. The merged
    `ErrorInputs` form asserts clean rejection of incompatible net flux.
 6. **Docs — updated:** `model.md`, `test_cases.md`, `docs/content/plans.md`,
    `docs/content/validation.md`, `docs/content/dev_corner/kernel_reuse.md` §11bis and `AGENTS.md`
@@ -293,9 +293,8 @@ Concrete kernel APIs to reuse, verified against the sibling `trust-code`:
   fixtures, no mesh, no solver) so it runs under `--arith-only`.
 
 ### 7.8 Validation
-- Form folder naming: `MagneticStandalone/GaussLaw/` + 3D twin
-  `MagneticStandalone3D/GaussLaw/`, each with `src/gauss_law.data` template
-  and a single `.ipynb`. The 2D form is allowlisted in
-  `check-validation.sh` and uses the parallel marker regions; the 3D twin runs
-  sequentially. Its x scan uses the shared 16/32/64-cell ladder and three
-  cells in y/z, avoiding the 3D parity-sensitive null mode.
+- The single `MagneticStandalone/GaussLaw/` form uses one shared
+  `src/gauss_law.data` template and notebook for both dimensions. The 2D case
+  is allowlisted in `check-validation.sh` and uses the parallel marker regions;
+  the 3D case runs sequentially. Its x scan uses the shared 16/32/64-cell
+  ladder and three cells in y/z, avoiding the 3D parity-sensitive null mode.
