@@ -45,6 +45,13 @@ Priorities below are ordered by closure value and dependency.
 1. **Run sanitizer coverage** — ASan/UBSan remains open, especially for the divergence-projection assembly and full-kernel interactions.
 2. **Add remaining 3D twins and an inertial-Re benchmark** — `ShercliffDuct3D` is already present and passing; full-suite status is tracked by the nightly report.
 3. **Long term: advanced coupled physics and VKS** — magnetic fluctuation transport/full turbulent MHD closure, Ohmic heating, high-Rm nonlinear coupling, dynamo threshold and saturation; see `docs/content/end_goal.md`.
+4. **Industrial example: EM_Stirring** — replace placeholder hydrostatic balance with a real continuous-casting stirring geometry (coil-driven rotating field, free surface, meniscus) and validation case.
+5. **Industrial example: Crystal_Growth** — magnetic damping of melt convection in a Czochralski crucible (real geometry, temperature field, damping factor vs Ha).
+6. **Industrial example: Fusion_Blanket** — LiPb MHD in a breeding-blanket channel with fringing field and pressure drop (Shercliff/Hunt benchmark).
+7. **Industrial example: EM_Pump** — Lorentz-driven annular/linear pump with real flow rate vs current characteristic.
+8. **Industrial example: Al_Electrolysis** — Hall-Héroult cell MHD: interfacial waves, anode-cathode distance, metal pad roll.
+9. **Industrial example: LM_Battery** — layered liquid-metal battery: Tayler instability / interface stability under current.
+10. **Industrial example: SFR_Duct** — sodium duct MHD pressure drop with conducting walls (Hunt/Shercliff benchmark).
 
 ## 4. Proposed by agent (awaiting validation)
 
