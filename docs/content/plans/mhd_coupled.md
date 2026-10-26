@@ -8,8 +8,9 @@
 > implemented. The Gauss-law projection is also implemented and opt-in; its
 > 2D MPI and 3D serial scans plus incompatible-flux rejection pass.
 > `ShercliffDuct3D` is implemented and its latest recorded run passes.
-> The latest recorded full report sweep is 31/32: `HartmannTwoWay` needs a clean
-> rerun after `run.reset()` encountered a non-empty generated scan directory.
+> The last recorded pre-merge full report sweep was 31/32 (30/31 after the
+> Shercliff merge). Since then, `HartmannTwoWay` passed a targeted rerun (18/18
+> cases); the nightly report will refresh the full-suite result.
 > All 74 full GoogleTests pass; sanitizer coverage remains open. `HartmannTwoWay`
 > has a 12-point Re_H × Ha parameter grid at fixed
 > Rm=0.1; because its fully developed flow has no convective acceleration,

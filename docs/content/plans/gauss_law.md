@@ -11,9 +11,10 @@ post-initialization probe maxima `1.74e-13`, `5.79e-14`, and `4.75e-14`. The
 sequential 3D twin passes at `1.17e-14`, `4.64e-14`, and `1.43e-13`; it uses an
 x-only full-vector field and three cells in y/z to avoid a parity-sensitive
 3D null mode while retaining the shared active-x refinement ladder. `ErrorInputs` also
-confirms rejection of incompatible net boundary flux. The latest recorded full
-PDF sweep ran 31/32 reportable forms; the remaining `HartmannTwoWay` run stopped
-when `run.reset()` encountered a non-empty generated directory. The current
+confirms rejection of incompatible net boundary flux. The last recorded
+pre-merge full PDF sweep ran 31/32 forms (30/31 after the Shercliff merge).
+Since then, `HartmannTwoWay` passed its targeted rerun (18/18 cases); the
+nightly report will refresh the full-suite result. The current
 GoogleTest run passes all 38 arithmetic-only and 74 full tests. Sanitizer
 validation remains open.
 
@@ -145,10 +146,9 @@ A per-step magnetic Hodge projection owned by
       held;
     - coarse/standard/fine mesh scan on 2 MPI ranks.
 3. **Validation coverage complete:** the 3D twin and incompatible-net-flux
-    `ErrorInputs` assertion pass. The latest recorded PDF sweep ran 31/32
-    reportable forms; `HartmannTwoWay` still needs a clean rerun after its scan
-    directory caused `run.reset()` to fail. The full kernel-linked unit suite
-    passes 74/74; sanitizer validation remains open.
+    `ErrorInputs` assertion pass. The targeted `HartmannTwoWay` rerun passed
+    18/18 cases; full-suite reporting is nightly. The full kernel-linked unit
+    suite passes 74/74; sanitizer validation remains open.
    Synchronize `docs/content/dev_corner/kernel_reuse.md` §11bis and `AGENTS.md`.
 
 ---
