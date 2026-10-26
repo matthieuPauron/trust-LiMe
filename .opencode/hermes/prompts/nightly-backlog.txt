@@ -2,9 +2,9 @@ You are running a nightly automated task for the TRUST-LiMe repository. Workdir 
 
 STATE TRACKING
 The state file is JSON with schema:
-{"validated_tasks": [titles...], "current_tasks": [titles...], "status": "idle"|"in_progress"|"awaiting_validation"|"failed", "started_at": ISO|null, "last_run_summary": string, "edited_files": [paths...], "worktrees": [{"task": title, "path": "/abs/path", "branch": "name"}...]}
-If missing, treat as {"validated_tasks":[],"current_tasks":[],"status":"idle","started_at":null,"last_run_summary":"","edited_files":[],"worktrees":[]}.
-Backward compat: if an old "current_task" string exists, treat it as a one-element current_tasks list. If "worktrees" is missing, treat as [].
+{"validated_tasks": [titles...], "current_tasks": [titles...], "status": "idle"|"in_progress"|"awaiting_validation"|"failed", "started_at": ISO|null, "last_run_summary": string, "edited_files": [paths...], "worktrees": [{"task": title, "path": "/abs/path", "branch": "name"}...], "proposed_tasks": [titles...]}
+If missing, treat as {"validated_tasks":[],"current_tasks":[],"status":"idle","started_at":null,"last_run_summary":"","edited_files":[],"worktrees":[],"proposed_tasks":[]}.
+Backward compat: if an old "current_task" string exists, treat it as a one-element current_tasks list. If "worktrees" is missing, treat as []. If "proposed_tasks" is missing, treat as [].
 
 STEPS (follow in order):
 0. RECONCILIATION (before picking any task):
@@ -16,7 +16,7 @@ STEPS (follow in order):
 1. Read state file (create default if missing).
 2. If status is "awaiting_validation" or "failed":
    - Do NOT execute any new task.
-   - Print a status report naming current_tasks, status, last_run_summary, edited_files, worktrees, and that the user must validate in chat before the next run.
+   - Print a status report naming current_tasks, status, last_run_summary, edited_files, worktrees, proposed_tasks, and that the user must validate in chat before the next run.
    - Update last_run_summary. Write state file. Exit.
 3. Otherwise (idle/validated): parse docs/content/NEXT.md section 3 "Prescribed for the next weeks" numbered list. Titles are the bolded leading phrase between the first ** pair.
    - Filter out titles in validated_tasks.
@@ -43,14 +43,16 @@ RESOURCE GUARD (applies before executing any candidate in step 4):
      d. Set status="in_progress", current_tasks=batch+[candidate], started_at=now if not set. Append the new worktree to worktrees. Write state.
      e. cd into the worktree path. Execute the candidate task fully there (code, tests, docs; C++20/TRUST conventions; syntax-check.sh + module_* targets; no commit/push; leave changes in the worktree).
      f. On success: append candidate to batch; record worktree {task, path, branch}; update last_run_summary with progress. Write state.
+        - FOLLOW-UP PROPOSAL: if the work just completed clearly warrants a new backlog task (e.g. a 3D twin, a missing benchmark, a sanitizer follow-up, a docs gap), add it to docs/content/NEXT.md under section 4 "Proposed by agent (awaiting validation)" with a title, rationale, and evidence. Do NOT add it to section 3. Append its title to proposed_tasks in state. State the proposal in last_run_summary. These proposals require manual validation before the cron job may execute them.
         On failure: set status="failed", current_tasks=batch (or including candidate), last_run_summary=error details, worktrees as accumulated. Write state. Break loop.
      g. Continue loop to next candidate (each gets its own worktree).
    - After loop, set status="awaiting_validation" (if batch non-empty), current_tasks=batch, worktrees=accumulated list, edited_files=[] (changes live in worktrees), last_run_summary=concise summary of all tasks in batch + worktree paths + tests + how to review. Write state.
-5. Print final report: batch executed (with worktree path + branch per task), each task outcome, tests run, next step (review each worktree, then validate in chat). Note any task deferred due to the daytime RAM guard or worktree creation failure.
+5. Print final report: batch executed (with worktree path + branch per task), each task outcome, tests run, any tasks proposed (section 4 of NEXT.md, awaiting manual validation), next step (review each worktree, then validate in chat). Note any task deferred due to the daytime RAM guard or worktree creation failure.
 
 RULES:
 - Each task runs in its own worktree; tasks never share a working tree, so file conflicts no longer stop the batch.
 - Reconciliation edits to NEXT.md are allowed (step 0) in the main worktree; task execution happens in worktrees and does not mark its own task done.
+- Agent-proposed tasks go only to section 4 of NEXT.md and are never executed until a human moves them to section 3 (manual validation).
 - Do not commit or push.
 - Autonomous: never ask questions; document assumptions.
 - Be concise but include tasks, outcomes, worktree paths, tests, next step.

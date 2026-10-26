@@ -96,3 +96,34 @@ user reviews and merges.
   to locate the changes.
 - The job attaches `trust-lime-worktree` and `trust-lime-build-diagnostics`
   skills; load them when reasoning about worktree creation or heavy builds.
+
+
+## Agent-proposed tasks (manual validation required)
+
+The nightly job may append follow-up tasks to section 4 of `docs/content/NEXT.md`
+("Proposed by agent (awaiting validation)") after completing a task. These are
+**never** executed by the cron job until a human validates them.
+
+### When the user validates a proposed task
+
+1. Read `docs/content/NEXT.md` section 4.
+2. On approval: move the entry to section 3 ("Prescribed for the next weeks") with
+   an appropriate priority, or to section 2 ("In progress") if partially done.
+   Remove it from section 4.
+3. Update `~/.hermes/nightly-backlog-state.json`: remove the title from
+   `proposed_tasks` (if present). Do NOT add to `validated_tasks` unless the
+   task has actually been executed and verified.
+4. Report which proposals were promoted and that the next nightly run may now
+   pick them up.
+
+### When the user rejects a proposal
+
+1. Remove the entry from section 4 (or mark it rejected with a note).
+2. Remove from `proposed_tasks` in state.
+3. Do not promote to section 3.
+
+### Pitfalls
+
+- A proposal is not evidence of completion; do not move it to "Completed".
+- Only the user can promote a proposal; the cron job must never auto-promote.
+- Keep the Proposed section empty when there are no pending proposals.

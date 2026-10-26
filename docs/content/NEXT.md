@@ -46,7 +46,16 @@ Priorities below are ordered by closure value and dependency.
 2. **Add remaining 3D twins and an inertial-Re benchmark** — `ShercliffDuct3D` is already present and passing; full-suite status is tracked by the nightly report.
 3. **Long term: advanced coupled physics and VKS** — magnetic fluctuation transport/full turbulent MHD closure, Ohmic heating, high-Rm nonlinear coupling, dynamo threshold and saturation; see `docs/content/end_goal.md`.
 
-## 4. How this page is maintained
+## 4. Proposed by agent (awaiting validation)
+
+Tasks proposed by the nightly backlog agent after completing a task. They are
+**not** executed by the cron job until a human validates them (moves them into
+section 3, or discards them). Each entry should state the rationale and the
+evidence that motivated it.
+
+_(none yet)_
+
+## 5. How this page is maintained
 
 - Reconcile this page with `docs/content/plans.md`, validation records and
   `AGENTS.md` whenever project status changes.
