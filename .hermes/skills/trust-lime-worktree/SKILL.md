@@ -78,7 +78,8 @@ free -g | awk '/^Mem:/ {print $7}'
 ```
 
 Require at least **8 GB** free for worktree heavy builds (stricter than the
-6 GB default guard, because multiple worktrees may build). If below 8 GB,
-defer the task and record the reason. Never run two heavy builds concurrently
-across worktrees. Use `.opencode/scripts/check-heavy-build.sh` (set
-`MIN_FREE_GB=10` for worktree runs) as a pre-check.
+6 GB default guard, because multiple worktrees may build). If below 8 GB, WAIT
+(poll `free -g` every 60 s, up to 30 min) for the in-flight heavy task to
+finish, then proceed; only defer if RAM does not free up. Never run two heavy
+builds concurrently across worktrees. Use `.opencode/scripts/check-heavy-build.sh`
+(set `MIN_FREE_GB=8` for worktree runs) as a pre-check.

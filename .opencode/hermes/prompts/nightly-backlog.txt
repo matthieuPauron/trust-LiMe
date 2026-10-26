@@ -26,7 +26,8 @@ RESOURCE GUARD (applies before executing any candidate in step 4):
 - A task is RAM-heavy if it requires a sanitizer build (make module_custom / ASan/UBSan), a full-kernel build (make optim/semi_optim/debug), or any build expected to exceed ~4 GB RAM / several minutes on either host (laptop or workstation).
 - If the candidate task is RAM-heavy AND the current local time is between 08:00 and 20:00 (daytime), do NOT execute it: record it as deferred (reason: daytime RAM-heavy build), skip to the next candidate (or break if none), and list it under "Deferred (daytime RAM guard)" in the final report. Leave project.cfg untouched.
 - Also skip the candidate if free RAM is below ~6 GB (check via `free -g`); record reason. Helper: .opencode/scripts/check-heavy-build.sh (exits non-zero + reason unless TRUST_ALLOW_HEAVY_BUILD=1).
-- WORKTREE RAM: because worktrees share the host's RAM, any RAM-intensive action in a worktree requires at least 8 GB of free RAM (check via `free -g`). If free RAM is below 8 GB, defer the task (reason: insufficient RAM for worktree heavy build) even at night; never run two heavy builds concurrently across worktrees.
+- WORKTREE RAM: because worktrees share the host's RAM, any RAM-intensive action in a worktree requires at least 8 GB of free RAM (check via `free -g`).
+- WAIT, DON'T HALT: if free RAM is below the required threshold, do NOT defer and stop. Instead, wait for the in-flight RAM-intensive task/build to finish (poll `free -g` every 60 s, up to 30 minutes). Once free RAM reaches the threshold, proceed with the candidate. Only defer if the threshold is still not met after the wait (record reason: "RAM did not free up within wait window"). Never start a heavy build while another is running; serialize them.
 - At night (20:00-08:00) RAM-heavy tasks may run, but still prefer background builds with notification and generous timeouts; never run two heavy builds concurrently.
 - Cron runs cannot ask questions; if a RAM-heavy task is deferred, do not attempt it and report the deferral.
 
@@ -35,7 +36,7 @@ RESOURCE GUARD (applies before executing any candidate in step 4):
    - Repeat:
      a. Re-parse section 3, filter out validated_tasks and titles already in batch. Pick first remaining (highest priority). If none, break.
      b. RESOURCE GUARD: if the candidate is RAM-heavy and (daytime or free RAM < ~6 GB), defer it (record reason), skip to the next candidate without editing, and continue the loop.
-        - Additionally, for any RAM-intensive action in a worktree, require free RAM >= 8 GB; if below, defer (reason: worktree heavy build needs >=8 GB free RAM) and continue.
+        - Additionally, for any RAM-intensive action in a worktree, require free RAM >= 8 GB. If below, WAIT (poll free RAM every 60 s, up to 30 min) for the in-flight heavy task to finish; proceed once >=8 GB is free. Only defer if still below threshold after the wait (reason: worktree heavy build needs >=8 GB free RAM and RAM did not free up). Never run two heavy builds concurrently.
      c. Decide worktree reuse:
         - A candidate "directly follows" the previous task if it is the immediate next backlog item AND is a continuation/refinement/sub-task of the task just executed (same feature area or explicitly dependent).
         - If it directly follows AND a worktree from the previous task is available, REUSE that worktree: do NOT create a new one. Record a clear transition in last_run_summary (e.g. "Transition: <prev> -> <candidate> in same worktree <path>").
@@ -62,6 +63,6 @@ RULES:
 - Autonomous: never ask questions; document assumptions.
 - Validation: each task in a shared worktree requires its own validation (do not treat the worktree as validated until every task in it is validated).
 - Be concise but include tasks, outcomes, worktree paths, tests, next step.
-- Respect the RESOURCE GUARD: never run RAM-heavy builds during daytime or when free RAM is low; defer and report instead. Worktree runs require >=8 GB free RAM for any RAM-intensive action.
+- Respect the RESOURCE GUARD: never run RAM-heavy builds during daytime or when free RAM is low; defer and report instead. Worktree runs require >=8 GB free RAM for any RAM-intensive action; if low, wait for in-flight heavy tasks to finish before proceeding (do not halt the whole night).
 - Environment-altering tasks (sanitizer builds that flip project.cfg flags) leave the worktree dirty; either complete the cleanup in the same task or record it in last_run_summary. A leftover sanitizer config contaminates subsequent normal builds.
 - Worktrees accumulate; the user can reclaim them with `hermes worktree` or `git worktree remove`.
