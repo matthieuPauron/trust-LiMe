@@ -137,8 +137,10 @@ source of truth), with the three comment-marker regions and `nbProcs=2` +
 - `MagneticStandalone/MagneticTurbulence/` verifies frozen manufactured
   transport terms and zero-production analytic decay on PolyMAC_P0; spatial
   transport, VEF, restart, calibration, and physical validation remain open.
-- GoogleTest suite: 38 arithmetic-only and 74 full tests pass (2026-10-25).
-- `HartmannTwoWay` in progress (failed at `run.reset()` on non-empty scan dir).
+- GoogleTest suite: 38 arithmetic-only and 74 full tests pass (rerun 2026-10-26).
+- `HartmannTwoWay` needs a clean reportable rerun after `run.reset()` encountered
+  a non-empty generated scan directory; 31/32 PDFs were produced in the latest
+  recorded full sweep.
 
 Full history archived in `docs/content/dev_corner/kernel_reuse.md`.
 

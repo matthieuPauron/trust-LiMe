@@ -92,10 +92,12 @@ forms merged into one `ErrorInputs` notebook per category), via
 lives in the `trust-lime-notebooks` skill ("PDF export & the repository
 report").
 
-The latest full sweep generated 31 of the 32 reportable PDFs. The remaining
-`HartmannTwoWay` notebook is in progress and failed during `run.reset()` because
-a generated scan directory was not empty; this does not affect the Gauss-law
-forms, which both executed and passed.
+Status snapshot (2026-10-26): the latest recorded full sweep generated 31 of
+the 32 reportable PDFs. `HartmannTwoWay` stopped during `run.reset()` because a
+generated scan directory was not empty; clean that generated scan output and
+rerun the form before regenerating the complete report. The targeted records
+for both Gauss-law dimensions and `ShercliffDuct3D` are passing. The formatting
+gate was rerun on 2026-10-26: 92 files scanned, zero violations.
 
 ---
 

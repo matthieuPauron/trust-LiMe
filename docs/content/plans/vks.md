@@ -2,11 +2,12 @@
 
 # VKS (Von Kármán Sodium) Simulation Plan — trust-LiMe baltik
 
-**Status (2026-10-24): VKS simulation not started; enabling foundations are
+**Status (2026-10-26): VKS simulation not started; enabling foundations are
 partly implemented.** Effective magnetic diffusivity can be built from fields
-or hydraulic k-ε, and the 3D `VKSTurbulent` integration case exercises two-way
-VEF coupling. An opt-in cell-centred Gauss-law projection and Picard coupling
-are also implemented, but only low-Rm validation exists. No spherical VKS
+or hydraulic k-ε; an independent magnetic k-ε closure has initial PolyMAC_P0
+verification, and the 3D `VKSTurbulent` integration case exercises two-way VEF
+coupling. An opt-in cell-centred Gauss-law projection and Picard coupling are
+also implemented, but only low-Rm validation exists. No spherical VKS
 geometry, rotating impellers, high-Rm threshold or saturated dynamo has been
 validated. This remains a design plan, not a runnable VKS case.
 
@@ -234,9 +235,9 @@ Convection_Diffusion_Magnetic_field
         # insulating walls: zero normal flux #
         wall_outer   paroi_isolante_magnetique
         wall_inner   paroi_isolante_magnetique
-        # impeller surfaces: may need conducting BC (Phase B.2) #
-        impeller_top     paroi_isolante_magnetique      # conductrice deferred (Phase B.2)
-        impeller_bottom  paroi_isolante_magnetique      # conductrice deferred (Phase B.2)
+        # Example uses insulating walls; perfect-conductor BC is also available. #
+        impeller_top     paroi_isolante_magnetique
+        impeller_bottom  paroi_isolante_magnetique
     }
     initial_conditions { magnetic_field Champ_Uniforme 3 $BX $BY $BZ }
 }
@@ -245,8 +246,8 @@ Convection_Diffusion_Magnetic_field
 **Inputs needed:**
 - `$ETA` — magnetic diffusivity = 1/(μ₀ σ) ≈ 0.078 m²/s
 - `$BX, $BY, $BZ` — initial seed field (typically small, e.g., 1e-4 T)
-- BC keyword: `paroi_isolante_magnetique` (Phase B.1, available) or
-  `paroi_conductrice_magnetique` (Phase B.2, deferred)
+- BC keyword: `paroi_isolante_magnetique` or the implemented
+  `paroi_conductrice_magnetique` (perfect-conductor model)
 
 ### 3.7 Momentum equation (TRUST Navier-Stokes)
 
@@ -379,8 +380,8 @@ during the solve; use `Champ_Fonc_Fonction`/`Tabule` referencing `pb temperature
 | Impeller rotation BCs | ✅ Available (`Paroi_defilante`); exercised in `SmoothDiskMHD` (smooth disks, no blades) | ✅ (smooth disks; blade-resolving deferred) |
 | Smooth rotating disks (modelized propellers) | ✅ `SmoothDiskMHD` validation case (3D, 2-rank, laminar, Rm~1, runs to completion) | ✅ (smoke; high-Rm not validated) |
 | Temperature-dependent properties | ⚠️ Fluid side (mu, lambda) supported by TRUST (Boussinesq path); eta = 1/(mu0*sigma) supported in trust-LiMe after the mettre_a_jour fix (Champ_Fonc_Fonction/Tabule vs. pb temperature) | ⚠️ (nice to have; fluid side via TRUST, eta via trust-LiMe) |
-| Conducting wall BC (`paroi_conductrice_magnetique`) | ❌ Deferred | ⚠️ (impeller surfaces) |
-| div-b enforcement | ⚠️ Opt-in projection for the reported cell-centred divergence; 2D scan passes, 3D/regression pending | ⚠️ (important at high Rm) |
+| Conducting wall BC (`paroi_conductrice_magnetique`) | ✅ Implemented; sequential scalar/vector validation passes | ⚠️ (impeller surfaces still need case-specific validation) |
+| div-b enforcement | ⚠️ Opt-in cell-centred projection; 2D/3D scans and incompatible-flux rejection pass; full regression/sanitizer follow-up remains | ⚠️ (important at high Rm) |
 
 ## 5. Gap analysis: what must be built before a VKS data file can run
 
@@ -556,11 +557,13 @@ Solve pb
 
 ## 8. Prerequisites (what must be built first)
 
-1. Turbulent EDM (η_t from k-ε) — critical
+1. Calibrated and physically validated turbulent-EMF/η_t closure — critical
 2. High-Rm validation of the induction equation
 3. Tight (implicit) coupling for stability at high Rm
 4. Spherical mesh generation pipeline
 5. Impeller rotation BCs (`Paroi_defilante`) — available; exercised in `SmoothDiskMHD`
-6. Conducting wall BC (paroi_conductrice, Phase B.2)
-7. div-b enforcement (optional but recommended)
-8. §18.2 kernel fix (for 3D form creation)
+6. Select and validate magnetic wall BCs for the impeller geometry (perfect-conductor keyword is implemented)
+7. Decide whether the opt-in cell-centred div-b projection is sufficient for the target high-Rm formulation
+8. Investigate the remaining upstream initialization defect described in
+   `docs/content/dev_corner/kernel_reuse.md` §18.2 if it affects target meshes;
+   it is not a blocker for the existing 3D validation forms.

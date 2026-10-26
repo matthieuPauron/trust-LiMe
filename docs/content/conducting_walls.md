@@ -1,16 +1,21 @@
 @page TrustLiMe_conducting_walls Conducting-wall boundary conditions
 
-This page records the design and implementation plan for **conducting-wall
-boundary conditions** on the magnetic induction equation. It is the working
-document for the deferred item tracked as Phase B.2 in
+This page records the design and implementation of **conducting-wall boundary
+conditions** on the magnetic induction equation, along with the remaining
+extensions. The perfect-conductor condition (Phase B.2) is implemented; finite-
+conductivity walls and vacuum/far-field conditions remain deferred. See
 @ref TrustLiMe_plans "Roadmap and next steps".
 
 ---
 
-> **Status (2026-10-25): implemented and runtime-validated.** Phase 9 validation
+> **Status (2026-10-26): implemented and runtime-validated.** Phase 9 validation
 > cases (`MagneticStandalone/ConductingWall`, sequential) run to completion for
 > both the scalar and vector models; existing insulating-wall cases
 > (`Hartmann1D`) re-run without regression.
+
+The implementation phases below are retained as a design/implementation
+record; Phases 1--9 are complete. The remaining boundary-condition work is
+finite-conductivity (Robin) walls and non-local vacuum/far-field conditions.
 
 ## 1. What "conducting wall" means here
 
@@ -106,13 +111,12 @@ Mirror Phases 2--6 in `trust-code/src/VEF` (`Domaine_Cl_VEF`,
 turbulent validation cases. VDF is not used by any trust-LiMe case and is
 skipped.
 
-### Phase 9 -- Documentation and validation
+### Phase 9 -- Documentation and validation (complete)
 
-- Move `paroi_conductrice_magnetique` from "deferred (Phase B.2)" to
-  "implemented" in `docs/content/model.md` §4.
-- Update `docs/content/plans.md` §3 and `docs/content/dev_corner/kernel_reuse.md` item 9.
-- Add a validation case: a Hartmann-type channel with conducting side walls,
-  with 2D and 3D twins, run sequentially per the suite rules.
+- `paroi_conductrice_magnetique` is documented as implemented in
+  `docs/content/model.md` §4 and `docs/content/plans.md` §3.
+- The sequential `MagneticStandalone/ConductingWall` form exercises scalar and
+  vector cases; the existing `Hartmann1D` insulating-wall form remains passing.
 
 ## 4. Testing strategy
 

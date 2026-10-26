@@ -2,18 +2,22 @@
 
 # Coupled MHD Simulations Plan — trust-LiMe baltik
 
-> **STATUS (2026-10-24): COUPLING FOUNDATION COMPLETE — historical plan.**
+> **STATUS (2026-10-26): COUPLING FOUNDATION COMPLETE — historical plan.**
 > Low-Rm `force_lorentz` (PolyMAC and VEF), two-way `vitesse_hydraulique`,
 > opt-in Picard coupling, and effective turbulent magnetic diffusivity are
 > implemented. The Gauss-law projection is also implemented and opt-in; its
-> 2D MPI scan passes, but the 3D twin, error coverage and full regression remain
-> open. `HartmannTwoWay` now has a 12-point Re_H × Ha parameter grid at fixed
+> 2D MPI and 3D serial scans plus incompatible-flux rejection pass.
+> `ShercliffDuct3D` is implemented and its latest recorded run passes.
+> The latest recorded full report sweep is 31/32: `HartmannTwoWay` needs a clean
+> rerun after `run.reset()` encountered a non-empty generated scan directory.
+> All 74 full GoogleTests pass; sanitizer coverage remains open. `HartmannTwoWay`
+> has a 12-point Re_H × Ha parameter grid at fixed
 > Rm=0.1; because its fully developed flow has no convective acceleration,
-> this is not an inertial-Re regime map. The validated 3D Shercliff duct remains open.
+> this is not an inertial-Re regime map.
 > Magnetic fluctuation transport, MHD turbulence closure,
 > Ohmic heating, and high-Rm dynamo physics remain future work. The low-Rm
-> sign/boundary/matrix review is documented in docs/content/dev_corner/kernel_reuse.md §22;
-> the sanitizer pass is still open. The checkboxes
+> sign/boundary/matrix review is documented in docs/content/dev_corner/kernel_reuse.md §22.
+> The checkboxes
 > below were never ticked and are superseded by `AGENTS.md` and
 > `docs/content/plans.md`; read this file as original design intent, not as a
 > current task list.
