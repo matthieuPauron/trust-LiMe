@@ -53,6 +53,15 @@ git worktree remove ../trust-lime-<name>
 3. `make module_semi_optim` if C++ changed.
 4. `git diff` review for `-Wconversion` hazards and stray debug code.
 
+## Validation status file
+
+`.opencode/validation_status.json` is the machine-readable validation status and
+must be committed **every time it changes** (it is versioned evidence, not a
+throwaway artifact). Whenever a validation run or `record-validation-status.py`
+updates it, stage and commit it together with the change that produced it (or
+in an immediately following `validation:` commit). Never leave it modified but
+unstaged at the end of a session.
+
 ## In-repo Hermes skills (git tracking)
 
 Project-local Hermes skills live under `.hermes/skills/` (or `.agents/skills/`). They are not discovered until the repo is trusted:

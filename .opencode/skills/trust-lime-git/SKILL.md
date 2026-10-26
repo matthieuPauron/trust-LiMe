@@ -56,6 +56,15 @@ worktree becomes the primary working directory.
 3. `make module_semi_optim` if C++ changed.
 4. `git diff` review for `-Wconversion` hazards and stray debug code.
 
+## Validation status file
+
+`.opencode/validation_status.json` is the machine-readable validation status and
+must be committed **every time it changes** (it is versioned evidence, not a
+throwaway artifact). Whenever a validation run or `record-validation-status.py`
+updates it, stage and commit it together with the change that produced it (or
+in an immediately following `validation:` commit). Never leave it modified but
+unstaged at the end of a session.
+
 ## Reviewing
 
 For a numerics-focused review of the current diff, use the `/review` command
