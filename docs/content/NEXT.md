@@ -28,8 +28,7 @@ the consolidated, user-facing view.
 | Task | Status | Notes |
 |---|---|---|
 | `HartmannTwoWay` validation case | failed at `run.reset()` on non-empty scan dir | resume after cleanup |
-| Full 45-test GoogleTest run | SIGSEGV at first kernel-linked registration test | `--arith-only` (29 tests) passes |
-| Magnetic k-ε closure smoke case | aborts at `Solve` | source-level only |
+| Magnetic k-ε VEF/physical validation | next | frozen manufactured terms and zero-production analytic decay pass on PolyMAC_P0; spatial transport/restart/calibration gaps remain |
 | Gauss-law full-suite / sanitizer follow-up | documented | see `docs/content/plans/gauss_law.md` |
 
 ## 3. Prescribed for the next weeks

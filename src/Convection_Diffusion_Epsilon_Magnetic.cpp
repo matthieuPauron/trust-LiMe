@@ -79,13 +79,17 @@ void Convection_Diffusion_Epsilon_Magnetic::completer()
 {
   if (!modele_)
     Process::exit("Convection_Diffusion_Epsilon_Magnetic requires Modele_turbulence_magnetique on the induction equation.");
-  terme_diffusif.associer_diffusivite(modele_->diffusivite_epsilon());
-  terme_diffusif.associer_diffusivite_pour_pas_de_temps(modele_->diffusivite_epsilon());
   const Champ_base& velocity = vitesse_pour_transport();
   associer_vitesse(velocity);
   terme_convectif.associer_vitesse(velocity);
   terme_convectif.valeur().associer_vitesse(velocity);
   Convection_Diffusion_Temperature_base::completer();
+
+  // The base completer binds the molecular diffusivity; restore the closure's
+  // eta + eta_t/sigma_epsilon field on both the operator wrapper and its operator.
+  terme_diffusif.associer_diffusivite(modele_->diffusivite_epsilon());
+  terme_diffusif.valeur().associer_diffusivite(modele_->diffusivite_epsilon());
+  terme_diffusif.associer_diffusivite_pour_pas_de_temps(modele_->diffusivite_epsilon());
 }
 
 void Convection_Diffusion_Epsilon_Magnetic::mettre_a_jour(double temps)

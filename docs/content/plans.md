@@ -25,10 +25,10 @@ still outstanding. See @ref TrustLiMe_validation "Validation cases" and
 | Post-treatment fields (`Champ_Fonc_MHD`) and their forms (merged 2026-10-21 into `Champs2D` / `Champs3D`) | **done** |
 | Coupled validation forms (7) | **done** |
 | Full validation suite — 2D, 3D twins, coupled, post-treatment | **32 reportable forms**; latest full PDF sweep ran 31/32 (2026-10-24). `HartmannTwoWay` is currently in progress and failed at `run.reset()` on a non-empty generated scan directory; the other forms, including both Gauss-law dimensions and the flux-error case, passed. |
-| Unit tests (GoogleTest) | **29 arith-only tests pass**; the full 45-test run currently exits by SIGSEGV at the first kernel-linked registration test |
+| Unit tests (GoogleTest) | **38 arith-only and 74 full tests pass** (2026-10-25) |
 | Two-way coupling — NS velocity feeds the magnetic convection (`vitesse_hydraulique`) | **done** (lagged staggered scheme; commits `9e5b13b`, `d484fbd`) |
 | \f$\nabla\cdot b = 0\f$ enforcement | **implemented, opt-in** via `correction_divergence`; 2D MPI and 3D serial mesh scans plus incompatible-flux rejection pass |
-| Turbulent magnetic diffusivity | **implemented**: prescribed fields, hydraulic k-\f$\varepsilon\f$, and an independent magnetic k-\f$\varepsilon\f$ closure (source-level; smoke case still aborts at `Solve`); a molecular-vs-k-ε comparison form is being added to `TurbulentDiffusion` |
+| Turbulent magnetic diffusivity | **implemented**: prescribed fields, hydraulic k-\f$\varepsilon\f$, and independent magnetic k-\f$\varepsilon\f$ closure; frozen PolyMAC_P0 manufactured terms and zero-production analytic decay with a 3×3 mesh/time scan pass; solved spatial transport, VEF, and physical validation remain open |
 | Strong two-way coupling | **implemented, opt-in** Picard iteration via `couplage_fort`; default staggered mode unchanged |
 | High-\f$\mathrm{Rm}\f$ dynamo | **open / long term** — section 5 |
 

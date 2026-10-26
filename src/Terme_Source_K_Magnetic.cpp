@@ -1,4 +1,5 @@
 #include <Terme_Source_K_Magnetic.h>
+#include <Magnetic_turbulence_closure_kernel.h>
 #include <Convection_Diffusion_Magnetic_field.h>
 #include <Convection_Diffusion_K_Magnetic.h>
 #include <Convection_Diffusion_Epsilon_Magnetic.h>
@@ -49,7 +50,8 @@ void Terme_Source_K_Magnetic::ajouter_source(DoubleTab& secmem) const
   const DoubleVect& porosite = equation_magnetique_->milieu().porosite_elem();
   const int ne = secmem.dimension(0);
   for (int e = 0; e < ne; e++)
-    secmem(e, 0) += porosite(e) * volumes(e) * (production(e, 0) - eps(e, 0));
+    secmem(e, 0) += porosite(e) * volumes(e) *
+                    magnetic_turbulence_k_source(production(e, 0), eps(e, 0));
 }
 
 DoubleTab& Terme_Source_K_Magnetic::calculer(DoubleTab& secmem) const

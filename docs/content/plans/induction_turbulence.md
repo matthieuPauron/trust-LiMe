@@ -2,14 +2,18 @@
 
 # Plan — Induction turbulence (k-ε) for trust-LiMe
 
-Status (2026-10-24): **Prescribed and k-ε-derived effective magnetic
+Status (2026-10-25): **Prescribed and k-ε-derived effective magnetic
 diffusivity implemented; hydraulic k-ε handoff is exercised end-to-end.** The
 3D `VKSTurbulent` case now exercises two-way coupling with VEF `force_lorentz`.
-The independent magnetic k-ε fluctuation closure is now implemented in source
+The independent magnetic k-ε fluctuation closure is implemented in source
 (`modele_turbulence_magnetique` + `Convection_Diffusion_{K,Epsilon}_Magnetic` +
-`Terme_Source_*_Magnetic`); an experimental smoke dataset exists
-(`MagneticStandalone/MagneticTurbulence/`) but currently aborts at `Solve` and
-is not validated. High-Rm/VKS dynamo behavior is not validated. See
+`Terme_Source_*_Magnetic`) and now has frozen PolyMAC_P0 manufactured-term
+verification plus a zero-production analytic-decay scan in
+`MagneticStandalone/MagneticTurbulence/`. The manufactured case uses closed
+no-flux boundaries because PolyMAC_MPFA does not implement periodicity. Solved
+spatial transport, VEF, restart, calibration, and physical validation remain
+open.
+High-Rm/VKS dynamo behavior is not validated. See
 `docs/content/plans.md` for the cross-project roadmap.
 
 ## 1. Motivation
@@ -78,17 +82,20 @@ records the alternative stretching term already present in the code shells.
   `diffusivite_turbulente_magnetique_`, so the Phase 2a fold handles the rest.
 - Constant C_mu for now (realizable variant deferred).
 
-### Phase 3 — transport equations for magnetic fluctuations (IMPLEMENTED in source, validation pending)
+### Phase 3 — transport equations for magnetic fluctuations (IMPLEMENTED; initial verification in place)
 - `Convection_Diffusion_{K,Epsilon}_Magnetic`,
   `Terme_Source_{K,Epsilon}_Magnetic` and
   `Modele_turbulence_magnetique` are now implemented (not shells): scalar
   transport equations, closure `eta_t = C_mu_b*k_b^2/(epsilon_b*Pm_t_b)`,
   production `P_b = eta_t*|curl(b_A)|^2`, floors/limiters and the
   `modele_turbulence_magnetique { ... }` keyword. The model builds and the
-  keyword is accepted; the experimental smoke dataset
-  (`MagneticStandalone/MagneticTurbulence/`) still aborts at `Solve` and is
-  not validated. Reuse generic TRUST scalar transport infrastructure only
-  where its lifecycle/operator contracts fit.
+  keyword is accepted. `MagneticTurbulence` now freezes the analytic fields and
+  checks post-processed convection, diffusion, and source terms against an
+  independent analytic reference, then runs a uniform-field \f$P_b=0\f$
+  decay against the coupled-source ODE solution at three mesh and timestep
+  levels. This is verification, not physical validation. Reuse generic TRUST
+  scalar transport infrastructure only where its lifecycle/operator contracts
+  fit.
 - First supported scope is interior/closed-domain transport with positivity
   control. Wall functions, low-Re corrections and broad discretization support
   are later work, not part of the initial equation implementation.

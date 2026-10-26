@@ -1325,13 +1325,15 @@ providers.
   `P_b - epsilon_b`, epsilon source `C_eps1b*(epsilon_b/k_b)*P_b -
   C_eps2b*epsilon_b^2/k_b`.
 
-Status: the code builds and the keyword is accepted, and an experimental
-smoke dataset exists at
-`share/Validation/Rapports_automatiques/MagneticStandalone/MagneticTurbulence/`.
-That case still aborts at `Solve` (under investigation); the closure is
-**not** yet validated. No wall functions, low-Re corrections or restart
-handling are implemented, and the production term uses the cell-centred
-Green-Gauss curl (consistent with the induction operator).
+Status (2026-10-25): the code builds, the keyword is accepted, and
+`share/Validation/Rapports_automatiques/MagneticStandalone/MagneticTurbulence/`
+now runs frozen PolyMAC_P0 manufactured-term verification and a zero-production
+analytic-decay scan. The checks cover convection, diffusion, and source terms
+for both transport equations against analytic references; the decay test also
+checks positivity and mesh/timestep behavior. This is verification only, not
+physical validation. No wall functions, low-Re corrections or restart handling
+are implemented, and the production term uses the cell-centred Green-Gauss curl
+(consistent with the induction operator).
 
 ## Phase 4 (hydraulic k-eps coupling)
 
@@ -1553,14 +1555,14 @@ preserve history. They are status reports, not live guidance.
   (4) an **independent magnetic k-ε closure** via the
   `modele_turbulence_magnetique { ... }` block plus
   `Convection_Diffusion_K_Magnetic`/`Convection_Diffusion_Epsilon_Magnetic`
-  transport equations (Alfvén-normalized k_b, epsilon_b; `eta_t =
-  C_mu_b*k_b^2/(epsilon_b*Pm_t_b)`). Paths (1)-(3) are exercised; path (4)
-  is implemented in source and its keyword is accepted, but the experimental
-  smoke dataset `MagneticStandalone/MagneticTurbulence/` still aborts at
-  `Solve` and the closure is not validated. Two discretisation limits remain
-  upstream: `Op_Diff_VEF_Face` aborts for a vector magnetic unknown on VEF,
-  and no PolyMAC wall law exists, so a turbulent *validation form* is not
-  wired yet — see `docs/content/plans/induction_turbulence.md` Phases 3-4.
+   transport equations (Alfvén-normalized k_b, epsilon_b; `eta_t =
+   C_mu_b*k_b^2/(epsilon_b*Pm_t_b)`). Paths (1)-(3) are exercised; path (4)
+   now has frozen PolyMAC_P0 manufactured-term and zero-production decay
+   verification. This does not establish physical validation. Two
+   discretisation limits remain upstream:
+   `Op_Diff_VEF_Face` aborts for a vector magnetic unknown on VEF, and no
+   PolyMAC wall law exists — see
+   `docs/content/plans/induction_turbulence.md` Phases 3-4.
 - **§18.2 kernel heisenbug (guarded 2026-10-22)**: `Op_Diff_PolyMAC_MPFA_Elem::calculer_dt_stab()` now skips denormal `volumes_entrelaces`/flux contributions, so parallel forms (e.g. Champs3D fine scale) run cleanly on 2 ranks. The underlying uninitialized read in the kernel parallel init path is not pinned; the guard is robustness, not a root-cause fix.
 - **Strong (Picard) coupling (opt-in, 2026-10-22)**: `couplage_fort { }` (+ `nb_iterations_couplage`, `tolerance_couplage`) on the magnetic equation enables Picard sweeps of the two-way magnetic<->momentum coupling. Default off preserves the green baseline. See `docs/content/dev_corner/kernel_reuse.md` §20.
 

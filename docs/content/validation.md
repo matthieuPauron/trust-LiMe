@@ -20,7 +20,7 @@ share/Validation/Rapports_automatiques/
 │   ├── Hartmann1D/                 # Hartmann induced field (1D physics)
 │   ├── MMS_2D/                     # the four historical MMS cases fused
 │   ├── GaussLaw/                   # opt-in 2D discrete divergence projection
-│   ├── MagneticTurbulence/         # experimental independent magnetic k-ε closure (in development)
+│   ├── MagneticTurbulence/         # PolyMAC_P0 manufactured terms + zero-production decay
 │   └── ErrorInputs/                # malformed inputs incl. incompatible net flux
 ├── MagneticStandalone3D/           # 3D twins of the established standalone forms
 │   ├── GaussLaw/                   # sequential 3D projection twin

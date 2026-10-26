@@ -1,4 +1,5 @@
 #include <Modele_turbulence_magnetique.h>
+#include <Magnetic_turbulence_closure_kernel.h>
 #include <Convection_Diffusion_Magnetic_field.h>
 #include <Convection_Diffusion_K_Magnetic.h>
 #include <Convection_Diffusion_Epsilon_Magnetic.h>
@@ -196,7 +197,7 @@ void Modele_turbulence_magnetique::calculer_production(DoubleTab& production) co
           const double curl_z = dby_dx - dbx_dy;
           curl2 = curl_x * curl_x + curl_y * curl_y + curl_z * curl_z;
         }
-      production(e, 0) = eta_values(e, 0) * field_scale_ * field_scale_ * curl2;
+      production(e, 0) = magnetic_turbulence_production(eta_values(e, 0), field_scale_, curl2);
     }
 }
 

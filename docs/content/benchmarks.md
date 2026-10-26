@@ -21,9 +21,10 @@ Every positive form carries a **mesh-convergence scan** on a shared
 `coarse` / `standard` / `fine` ladder (cells ×2 then ×4 in the active
 directions), run from a single substituted `src/<case>.data` template.
 
-An experimental `MagneticStandalone/MagneticTurbulence/` form exercising the
-independent magnetic k-\f$\varepsilon\f$ closure is in development; it is not
-yet part of the reportable suite (it currently aborts at `Solve`).
+The experimental `MagneticStandalone/MagneticTurbulence/` form exercises the
+independent magnetic k-\f$\varepsilon\f$ closure with frozen manufactured-term
+checks and a zero-production analytic-decay scan on PolyMAC_P0. It is not yet
+a physical validation benchmark and has no VEF twin.
 
 ## Key benchmarks
 

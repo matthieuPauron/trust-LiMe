@@ -1,4 +1,5 @@
 #include <Terme_Source_Epsilon_Magnetic.h>
+#include <Magnetic_turbulence_closure_kernel.h>
 #include <Convection_Diffusion_Magnetic_field.h>
 #include <Convection_Diffusion_K_Magnetic.h>
 #include <Convection_Diffusion_Epsilon_Magnetic.h>
@@ -53,10 +54,9 @@ void Terme_Source_Epsilon_Magnetic::ajouter_source(DoubleTab& secmem) const
   const int ne = secmem.dimension(0);
   for (int e = 0; e < ne; e++)
     {
-      const double kb = std::max(k(e, 0), k_min);
-      const double eb = std::max(eps(e, 0), eps_min);
-      const double value = modele->C_eps1() * (eb / kb) * production(e, 0)
-                           - modele->C_eps2() * eb * eb / kb;
+      const double value = magnetic_turbulence_epsilon_source(
+                             modele->C_eps1(), modele->C_eps2(), eps(e, 0), k(e, 0), eps_min, k_min,
+                             production(e, 0));
       secmem(e, 0) += porosite(e) * volumes(e) * value;
     }
 }

@@ -3,6 +3,7 @@
  ****************************************************************************/
 
 #include <Champ_Fonc_Eta_Turbulent.h>
+#include <Magnetic_turbulence_closure_kernel.h>
 #include <Convection_Diffusion_Magnetic_field.h>
 #include <Champ_base.h>
 #include <Process.h>
@@ -112,7 +113,7 @@ void Champ_Fonc_Eta_Turbulent::calculer()
             if (Cmu < 1e-4) Cmu = 1e-4;
             if (Cmu > 0.5) Cmu = 0.5;
           }
-        ve(e, c) = std::min(Cmu * kk * kk / ee / Pm_t_, eta_max_);
+        ve(e, c) = magnetic_turbulence_eta_t(kk, ee, Cmu, Pm_t_, epsilon_min_, eta_max_);
       }
 }
 

@@ -26,10 +26,11 @@ Running
 Any extra argument is forwarded to the test binary, so the usual gtest flags
 (--gtest_filter, --gtest_list_tests, ...) work.
 
---arith-only builds unit_induction_kernel.cpp and
-unit_mhd_posttraitement_kernel.cpp alone. They need nothing but the TRUST
-array type, so they run as soon as the micro + numeric kernels exist
-(make micro_kernel_semi_optim numeric_kernel_semi_optim). The other suites
+--arith-only builds unit_induction_kernel.cpp,
+unit_mhd_posttraitement_kernel.cpp, unit_magnetic_turbulence_kernel.cpp, and
+unit_correction_divergence_kernel.cpp alone. The arithmetic kernels need
+nothing but the TRUST array type, so they run as soon as the micro + numeric
+kernels exist (make micro_kernel_semi_optim numeric_kernel_semi_optim). The other suites
 instantiate Convection_Diffusion_Magnetic_field,
 Terme_Source_Induction_stretching and Terme_Source_Lorentz, which derive
 from classes of the *standard* kernel and therefore need the full build
@@ -50,6 +51,9 @@ Contents
                                  problem binding, and the error paths
                                  (death tests).
   unit_induction_kernel.cpp      arithmetic of S = (b.grad) u.
+  unit_magnetic_turbulence_kernel.cpp  magnetic k-epsilon closure algebra,
+                                  floors, cap, source signs, and provider
+                                  conflicts.
   unit_mhd_posttraitement_kernel.cpp  arithmetic of the post-treatment fields.
 
 Writing a new test

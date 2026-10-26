@@ -134,11 +134,10 @@ source of truth), with the three comment-marker regions and `nbProcs=2` +
 
 ## Open items
 
-- Experimental `MagneticStandalone/MagneticTurbulence/` form (independent
-  magnetic k-ε closure) now runs end-to-end (smoke); not validated, not in
-  reportable suite.
-- Unit-test full suite SIGSEGVs at first kernel-linked registration test (both
-  suffixes); `--arith-only` path passes.
+- `MagneticStandalone/MagneticTurbulence/` verifies frozen manufactured
+  transport terms and zero-production analytic decay on PolyMAC_P0; spatial
+  transport, VEF, restart, calibration, and physical validation remain open.
+- GoogleTest suite: 38 arithmetic-only and 74 full tests pass (2026-10-25).
 - `HartmannTwoWay` in progress (failed at `run.reset()` on non-empty scan dir).
 
 Full history archived in `docs/content/dev_corner/kernel_reuse.md`.

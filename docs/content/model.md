@@ -337,10 +337,12 @@ Floors (`k_b_min`, `epsilon_b_min`) and an `eta_t_max` cap guard the
 numerics; the production uses the cell-centred Green-Gauss curl, consistent
 with the induction operator.
 
-Status: implemented in source and the keyword is accepted, but the
-experimental smoke dataset `MagneticStandalone/MagneticTurbulence/` still
-aborts at `Solve`; the closure is not validated. No wall functions, low-Re
-corrections or restart handling are implemented yet.
+Status: implemented in source and the keyword is accepted. The frozen
+PolyMAC_P0 `MagneticStandalone/MagneticTurbulence/` form verifies the
+post-processed transport terms against analytic references; this is not
+physical validation. The same form also checks zero-production analytic decay
+with mesh/timestep refinement. No wall functions, low-Re corrections or restart
+handling are implemented yet.
 
 ---
 

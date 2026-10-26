@@ -81,6 +81,7 @@ mkdir -p "$build_dir"
 if [[ "$mode" == "arith" ]]; then
   test_sources=(tests/UnitTests/unit_induction_kernel.cpp
                 tests/UnitTests/unit_mhd_posttraitement_kernel.cpp
+                tests/UnitTests/unit_magnetic_turbulence_kernel.cpp
                 tests/UnitTests/unit_correction_divergence_kernel.cpp)
   module_sources=()
   main_source=tests/UnitTests/main_gtest_lite.cpp
@@ -90,6 +91,7 @@ else
                 tests/UnitTests/unit_lorentz_source.cpp
                 tests/UnitTests/unit_induction_kernel.cpp
                 tests/UnitTests/unit_mhd_posttraitement_kernel.cpp
+                tests/UnitTests/unit_magnetic_turbulence_kernel.cpp
                 tests/UnitTests/unit_turbulent_closure.cpp
                 tests/UnitTests/unit_champ_fonc.cpp
                 tests/UnitTests/unit_boundary_conditions.cpp)

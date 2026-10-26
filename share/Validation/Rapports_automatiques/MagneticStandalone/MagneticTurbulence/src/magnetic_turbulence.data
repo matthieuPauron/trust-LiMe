@@ -1,11 +1,9 @@
-# ============================================================================= #
-# Magnetic turbulence: independent k_b/epsilon_b closure (Phase 3).             #
-# ============================================================================= #
-dimension 2
+# Magnetic k-epsilon manufactured-term verification (PolyMAC_P0).              #
+# Analytic fields satisfy homogeneous no-flux conditions; equations are frozen. #
+Dimension 2
 Pb_Induction pb
-Domaine dom
 
-# BEGIN MESH #
+Domaine dom
 Mailler dom
 {
     Pave pave
@@ -21,23 +19,18 @@ Mailler dom
         Bord haut Y = 1. 0. <= X <= 1.
     }
 }
-# END MESH #
 
 Polymac_p0 dis
-
-Associate pb dom
-
 Schema_Euler_Implicite sch
 Read sch
 {
     tinit 0.
-    tmax 0.001
-    dt_max 0.0001
-    facsec 1e6
-    facsec_max 1e6
+    tmax 0.
+    nb_pas_dt_max 0
     solveur implicite { solveur petsc cli { } }
 }
 
+Associate pb dom
 Associate pb sch
 Discretize pb dis
 
@@ -54,7 +47,9 @@ Read pb
     }
     Convection_Diffusion_Magnetic_field
     {
+        equation_non_resolue (t>0)
         diffusivite_magnetique Champ_Uniforme 1 0.01
+        vitesse_magnetique Champ_Fonc_xyz dom 2 sin(2*pi*x)*cos(2*pi*y) -cos(2*pi*x)*sin(2*pi*y)
         modele_turbulence_magnetique
         {
             C_mu_b 0.09
@@ -72,13 +67,17 @@ Read pb
         {
             gauche Neumann_Paroi_adiabatique
             droite Neumann_Paroi_adiabatique
-            bas Temperature_imposee_paroi Champ_front_uniforme 1 0.
-            haut Temperature_imposee_paroi Champ_front_uniforme 1 0.
+            bas Neumann_Paroi_adiabatique
+            haut Neumann_Paroi_adiabatique
         }
-        initial_conditions { magnetic_field Champ_Fonc_xyz dom 1 sin(pi*y) }
+        initial_conditions
+        {
+            magnetic_field Champ_Fonc_xyz dom 1 cos(2*pi*y)+0.2*cos(2*pi*x)
+        }
     }
     Convection_Diffusion_K_Magnetic
     {
+        equation_non_resolue (t>0)
         diffusion { }
         convection { amont }
         boundary_conditions
@@ -88,10 +87,14 @@ Read pb
             bas Neumann_Paroi_adiabatique
             haut Neumann_Paroi_adiabatique
         }
-        initial_conditions { k_b Champ_Uniforme 1 0.5 }
+        initial_conditions
+        {
+            k_b Champ_Fonc_xyz dom 1 2.+0.25*cos(2*pi*x)+0.15*cos(2*pi*y)
+        }
     }
     Convection_Diffusion_Epsilon_Magnetic
     {
+        equation_non_resolue (t>0)
         diffusion { }
         convection { amont }
         boundary_conditions
@@ -101,8 +104,89 @@ Read pb
             bas Neumann_Paroi_adiabatique
             haut Neumann_Paroi_adiabatique
         }
-        initial_conditions { epsilon_b Champ_Uniforme 1 1. }
+        initial_conditions
+        {
+            epsilon_b Champ_Fonc_xyz dom 1 3.+0.2*cos(2*pi*x)+0.1*cos(2*pi*y)
+        }
+    }
+
+    Post_processing
+    {
+        Definition_champs
+        {
+            conv_k Interpolation
+            {
+                localisation elem
+                source operateur_eqn
+                {
+                    numero_op 1
+                    sources { refChamp { pb_champ pb k_b } }
+                }
+            }
+            diff_k Interpolation
+            {
+                localisation elem
+                source operateur_eqn
+                {
+                    numero_op 0
+                    sources { refChamp { pb_champ pb k_b } }
+                }
+            }
+            source_k Interpolation
+            {
+                localisation elem
+                source operateur_eqn
+                {
+                    numero_source 0
+                    sources { refChamp { pb_champ pb k_b } }
+                }
+            }
+            conv_epsilon Interpolation
+            {
+                localisation elem
+                source operateur_eqn
+                {
+                    numero_op 1
+                    sources { refChamp { pb_champ pb epsilon_b } }
+                }
+            }
+            diff_epsilon Interpolation
+            {
+                localisation elem
+                source operateur_eqn
+                {
+                    numero_op 0
+                    sources { refChamp { pb_champ pb epsilon_b } }
+                }
+            }
+            source_epsilon Interpolation
+            {
+                localisation elem
+                source operateur_eqn
+                {
+                    numero_source 0
+                    sources { refChamp { pb_champ pb epsilon_b } }
+                }
+            }
+        }
+        Sondes
+        {
+            CONV_K grav conv_k periode 1 segmentpoints 8 0.2578125 0.1171875 0.2578125 0.2421875 0.2578125 0.3671875 0.2578125 0.4921875 0.2578125 0.6171875 0.2578125 0.7421875 0.2578125 0.8671875 0.2578125 0.9296875
+            DIFF_K grav diff_k periode 1 segmentpoints 8 0.2578125 0.1171875 0.2578125 0.2421875 0.2578125 0.3671875 0.2578125 0.4921875 0.2578125 0.6171875 0.2578125 0.7421875 0.2578125 0.8671875 0.2578125 0.9296875
+            SOURCE_K grav source_k periode 1 segmentpoints 8 0.2578125 0.1171875 0.2578125 0.2421875 0.2578125 0.3671875 0.2578125 0.4921875 0.2578125 0.6171875 0.2578125 0.7421875 0.2578125 0.8671875 0.2578125 0.9296875
+            CONV_EPSILON grav conv_epsilon periode 1 segmentpoints 8 0.2578125 0.1171875 0.2578125 0.2421875 0.2578125 0.3671875 0.2578125 0.4921875 0.2578125 0.6171875 0.2578125 0.7421875 0.2578125 0.8671875 0.2578125 0.9296875
+            DIFF_EPSILON grav diff_epsilon periode 1 segmentpoints 8 0.2578125 0.1171875 0.2578125 0.2421875 0.2578125 0.3671875 0.2578125 0.4921875 0.2578125 0.6171875 0.2578125 0.7421875 0.2578125 0.8671875 0.2578125 0.9296875
+            SOURCE_EPSILON grav source_epsilon periode 1 segmentpoints 8 0.2578125 0.1171875 0.2578125 0.2421875 0.2578125 0.3671875 0.2578125 0.4921875 0.2578125 0.6171875 0.2578125 0.7421875 0.2578125 0.8671875 0.2578125 0.9296875
+        }
+        format lata champs binaire dt_post 1e6
+        {
+            conv_k
+            diff_k
+            source_k
+            conv_epsilon
+            diff_epsilon
+            source_epsilon
+        }
     }
 }
-
 Solve pb

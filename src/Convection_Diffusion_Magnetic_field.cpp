@@ -4,6 +4,7 @@
  ****************************************************************************/
 
 #include <Convection_Diffusion_Magnetic_field.h>
+#include <Magnetic_turbulence_closure_kernel.h>
 #include <Paroi_conductrice_magnetique.h>
 #include <Correction_Divergence_kernel.h>
 #include <Array_tools.h>
@@ -338,6 +339,12 @@ const Navier_Stokes_std* Convection_Diffusion_Magnetic_field::eq_navier_stokes()
  */
 void Convection_Diffusion_Magnetic_field::completer()
 {
+  if (!magnetic_turbulence_provider_configuration_valid(
+        static_cast<bool>(diffusivite_turbulente_magnetique_),
+        static_cast<bool>(k_magnetique_), static_cast<bool>(epsilon_magnetique_), false,
+        static_cast<bool>(modele_turbulence_magnetique_)))
+    Process::exit("Convection_Diffusion_Magnetic_field: choose exactly one complete turbulent-diffusivity provider (eta_t, k/epsilon, hydraulic fallback, or the independent magnetic model).");
+
   Convection_Diffusion_Temperature_base::completer();
 
   // Discretise a derived molecular magnetic diffusivity eta (Champ_Fonc_Tabule /
