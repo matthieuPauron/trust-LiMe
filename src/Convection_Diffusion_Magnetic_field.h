@@ -119,6 +119,9 @@ public:
   /*! @brief Builds the L = D . D^T matrix once (cached). */
   void assembler_correction();
 
+  /*! @brief Rebuilds bc_trace_type_/bc_trace_value_ from the CLs. */
+  void build_bc_trace_tables(double temps);
+
   // --- Physical closures used by the inherited operators ------------------
   // Magnetic diffusivity eta: used both as the diffusion coefficient
   // (div(eta grad b)) and for the time-step stability estimate.
@@ -242,6 +245,14 @@ protected:
   Matrice_Morse L_matrix_;
   bool L_assembled_ = false;
   int correction_count_ = 0;
+
+  // Boundary trace tables for the divergence operator (size nb_faces_tot):
+  //   0 = BC_NEUMANN (homogeneous, trace = b(e)),
+  //   1 = BC_DIRICHLET (prescribed, trace = bc_trace_value_).
+  // Rebuilt when correction is active (in preparer_calcul / mettre_a_jour).
+  std::vector<int> bc_trace_type_;
+  std::vector<double> bc_trace_value_;
+  bool bc_trace_built_ = false;
 
   // --- Post-treatment fields (created lazily by creer_champ()) ------------
   double mu0_ = 1.;                          // magnetic permeability mu0 keyword

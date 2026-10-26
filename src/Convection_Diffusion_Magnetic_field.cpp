@@ -6,6 +6,7 @@
 #include <Convection_Diffusion_Magnetic_field.h>
 #include <Magnetic_turbulence_closure_kernel.h>
 #include <Paroi_conductrice_magnetique.h>
+#include <Dirichlet.h>
 #include <Correction_Divergence_kernel.h>
 #include <Array_tools.h>
 #include <Champ_Fonc_MHD.h>
@@ -886,7 +887,33 @@ void Convection_Diffusion_Magnetic_field::gradient_b_elements(DoubleTab& gb) con
       }
   }
 
-  // Pass 1 — standard Green-Gauss (interior exact for linear fields), built
+  // Identify Dirichlet (magnetic_field_impose) boundary faces so Pass 1 uses
+  // the prescribed value as the boundary trace (non-homogeneous Dirichlet),
+  // instead of the adjacent cell value (Neumann).
+  std::vector<char> is_dirichlet_face(dvf.nb_faces_tot(), 0);
+  std::vector<double> dirichlet_value((size_t)dvf.nb_faces_tot() * nb_b, 0.);
+  {
+    const Domaine_Cl_dis_base& dom_cl = domaine_Cl_dis();
+    for (int icl = 0; icl < dom_cl.nb_cond_lim(); icl++)
+      {
+        const Cond_lim_base& cl = dom_cl.les_conditions_limites(icl).valeur();
+        if (!sub_type(Dirichlet, cl))
+          continue;
+        const Dirichlet& dir = ref_cast(Dirichlet, cl);
+        const Front_VF& fvf = ref_cast(Front_VF, cl.frontiere_dis());
+        const DoubleTab& vals = dir.tab_val_imp(inconnue().temps());
+        for (int k = 0; k < fvf.nb_faces_tot(); k++)
+          {
+            const int f = fvf.num_face(k);
+            if (f < 0 || f >= (int)is_dirichlet_face.size()) continue;
+            is_dirichlet_face[f] = 1;
+            for (int c = 0; c < nb_b && c < dim; c++)
+              dirichlet_value[f * nb_b + c] = vals(k, c);
+          }
+      }
+  }
+
+  // Pass 1 — standard Green-Gauss
   // element-wise from elem_faces(): valid for every element up to ne_tot in
   // parallel, the same pattern as the kernel PolyMAC field operators.
   // Boundary faces take the element's own value (zero normal gradient), except
@@ -927,6 +954,8 @@ void Convection_Diffusion_Magnetic_field::gradient_b_elements(DoubleTab& gb) con
               double bf;
               if (e_other >= 0)
                 bf = 0.5 * (b(e, c) + b(e_other, c));
+              else if (is_dirichlet_face[f])
+                bf = dirichlet_value[f * nb_b + c]; // prescribed non-homogeneous Dirichlet
               else if (cond && normal_idx >= 0 && c == normal_idx)
                 bf = b(e, c); // Neumann on normal component
               else if (cond)
@@ -1050,6 +1079,7 @@ int Convection_Diffusion_Magnetic_field::preparer_calcul()
   int ret = Convection_Diffusion_Temperature_base::preparer_calcul();
   if (correction_divergence_)
     {
+      build_bc_trace_tables(inconnue().temps());
       DoubleTab& b = inconnue().valeurs();
       corriger_divergence(b);
       b.echange_espace_virtuel();
@@ -1060,6 +1090,8 @@ int Convection_Diffusion_Magnetic_field::preparer_calcul()
 /*! @brief Builds the L = D . D^T matrix once (cached). */
 void Convection_Diffusion_Magnetic_field::assembler_correction()
 {
+  if (!bc_trace_built_)
+    build_bc_trace_tables(inconnue().temps());
   if (L_assembled_)
     return;
   const Domaine_VF& dvf = ref_cast(Domaine_VF, domaine_dis());
@@ -1085,7 +1117,7 @@ void Convection_Diffusion_Magnetic_field::assembler_correction()
 
   std::vector<double> L_flat;
   Correction_Divergence_kernel::assemble_L(ne, ne_tot, nb_composantes(), dim, nfe,
-                                           vol_all, fv_flat, ef_all, fn_flat, nf, L_flat);
+                                           vol_all, fv_flat, ef_all, fn_flat, nf, L_flat, bc_trace_type_);
 
   // Fill the Matrice_Morse from the flat coefficients.
   // Build the stencil from nonzero entries.
@@ -1116,11 +1148,41 @@ void Convection_Diffusion_Magnetic_field::assembler_correction()
   L_assembled_ = true;
 }
 
+/*! @brief Rebuilds bc_trace_type_/bc_trace_value_ from the CLs. */
+void Convection_Diffusion_Magnetic_field::build_bc_trace_tables(double temps)
+{
+  const Domaine_VF& dvf = ref_cast(Domaine_VF, domaine_dis());
+  const int nf_tot = dvf.nb_faces_tot();
+  const int dim = Objet_U::dimension;
+  bc_trace_type_.assign(nf_tot, 0); // BC_NEUMANN default
+  bc_trace_value_.assign((size_t)nf_tot * dim, 0.);
+  const Domaine_Cl_dis_base& dom_cl = domaine_Cl_dis();
+  for (int icl = 0; icl < dom_cl.nb_cond_lim(); icl++)
+    {
+      const Cond_lim_base& cl = dom_cl.les_conditions_limites(icl).valeur();
+      if (!sub_type(Dirichlet, cl))
+        continue;
+      const Dirichlet& dir = ref_cast(Dirichlet, cl);
+      const Front_VF& fvf = ref_cast(Front_VF, cl.frontiere_dis());
+      const DoubleTab& vals = dir.tab_val_imp(temps);
+      for (int k = 0; k < fvf.nb_faces_tot(); k++)
+        {
+          const int f = fvf.num_face(k);
+          if (f < 0 || f >= nf_tot) continue;
+          bc_trace_type_[f] = 1; // BC_DIRICHLET
+          for (int d = 0; d < dim; d++)
+            bc_trace_value_[f * dim + d] = vals(k, d);
+        }
+    }
+  bc_trace_built_ = true;
+}
+
 /*! @brief Projects b in place: b <- b - D^T phi, with L phi = D b. */
 void Convection_Diffusion_Magnetic_field::corriger_divergence(DoubleTab& b)
 {
   if (!correction_divergence_)
     return;
+  build_bc_trace_tables(inconnue().temps());
   if (!L_assembled_)
     assembler_correction();
 
@@ -1147,7 +1209,8 @@ void Convection_Diffusion_Magnetic_field::corriger_divergence(DoubleTab& b)
 
   double flux_scale = 0.;
   const double local_net_flux = Correction_Divergence_kernel::net_boundary_flux(
-                                  ne_tot, nb_b, dim, fv_flat, fn_flat, nf_real, b_flat, flux_scale);
+                                  ne_tot, nb_b, dim, fv_flat, fn_flat, nf_real, b_flat, flux_scale,
+                                  bc_trace_type_, bc_trace_value_);
   const double net_flux = Process::mp_sum(local_net_flux);
   flux_scale = Process::mp_sum(flux_scale);
   if (!Correction_Divergence_kernel::compatible_net_flux(net_flux, flux_scale))
@@ -1165,7 +1228,8 @@ void Convection_Diffusion_Magnetic_field::corriger_divergence(DoubleTab& b)
     for (int j = 0; j < nfe; j++) ef_all2[e*nfe+j] = elem_faces(e, j);
 
   std::vector<double> rhs(ne, 0.);
-  Correction_Divergence_kernel::divergence_pass1(ne, ne_tot, nb_b, dim, nfe, vol_all2, fv_flat, ef_all2, fn_flat, nf, b_flat, rhs);
+  Correction_Divergence_kernel::divergence_pass1(ne, ne_tot, nb_b, dim, nfe, vol_all2, fv_flat, ef_all2, fn_flat, nf, b_flat, rhs,
+                                                 bc_trace_type_, bc_trace_value_);
   // rhs(e) *= V_e? D already divides by V_e. Convert to a DoubleVect aligned with the matrix (rows = elements).
   DoubleVect secmem;
   MD_Vector_tools::creer_tableau_distribue(inconnue().valeurs().get_md_vector(), secmem);
@@ -1189,8 +1253,8 @@ void Convection_Diffusion_Magnetic_field::corriger_divergence(DoubleTab& b)
   for (int e = 0; e < ne_tot; e++) phi_flat[e] = phi(e);
   std::vector<double> g_flat((size_t)ne_tot * nb_b, 0.);
   Correction_Divergence_kernel::divergence_transpose(ne, ne_tot, nb_b, dim, nfe,
-                                                     vol_all, fv_flat, ef_all, fn_flat,
-                                                     nf, phi_flat, g_flat);
+                                                   vol_all, fv_flat, ef_all, fn_flat,
+                                                   nf, phi_flat, g_flat, bc_trace_type_, bc_trace_value_);
 
   // Apply correction: b <- b - D^T phi (local elements, matching components).
   for (int e = 0; e < ne; e++)
@@ -1207,7 +1271,8 @@ void Convection_Diffusion_Magnetic_field::corriger_divergence(DoubleTab& b)
       for (int e = 0; e < ne_tot; e++)
         for (int c = 0; c < nb_b; c++)
           bflat2[e*nb_b+c] = b(e, c);
-      Correction_Divergence_kernel::divergence_pass1(ne, ne_tot, nb_b, dim, nfe, vol_all, fv_flat, ef_all, fn_flat, nf, bflat2, div_after);
+      Correction_Divergence_kernel::divergence_pass1(ne, ne_tot, nb_b, dim, nfe, vol_all, fv_flat, ef_all, fn_flat, nf, bflat2, div_after,
+                                                 bc_trace_type_, bc_trace_value_);
       double mx = 0.;
       for (int e = 0; e < ne; e++)
         if (std::fabs(div_after[e]) > mx) mx = std::fabs(div_after[e]);
