@@ -22,7 +22,7 @@
       }
     }
   },
-  "updated": "2026-10-26T05:33:09.081079+00:00",
+  "updated": "2026-10-26T18:05:10.991971+00:00",
   "validation": {
     "MagneticCoupled/Coupled_Feedback": {
       "last_run": "2026-10-26T00:27:35.205771+00:00",
@@ -37,8 +37,8 @@
       "status": "pass"
     },
     "MagneticCoupled/HartmannTwoWay": {
-      "last_run": "2026-10-26T00:28:56.306900+00:00",
-      "note": "failed at run.reset() on non-empty scan dir",
+      "last_run": "2026-10-26T18:23:26+01:00",
+      "note": "targeted notebook rerun passed all 18 cases; full report not regenerated (nightly)",
       "status": "pass"
     },
     "MagneticCoupled/MMS_Coupled": {
