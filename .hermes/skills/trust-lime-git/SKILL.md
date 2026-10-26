@@ -53,6 +53,29 @@ git worktree remove ../trust-lime-<name>
 3. `make module_semi_optim` if C++ changed.
 4. `git diff` review for `-Wconversion` hazards and stray debug code.
 
+## In-repo Hermes skills (git tracking)
+
+Project-local Hermes skills live under `.hermes/skills/` (or `.agents/skills/`). They are not discovered until the repo is trusted:
+
+```bash
+hermes skills trust   # run once per clone/worktree
+```
+
+Because this repo's `.gitignore` ignores the `trust*` basename, add an explicit
+negation so project skills stay tracked (mirror the existing `.opencode/skills/trust*`
+exception):
+
+```gitignore
+!.hermes/skills/trust*
+```
+
+When porting OpenCode skills (`.opencode/skills/`) to Hermes, copy them into
+`.hermes/skills/`, replace OpenCode-only slash commands (`/syntax`, `/build`,
+`/validate`, `/review`) with the underlying scripts/commands, add a short
+"Hermes usage" note pointing at `terminal`/`read_file`/`patch`, and keep the
+OpenCode originals in place. Commit the two trees separately so each runtime's
+skill set evolves independently.
+
 ## Reviewing
 
 For a numerics-focused review of the current diff, run `git diff` and review
