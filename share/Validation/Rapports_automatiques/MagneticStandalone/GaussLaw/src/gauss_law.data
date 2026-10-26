@@ -1,4 +1,5 @@
 # PARALLEL OK #
+/* Shared 2D/3D template; the notebook injects dimension-specific blocks. */
 
 # ============================================================================= #
 # Case B : decay of a magnetic Fourier mode  (TRUST-LiMe standalone MHD) #
@@ -9,26 +10,12 @@
 # Only component 0 (the transverse field Bx) transported; u = 0.           #
 # Exact analytic solution known; decay rate measures discretised eta.      #
 # ============================================================================= #
-dimension 2
+dimension $dim
 Pb_Induction pb
 Domaine dom
 
 # BEGIN MESH #
-Mailler dom
-{
-    Pave pavé
-    {
-        Origine              0.  0.
-        Nombre_de_Noeuds     $nx $ny
-        Longueurs            1.  1.
-    }
-    {
-        Bord gauche   X = 0.    0. <= Y <= 1.
-        Bord droite   X = 1.    0. <= Y <= 1.
-        Bord bas      Y = 0.    0. <= X <= 1.
-        Bord haut     Y = 1.    0. <= X <= 1.
-    }
-}
+$mesh_block
 # END MESH #
 
 # BEGIN PARTITION
@@ -66,7 +53,7 @@ Discretize pb dis
 
 Read pb
 {
-    nb_composantes 2
+    nb_composantes $ncomp
     fluide_incompressible
     {
         mu      Champ_Uniforme 1 1.0
@@ -85,25 +72,11 @@ Read pb
         diffusion  { }
         convection { amont }
 
-        boundary_conditions
-        {
-            gauche  Neumann_Paroi_adiabatique
-            droite  Neumann_Paroi_adiabatique
-            bas     Neumann_Paroi_adiabatique
-            haut    Neumann_Paroi_adiabatique
-        }
-        initial_conditions { magnetic_field Champ_Fonc_xyz dom 2 cos(2*pi*x) 0. }
+        $boundary_block
+        $initial_block
   }
 
-  Postraitement
-  {
-    Sondes
-    {
-      sonde_div_1 grav divergence_magnetique Periode 1e-6 Points 1 0.25 0.50
-      sonde_div_2 grav divergence_magnetique Periode 1e-6 Points 1 0.50 0.50
-      sonde_div_3 grav divergence_magnetique Periode 1e-6 Points 1 0.75 0.50
-    }
-  }
+  $post_block
 
 }
 

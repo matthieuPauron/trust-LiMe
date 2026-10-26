@@ -1,0 +1,56 @@
+/* One shared negative-test template; the notebook injects the dimension and the
+   malformed field, boundary condition, or incompatible-flux configuration. */
+dimension $dim
+Pb_Induction pb
+Domaine dom
+
+$mesh_block
+
+Polymac_p0 dis
+Associate pb dom
+
+Schema_Euler_Implicite sch
+Read sch
+{
+    tinit 0.
+    tmax $tmax
+    dt_max $dt_max
+    facsec 1e6
+    facsec_max 1e6
+    solveur implicite { solveur petsc cli { } }
+}
+Associate pb sch
+Discretize pb dis
+
+Read pb
+{
+$nbcomp_line
+    fluide_incompressible
+    {
+        mu      Champ_Uniforme 1 1.0
+        rho     Champ_Uniforme 1 1.0
+        lambda  Champ_Uniforme 1 1.0
+        Cp      Champ_Uniforme 1 1.0
+        beta_th Champ_Uniforme 1 0.0
+    }
+    Convection_Diffusion_Magnetic_field
+    {
+$correction_block
+$eta_line
+        diffusion  { }
+        convection { amont }
+        boundary_conditions
+        {
+$boundary_lines
+        }
+        initial_conditions { magnetic_field $initial_field }
+    }
+    Postraitement
+    {
+        Sondes
+        {
+            sonde_cbx grav magnetic_field Periode 1e-6 Points 1 $probe
+        }
+    }
+}
+Solve pb

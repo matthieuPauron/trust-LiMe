@@ -1,4 +1,5 @@
 # PARALLEL OK #
+/* Shared 2D/3D template; the notebook injects dimension-specific blocks. */
 
 # ============================================================================= #
 # Case F : spatially varying velocity, uniform field stays uniform #
@@ -7,26 +8,12 @@
 # (Champ_Fonc_xyz). With uniform b = b0, (u.grad) b = 0 and diffusion 0,   #
 # so b must remain b0 exactly, whatever u. Velocity: vortex u = (-y, x).   #
 # ============================================================================= #
-dimension 2
+dimension $dim
 Pb_Induction pb
 Domaine dom
 
 # BEGIN MESH #
-Mailler dom
-{
-    Pave pavé
-    {
-        Origine              0.  0.
-        Nombre_de_Noeuds     $nx $ny
-        Longueurs            1.  1.
-    }
-    {
-        Bord gauche   X = 0.    0. <= Y <= 1.
-        Bord droite   X = 1.    0. <= Y <= 1.
-        Bord bas      Y = 0.    0. <= X <= 1.
-        Bord haut     Y = 1.    0. <= X <= 1.
-    }
-}
+$mesh_block
 # END MESH #
 
 # BEGIN PARTITION
@@ -78,28 +65,16 @@ Read pb
     {
         diffusivite_magnetique Champ_Uniforme 1 1.0
         # strongly varying vortex velocity u = (-y, x) #
-        vitesse_magnetique     Champ_Fonc_xyz dom 2 -y x
+$velocity_line
 
         diffusion  { }
         convection { amont }
 
-        boundary_conditions
-        {
-            gauche  Neumann_Paroi_adiabatique
-            droite  Neumann_Paroi_adiabatique
-            bas     Neumann_Paroi_adiabatique
-            haut    Neumann_Paroi_adiabatique
-        }
+        $boundary_block
         initial_conditions { magnetic_field Champ_Uniforme 1 3.0 }
   }
 
-  Postraitement
-  {
-    Sondes
-    {
-      sonde_cbx grav magnetic_field Periode 1e-6 Points 1 0.5 0.5
-    }
-  }
+  $post_block
   
 }
 

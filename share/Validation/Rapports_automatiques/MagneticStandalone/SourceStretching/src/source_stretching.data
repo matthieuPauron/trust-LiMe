@@ -1,4 +1,5 @@
 # PARALLEL OK #
+/* Shared 2D/3D template; the notebook injects dimension-specific blocks. */
 
 # ============================================================================= #
 # Case G : induction source term S = (b.grad) u   (TRUST-LiMe standalone MHD) #
@@ -8,26 +9,12 @@
 #     d b / dt = b  =>  b(t) = B0 exp(t)                                    #
 # Sharp absolute check of the source magnitude and sign.                   #
 # ============================================================================= #
-dimension 2
+dimension $dim
 Pb_Induction pb
 Domaine dom
 
 # BEGIN MESH #
-Mailler dom
-{
-    Pave pavé
-    {
-        Origine              0.  0.
-        Nombre_de_Noeuds     $nx $ny
-        Longueurs            1.  1.
-    }
-    {
-        Bord gauche   X = 0.    0. <= Y <= 1.
-        Bord droite   X = 1.    0. <= Y <= 1.
-        Bord bas      Y = 0.    0. <= X <= 1.
-        Bord haut     Y = 1.    0. <= X <= 1.
-    }
-}
+$mesh_block
 # END MESH #
 
 # BEGIN PARTITION
@@ -81,7 +68,7 @@ Read pb
     {
         diffusivite_magnetique Champ_Uniforme 1 0.0
         # u = (x, -y) : divergence-free velocity, du_x/dx = 1, constant gradient #
-        vitesse_magnetique     Champ_Fonc_xyz dom 2 x -y
+$velocity_line
 
         diffusion  { }
         convection { amont }
@@ -92,26 +79,12 @@ Read pb
             induction_stretching { }
         }
 
-        boundary_conditions
-        {
-            # b is uniform, so zero-flux everywhere is consistent #
-            gauche  Neumann_Paroi_adiabatique
-            droite  Neumann_Paroi_adiabatique
-            bas     Neumann_Paroi_adiabatique
-            haut    Neumann_Paroi_adiabatique
-        }
+        $boundary_block
         # uniform scalar initial field b = B0 #
         initial_conditions { magnetic_field Champ_Uniforme 1 1.0 }
   }
 
-  Postraitement
-  {
-    Sondes
-    {
-      # the transported scalar field must follow exp(t) #
-      sonde_b0 grav magnetic_field Periode 1e-6 Points 1 0.5 0.5
-    }
-  }
+  $post_block
   
 }
 

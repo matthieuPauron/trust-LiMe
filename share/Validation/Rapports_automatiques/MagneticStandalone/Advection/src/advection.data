@@ -1,34 +1,35 @@
 # PARALLEL OK #
 
 # ============================================================================= #
-# Case C : advection of a magnetic bump by a given velocity #
+# Case C : advection of a magnetic bump by a given velocity (2D/3D template)   #
 # ============================================================================= #
-# Solves d b / dt + (u.grad) b = 0 (no diffusion: eta = 0) with a uniform #
-# velocity u = (U, 0) supplied by vitesse_magnetique. An initial Gaussian  #
-# bump is transported to the right; peak conserved, centroid moves at U.   #
-# CAVEAT: div b != 0 here -- convection-operator test only, not an         #
-# admissible magnetic state.                                               #
+# Solves d b / dt + (u.grad) b = 0 (no diffusion: eta = 0) with a uniform     #
+# velocity supplied by vitesse_magnetique. An initial Gaussian bump is        #
+# transported to the right; peak conserved, centroid moves at U.              #
+# CAVEAT: div b != 0 here -- convection-operator test only, not an            #
+# admissible magnetic state.                                                  #
+# Dimension-specific blocks (mesh, borders, Polyedriser, velocity, BCs,       #
+# probes) are injected by the notebook via template substitution.              #
 # ============================================================================= #
-dimension 2
+dimension $dim
 Pb_Induction pb
 Domaine dom
 
 # BEGIN MESH #
 Mailler dom
 {
-    Pave pavé
+    Pave slab
     {
-        Origine              0.  0.
-        Nombre_de_Noeuds     $nx $ny
-        Longueurs            1.  1.
+        Origine              $origine
+        Nombre_de_Noeuds     $nodes
+        Longueurs            $lengths
     }
     {
-        Bord gauche   X = 0.    0. <= Y <= 1.
-        Bord droite   X = 1.    0. <= Y <= 1.
-        Bord bas      Y = 0.    0. <= X <= 1.
-        Bord haut     Y = 1.    0. <= X <= 1.
+        $borders
     }
 }
+
+$polyedriser
 # END MESH #
 
 # BEGIN PARTITION
@@ -80,21 +81,17 @@ Read pb
     Convection_Diffusion_Magnetic_field
     {
         diffusivite_magnetique Champ_Uniforme 1 0.0
-        # uniform rightward velocity u = (0.2, 0) #
-        vitesse_magnetique     Champ_Uniforme 2 0.2 0.
+        # uniform rightward velocity #
+        vitesse_magnetique     Champ_Uniforme $nvel $vel
 
         diffusion  { }
         convection { amont }
 
         boundary_conditions
         {
-            # homogeneous Neumann everywhere (bump stays away from walls) #
-            gauche  Neumann_Paroi_adiabatique
-            droite  Neumann_Paroi_adiabatique
-            bas     Neumann_Paroi_adiabatique
-            haut    Neumann_Paroi_adiabatique
+            $bc
         }
-        # Gaussian bump centred on x0 = 0.25, sigma = 0.05, uniform in Y #
+        # Gaussian bump centred on x0 = 0.25, sigma = 0.05 #
         initial_conditions
         {
             magnetic_field Champ_Fonc_xyz dom 1 exp(-((x-0.25)^2)/(2*0.05^2))
@@ -105,13 +102,10 @@ Read pb
   {
     Sondes
     {
-      # field along the bump trajectory at mid-height #
-      sonde_x015 grav magnetic_field Periode 1e-6 Points 1 0.15 0.5
-      sonde_x025 grav magnetic_field Periode 1e-6 Points 1 0.25 0.5
-      sonde_x045 grav magnetic_field Periode 1e-6 Points 1 0.45 0.5
+      $probes
     }
   }
-  
+
 }
 
 Solve pb
