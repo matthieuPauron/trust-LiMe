@@ -44,6 +44,8 @@
 trust*
 # ... but the agent skill directory also matches `trust*`: keep it.
 !.opencode/skills/trust*
+# Hermes agent skill directory (in-repo, git-tracked)
+!.hermes/skills/trust*
 # Baltik environment
 *env_trust*.sh
 
