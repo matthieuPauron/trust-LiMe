@@ -109,3 +109,11 @@ In Hermes there are no OpenCode slash commands. Run the scripts above via the
 `patch` / `write_file`, use `execute_code` for bulk checks, and `delegate_task`
 for parallel analysis. Heavy builds must pass `.opencode/scripts/check-heavy-build.sh`
 and follow the RAM guard in `AGENTS.md`.
+
+
+**Exception:** if the only change is the `unit_tests` block or the `updated`
+timestamp produced by the pre-commit hook (unit-test results), do **not**
+commit it — revert with `git checkout -- .opencode/validation_status.json`
+(or `git restore`). Those are hook noise, not a validation-state change worth
+versioning. Only commit validation_status.json when a real validation run,
+`record-validation-status.py` (non-unit), or a form result changed it.

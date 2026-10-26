@@ -60,3 +60,11 @@ metadata:
 - A dataset using `$nx`/`$ny`/`$nz` placeholders is a template: the notebook must call `run.addCaseFromTemplate(..., dic={...})`. Calling `run.addCase(".", ...)` leaves the placeholders in the generated `DEC_`/`PAR_` files and fails with `Error converting a string to type int: $nx`.
 - In 3D, keep the analytic solution z-independent where possible and place probes at the mid-plane (`z = 0.0` or `0.5` matching the mesh); always read effective coordinates from the `.son` header rather than nominal ones.
 - `SonFile(path)` (single argument) is not supported; use `SonFile(path, None)` then `getEntries()`/`getValues()`.
+
+
+**Exception:** if the only change is the `unit_tests` block or the `updated`
+timestamp produced by the pre-commit hook (unit-test results), do **not**
+commit it — revert with `git checkout -- .opencode/validation_status.json`
+(or `git restore`). Those are hook noise, not a validation-state change worth
+versioning. Only commit validation_status.json when a real validation run,
+`record-validation-status.py` (non-unit), or a form result changed it.
