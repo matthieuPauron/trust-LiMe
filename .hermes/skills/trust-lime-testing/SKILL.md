@@ -80,6 +80,8 @@ otherwise a failure cannot be attributed to the new case alone.
 
 Applies equally to new unit tests in `tests/UnitTests/`.
 
+**Validation status:** whenever `.opencode/validation_status.json` changes (via a validation run or `record-validation-status.py`), commit it in the same change or an immediately following `validation:` commit — it is versioned evidence and must never be left modified-but-unstaged.
+
 ## ASN Guide n° 28 staging for new tests
 
 Verification first, then validation against analytical data, and only then
