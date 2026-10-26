@@ -66,3 +66,19 @@ each task before the worktree is cleared. A shared worktree entry lists
   after a fresh clone.
 - A worktree branch can collide on re-runs; append `-2`, `-3` when the branch
   or path already exists.
+
+## RAM sharing across worktrees
+
+Worktrees share the host's RAM and CPU. Before any RAM-intensive action in a
+worktree (sanitizer build, full-kernel build, large validation run), check
+free RAM:
+
+```bash
+free -g | awk '/^Mem:/ {print $7}'
+```
+
+Require at least **8 GB** free for worktree heavy builds (stricter than the
+6 GB default guard, because multiple worktrees may build). If below 8 GB,
+defer the task and record the reason. Never run two heavy builds concurrently
+across worktrees. Use `.opencode/scripts/check-heavy-build.sh` (set
+`MIN_FREE_GB=10` for worktree runs) as a pre-check.
