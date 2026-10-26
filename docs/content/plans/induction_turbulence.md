@@ -8,11 +8,12 @@ diffusivity implemented; hydraulic k-ε handoff is exercised end-to-end.** The
 The independent magnetic k-ε fluctuation closure is implemented in source
 (`modele_turbulence_magnetique` + `Convection_Diffusion_{K,Epsilon}_Magnetic` +
 `Terme_Source_*_Magnetic`) and now has frozen PolyMAC_P0 manufactured-term
-verification plus a zero-production analytic-decay scan in
-`MagneticStandalone/MagneticTurbulence/`. The manufactured case uses closed
-no-flux boundaries because PolyMAC_MPFA does not implement periodicity. Solved
-spatial transport, VEF, restart, calibration, and physical validation remain
-open.
+verification plus a zero-production analytic-decay scan, a solved
+spatial-transport case, and a solved energy-transfer case with a
+molecular-only twin in `MagneticStandalone/MagneticTurbulence/`. The
+manufactured case uses closed no-flux boundaries because PolyMAC_MPFA does not
+implement periodicity. VEF, restart, calibration, and physical validation
+remain open.
 High-Rm/VKS dynamo behavior is not validated. See
 `docs/content/plans.md` for the cross-project roadmap.
 

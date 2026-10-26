@@ -138,9 +138,9 @@ source of truth), with the three comment-marker regions and `nbProcs=2` +
   transport terms and zero-production analytic decay on PolyMAC_P0; spatial
   transport, VEF, restart, calibration, and physical validation remain open.
 - GoogleTest suite: 38 arithmetic-only and 74 full tests pass (rerun 2026-10-26).
-- `HartmannTwoWay` needs a clean reportable rerun after `run.reset()` encountered
-  a non-empty generated scan directory; 31/32 PDFs were produced in the latest
-  recorded full sweep.
+- `HartmannTwoWay` targeted rerun passed all 18 cases (2026-10-26). The full
+  report is generated nightly; the last pre-merge sweep was 31/32 (30/31 after
+  the Shercliff merge), so no manual report run is needed.
 
 Full history archived in `docs/content/dev_corner/kernel_reuse.md`.
 
@@ -201,12 +201,12 @@ for the script location.
   `Pb_MHD`, `Pb_MHD_Turbulent`, `Pb_MHD_Thermal` (equation 0 is always
   momentum). See `docs/content/dev_corner/kernel_reuse.md` §20.
 - Standalone magnetic induction equation; paired 2D/3D validation notebooks
-  are merged under `MagneticStandalone/`. The dimension-specific `MMS_3D/`
-  family remains under `MagneticStandalone3D/`; Shercliff uses one shared form.
+  are merged under `MagneticStandalone/`. Dimension-specific forms remain in
+  `MagneticStandalone3D/MMS_3D/`; Shercliff now runs both dimensions from
+  `MagneticStandalone/Shercliff/`.
 - Kernel/module built (`trust-lime`, `trust-lime_semi_opt`, `trust-lime_opt`).
-- Reportable suite: 31 forms after the Shercliff merge (last pre-merge sweep:
-  31/32). Most baselines on 2 ranks; `GaussLaw` 3D and Shercliff 3D
-  standard/fine sequential. PDFs
+- Reportable suite: 31 forms (latest pre-merge sweep: 31/32). Most baselines on 2
+  ranks; `GaussLaw` 3D and Shercliff 3D standard/fine sequential. PDFs
   concatenated by `run-validation-pdf.sh`.
 - Features: divergence correction (`correction_divergence`), Lorentz force
   coupling (one- and two-way), post-treatment fields (`Champ_Fonc_MHD`),

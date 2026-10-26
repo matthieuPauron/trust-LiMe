@@ -22,13 +22,15 @@ the consolidated, user-facing view.
 | Turbulent magnetic diffusivity paths | prescribed fields, hydraulic k-ε, independent magnetic k-ε |
 | Strong two-way coupling (Picard, opt-in) | `couplage_fort` |
 | `HartmannTwoWay` targeted rerun | all 18 cases passed (2026-10-26) |
+| Solved spatial-transport verification for magnetic k-ε | `MagneticTurbulence/` solved spatial-transport case (nonuniform k_b/ε_b, positivity/finite/convergence) |
 
 ## 2. In progress
 
 | Task | Status | Notes |
 |---|---|---|
-| Magnetic k-ε verification and validation | partial | frozen manufactured terms and zero-production analytic decay pass on PolyMAC_P0; solved spatial transport, VEF coverage, restart, calibration and physical validation remain open |
+| Magnetic k-ε verification and validation | partial | frozen manufactured terms, zero-production analytic decay, solved spatial transport, and a solved energy-transfer case with a molecular twin pass on PolyMAC_P0; VEF coverage, restart, calibration and physical validation remain open |
 | Gauss-law sanitizer follow-up | open | 2D/3D forms pass; 38 arithmetic-only and 74 full unit tests pass, but sanitizer coverage is not recorded |
+| Gauss-law non-homogeneous Dirichlet support | open | unconstrained projection does not preserve non-homogeneous Dirichlet magnetic data; needs a constrained operator |
 
 @note The full reportable suite report is generated nightly. The last full
 pre-merge report was 31/32 (30/31 after merging the two Shercliff forms into
@@ -39,11 +41,10 @@ report run is required.
 
 Priorities below are ordered by closure value and dependency.
 
-1. **Add solved spatial-transport verification for magnetic k-ε** — the current manufactured-term and analytic-decay checks do not exercise evolving nonuniform k-ε fields under advection and diffusion.
-2. **Extend magnetic k-ε coverage** — add energy-transfer and restart checks, a coarse/standard/fine ladder, and the planned molecular-versus-k-ε comparison; then pursue VEF and physical validation.
-3. **Run sanitizer coverage** — ASan/UBSan remains open, especially for the divergence-projection assembly and full-kernel interactions.
-4. **Add remaining 3D twins and an inertial-Re benchmark** — `ShercliffDuct3D` is already present and passing; full-suite status is tracked by the nightly report.
-5. **Long term: advanced coupled physics and VKS** — magnetic fluctuation transport/full turbulent MHD closure, Ohmic heating, high-Rm nonlinear coupling, dynamo threshold and saturation; see `docs/content/end_goal.md`.
+1. **Extend magnetic k-ε coverage** — add energy-transfer and restart checks, a coarse/standard/fine ladder, and the planned molecular-versus-k-ε comparison; then pursue VEF and physical validation.
+2. **Run sanitizer coverage** — ASan/UBSan remains open, especially for the divergence-projection assembly and full-kernel interactions.
+3. **Add remaining 3D twins and an inertial-Re benchmark** — `ShercliffDuct3D` is already present and passing; full-suite status is tracked by the nightly report.
+4. **Long term: advanced coupled physics and VKS** — magnetic fluctuation transport/full turbulent MHD closure, Ohmic heating, high-Rm nonlinear coupling, dynamo threshold and saturation; see `docs/content/end_goal.md`.
 
 ## 4. How this page is maintained
 
