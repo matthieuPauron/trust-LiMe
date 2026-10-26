@@ -50,6 +50,16 @@ done
 kernel_suffix="${UNIT_TEST_SUFFIX:-}"
 if [[ -z "$kernel_suffix" ]]; then
   for cand in _opt _semi_opt; do
+    if [[ -f "$trust_root/lib/TRUST_mpi${cand}.a" ]] && \
+       [[ -f "$repo_root/build/src/exec${cand}/CMakeFiles/exe.dir/link.txt" ]]; then
+      kernel_suffix="$cand"
+      break
+    fi
+  done
+fi
+# Fallback: any kernel archive if no link.txt matched (will use minimal/fallback link).
+if [[ -z "$kernel_suffix" ]]; then
+  for cand in _opt _semi_opt; do
     if [[ -f "$trust_root/lib/TRUST_mpi${cand}.a" ]]; then
       kernel_suffix="$cand"
       break
