@@ -119,6 +119,8 @@ parallel_ok=(
   "$base/MagneticCoupled3D/SmoothDiskMHD/"
   "$base/MagneticCoupled3D/ShercliffDuct3D/"
   "$base/MagneticCoupled3D/ForceLorentzBalance3D/"
+  "$base/MagneticCoupled3D/Coupled_Feedback3D/"
+  "$base/MagneticCoupled3D/HartmannTwoWay3D/"
   # --- Industrial examples (2-rank coupled MHD smoke cases) ---
   "$base/Industrial_Examples/"
   # --- Postraitement_fields (merged: one form per dimension) ---
