@@ -7,11 +7,10 @@ layout and @ref TrustLiMe_testcases "Test cases" for the unit-test layer.
 
 ## Suite overview (status: 2026-10-26)
 
-The project tracks **32 reportable forms** across the standalone induction,
+The project tracks **31 reportable forms** across the standalone induction,
 coupled-MHD, 3D, and post-treatment categories. The latest recorded full PDF
-sweep produced 31/32: the `HartmannTwoWay` scan stopped at `run.reset()` because
-its generated scan directory was not empty. Its case is implemented; clean the
-generated scan output and rerun it before regenerating the complete report.
+sweep predates the Shercliff merge and produced 31/32; the next full report
+covers the merged 31-form suite.
 Targeted run records include passing `ShercliffDuct3D`, `VKSTurbulent`, the
 conducting-wall case and both Gauss-law dimensions. The validation-format gate
 passed on 2026-10-26 (92 files, zero violations).
@@ -27,7 +26,7 @@ a physical validation benchmark and has no VEF twin.
 
 ## Key benchmarks
 
-### Shercliff2D / Shercliff3D — parabolic-shear channel
+### Shercliff — parabolic-shear channel (2D and 3D)
 
 - **Analytic reference:** `b_x(y) = (B_0 U_0/η)(y³/(3h²) − y)`,
   `J_z(y) = (B_0 U_0/(η μ_0))(1 − (y/h)²)`, `b_y ≡ B_0`.
@@ -38,7 +37,7 @@ a physical validation benchmark and has no VEF twin.
   O(h) wall-cell gradient bias), `J_z` < 5 %.
 - **Convergence:** first order (≈ 1.08, 0.96 observed) — limited by the
   wall-cell gradient bias, which halves on refinement.
-- **3D twin** adds exact extrusion invariants: `b_z ≡ 0`, z-uniformity,
+- **3D case** adds exact extrusion invariants: `b_z ≡ 0`, z-uniformity,
   vector `courant_magnetique`.
 
 ### HartmannTwoWay — driven Hartmann flow (two-way coupling)
@@ -109,8 +108,8 @@ merged per category) are excluded by design.
 
 ## Open items
 
-- **Close the reportable suite:** clean and rerun `HartmannTwoWay`, then
-  regenerate the full 32-form PDF report.
+- **Reportable suite:** the merged suite has 31 forms; the last recorded full
+  PDF sweep predates the merge and produced 31/32.
 - **Inertial-Re dependence:** the Hartmann parameter grid has no convective
   acceleration; a non-fully-developed geometry is needed to test inertial Re
   effects.

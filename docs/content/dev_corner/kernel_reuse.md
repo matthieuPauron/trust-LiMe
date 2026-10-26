@@ -761,7 +761,7 @@ failure is a genuine test failure (not just a plot mismatch).
 
 "Testing" here means the **modelling decisions**, not the discretisation
 dimensions. Coverage is mixed: paired standalone forms carry 2D/3D datasets,
-while `MMS_3D`, `Shercliff3D`, and the coupled 3D forms are separate forms.
+while `MMS_3D` and the coupled 3D forms are separate forms.
 Not every coupled case has a 3D twin. For each decision: is it pinned by a
 test, and where?
 
@@ -1513,13 +1513,14 @@ preserve history. They are status reports, not live guidance.
   sin(pi x)exp(-y), Poly_2D/3D are zero-field smoke tests (no sondes: their probe block is a
   guarded no-op). MMS_Diff3D needed a mesh refinement (5³ -> 21³ nodes): at 4 cells the P0
   projection excites higher discrete modes and a single-mode analytic check cannot hold.
-- **2D/3D twin gaps (R5)**: closed for `Shercliff` — `MagneticStandalone3D/Shercliff3D/`
-  is the 3D twin of `Shercliff2D` (same assertion set plus the three exact
-  extrusion invariants `b_z = 0`, z-uniformity and the vector
-  `courant_magnetique`; it is the **only** 3D standalone form exercising the
-  full vector model, `nb_composantes 3`). Its standard/fine scan levels run on
-  1 rank with `execOptions="1"` — the missing argv count is a §18.2 crash
-  layout; see the form's notebook and `docs/content/dev_corner/kernel_reuse.md` §18.2.
+- **2D/3D twin gaps (R5)**: closed for `Shercliff` — its 2D and 3D datasets
+  now share `MagneticStandalone/Shercliff/Shercliff.ipynb` and the single
+  `src/shercliff.data` template. The 3D case retains the three exact extrusion
+  invariants (`b_z = 0`, z-uniformity and vector `courant_magnetique`); it is
+  the **only** 3D standalone case exercising the full vector model
+  (`nb_composantes 3`). Its standard/fine scan levels run on 1 rank with
+  `execOptions="1"` — the missing argv count is a §18.2 crash layout; see the
+  merged form's notebook and §18.2.
   `Hartmann1D` 2D/3D differ in probe sets by design. (The `MMS_Poly_2D`
   gap closed itself: the four 2D MMS forms are merged into `MMS_2D`, the
   four 3D twins into `MMS_3D`.) Fine for now, worth a sweep once the

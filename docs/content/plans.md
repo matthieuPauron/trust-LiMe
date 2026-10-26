@@ -6,10 +6,10 @@ what comes **next**, and what is deliberately **deferred**. The plain-Markdown
 originals remain the working documents: they are updated as work proceeds, and
 this page follows them.
 
-@note Status snapshot: 26 October 2026. The suite contains 32 reportable
-validation forms; the latest recorded full PDF sweep produced 31/32 because the
-`HartmannTwoWay` notebook stopped at `run.reset()` on a non-empty generated scan
-directory. The formatting gate currently passes (92 files, zero violations).
+@note Status snapshot: 26 October 2026. The suite contains 31 reportable
+validation forms after the Shercliff merge. The last pre-merge full PDF sweep
+produced 31/32 (30/31 after the merge); the full report is generated nightly.
+The formatting gate currently passes (92 files, zero violations).
 The current unit-test run passes all 38 arithmetic-only and 74 full tests. A
 sanitizer run remains outstanding. See @ref TrustLiMe_validation
 "Validation cases" and @ref TrustLiMe_testcases "Test cases".
@@ -25,7 +25,7 @@ sanitizer run remains outstanding. See @ref TrustLiMe_validation
 | Coupled low-Rm mode — `force_lorentz` on a hydraulic problem | **done** (one-way \f$b \to\f$ momentum; PolyMAC and VEF source assembly) |
 | Post-treatment fields (`Champ_Fonc_MHD`) and their forms (merged 2026-10-21 into `Champs2D` / `Champs3D`) | **done** |
 | Coupled validation forms (7) | **done** |
-| Full validation suite — 2D, 3D twins, coupled, post-treatment | **32 reportable forms**; latest recorded full PDF sweep ran 31/32. `HartmannTwoWay` needs a clean rerun after `run.reset()` encountered a non-empty generated scan directory; targeted records for the other forms include passing Gauss-law dimensions and the flux-error case. |
+| Full validation suite — 2D, 3D twins, coupled, post-treatment | **31 reportable forms** after the Shercliff merge; the last pre-merge full report ran 31/32 (30/31 after the merge). The nightly report will refresh the suite-wide result. |
 | Unit tests (GoogleTest) | **38 arithmetic-only and 74 full tests pass** (rerun 2026-10-26) |
 | Two-way coupling — NS velocity feeds the magnetic convection (`vitesse_hydraulique`) | **done** (lagged staggered scheme; commits `9e5b13b`, `d484fbd`) |
 | \f$\nabla\cdot b = 0\f$ enforcement | **implemented, opt-in** via `correction_divergence`; 2D MPI and 3D serial mesh scans plus incompatible-flux rejection pass |
@@ -89,8 +89,8 @@ itself lives in the kernel
 
 ### 2D/3D twin gaps (R5)
 
-`Shercliff2D` is twinned by `MagneticStandalone3D/Shercliff3D/`, which also
-carries the full vector model. `MMS_Coupled` carries its 3D twin as a second
+`Shercliff` now carries both dimensions in one shared template/notebook; its 3D
+case retains the full vector model. `MMS_Coupled` carries its 3D twin as a second
 dataset, and `VKSTurbulent` exercises a 3D VEF turbulent case. Still without
 3D counterparts are `HartmannTwoWay/`, `ForceLorentzBalance/` and
 `Coupled_Feedback/`. The coupled `ShercliffDuct3D` form is implemented and its

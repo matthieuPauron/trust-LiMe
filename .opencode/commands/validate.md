@@ -29,9 +29,9 @@ Notebooks (under share/Validation/Rapports_automatiques/): one
 `Rapports_automatiques/<Category>/<FormName>/<FormName>.ipynb` per test case.
 The paired standalone magnetic forms live under `MagneticStandalone/*/`; each
 notebook runs its 2D and 3D datasets from one shared template. The remaining
-dimension-specific forms are `MagneticStandalone/MMS_2D/`,
-`MagneticStandalone/Shercliff2D/`, `MagneticStandalone3D/MMS_3D/`, and
-`MagneticStandalone3D/Shercliff3D/`.
+dimension-specific forms are `MagneticStandalone/MMS_2D/` and
+`MagneticStandalone3D/MMS_3D/`; the standalone Shercliff form runs both
+dimensions from one shared template under `MagneticStandalone/Shercliff/`.
 
 HartmannFlow and Shercliff_3D_duct were removed; recreate them only when the
 coupled MHD problem lands. A notebook runs **one and only one test case** and

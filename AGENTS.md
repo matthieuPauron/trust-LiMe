@@ -201,12 +201,12 @@ for the script location.
   `Pb_MHD`, `Pb_MHD_Turbulent`, `Pb_MHD_Thermal` (equation 0 is always
   momentum). See `docs/content/dev_corner/kernel_reuse.md` §20.
 - Standalone magnetic induction equation; paired 2D/3D validation notebooks
-  are merged under `MagneticStandalone/`. Dimension-specific forms remain in
-  `MagneticStandalone/MMS_2D/`, `MagneticStandalone3D/MMS_3D/`, and
-  `MagneticStandalone3D/Shercliff3D/`.
+  are merged under `MagneticStandalone/`. The dimension-specific `MMS_3D/`
+  family remains under `MagneticStandalone3D/`; Shercliff uses one shared form.
 - Kernel/module built (`trust-lime`, `trust-lime_semi_opt`, `trust-lime_opt`).
-- Reportable suite: 32 forms (31/32 in latest sweep). Most baselines on 2
-  ranks; `GaussLaw` 3D and `Shercliff3D` standard/fine sequential. PDFs
+- Reportable suite: 31 forms after the Shercliff merge (last pre-merge sweep:
+  31/32). Most baselines on 2 ranks; `GaussLaw` 3D and Shercliff 3D
+  standard/fine sequential. PDFs
   concatenated by `run-validation-pdf.sh`.
 - Features: divergence correction (`correction_divergence`), Lorentz force
   coupling (one- and two-way), post-treatment fields (`Champ_Fonc_MHD`),
