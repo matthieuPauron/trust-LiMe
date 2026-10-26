@@ -24,3 +24,17 @@ hermes cron create "0 1 * * *" \
   --deliver local \
   --workdir /home/matthieu/Development/trust-LiMe
 ```
+
+### trust-lime-nightly-backlog
+```
+hermes cron create "0 23 * * *" \
+  --name trust-lime-nightly-backlog \
+  --skill trust-lime-worktree \
+  --skill trust-lime-build-diagnostics \
+  --deliver local \
+  --workdir /home/matthieu/Development/trust-LiMe
+```
+Note: this job is agent-driven (no --script/--no-agent). Its prompt is maintained via
+`hermes cron edit a409d93585ae --prompt ...` (see the job's current prompt in
+`~/.hermes/cron/jobs.json`). Each task runs in its own worktree under
+`/home/matthieu/Development/trust-LiMe-worktrees/`.
