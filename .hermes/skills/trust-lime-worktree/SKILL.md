@@ -45,9 +45,19 @@ hermes worktree   # audit and reclaim accumulated git worktrees
 3. `make module_semi_optim` if C++ changed
 4. `git diff` review for `-Wconversion` hazards and stray debug code
 
+## Nightly backlog usage
+
+The nightly backlog job runs each task in its own worktree under
+`/home/matthieu/Development/trust-LiMe-worktrees/<slug>` on branch
+`nightly-YYYYMMDD-<slug>`. The main working tree stays clean; review each
+worktree, then remove it with `git worktree remove <path>` (or `hermes
+worktree`) after merging.
+
 ## Pitfalls
 
 - Worktrees share the same `.git` object store but have independent working
   trees; do not run two heavy builds concurrently.
 - Worktrees are not version-controlled state; re-run `install-git-hooks.sh`
   after a fresh clone.
+- A worktree branch can collide on re-runs; append `-2`, `-3` when the branch
+  or path already exists.

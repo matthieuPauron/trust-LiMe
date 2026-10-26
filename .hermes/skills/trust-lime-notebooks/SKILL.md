@@ -298,6 +298,21 @@ participates in NR extraction; post_run doesn't).
   syntax.
 - Fast syntax examples for any keyword: `trust -search "<keyword>"`.
 
+### 3D twin pitfalls
+
+- `Polyedriser dom` must come right after `Mailler` (PolyMAC needs polyhedra).
+- All six boundary faces must be defined in both the NS and magnetic blocks.
+- Comment markers: `# BEGIN MESH #` stays closed; `# BEGIN PARTITION` and
+  `# BEGIN SCATTER` must stay **open** (no trailing `#`). Never bulk-close
+  with a global sed — it activates partitioning and can skip the solve.
+- `check-validation.sh` defaults to git-tracked files; use `--all` for new
+  untracked forms.
+- A dataset with `$nx`/`$ny`/`$nz` placeholders is a template: the notebook
+  must use `addCaseFromTemplate(..., dic=...)`, not `addCase(".", ...)`.
+- Read probes with `SonFile(path, None)` (single-arg form unsupported), then
+  `getEntries()`/`getValues()`; evaluate analytics at effective coordinates
+  from the `.son` header.
+
 ## Running a notebook (headless)
 
 Must run in the **TRUST Python environment**, not the OpenCode venv.

@@ -62,6 +62,12 @@ updates it, stage and commit it together with the change that produced it (or
 in an immediately following `validation:` commit). Never leave it modified but
 unstaged at the end of a session.
 
+## Pre-commit hook
+
+The repository's pre-commit hook runs the GoogleTest unit suite and may refresh
+`.opencode/validation_status.json`; treat a failed hook as a real failure, not
+a bypass. Re-run `git commit` after fixing.
+
 ## In-repo Hermes skills (git tracking)
 
 Project-local Hermes skills live under `.hermes/skills/` (or `.agents/skills/`). They are not discovered until the repo is trusted:
