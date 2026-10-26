@@ -137,7 +137,7 @@ One validation form per test case (TRUST layout
 `Rapports_automatiques/<Category>/<FormName>/<FormName>.ipynb`): the folder
 holds `Invariance/`, `Diffusion/`, `Advection/`,
 `SteadyState/`, `VaryingVelocity/`, `SourceStretching/`, `Hartmann1D/`,
-`Shercliff2D/`, `MMS_2D/` (the four historical MMS 2D cases fused: `MMS_Diff2D`, `MMS_Trig2D`,
+`Shercliff/`, `MMS_2D/` (the four historical MMS 2D cases fused: `MMS_Diff2D`, `MMS_Trig2D`,
 `MMS_ExpTrig2D`, `MMS_Poly_2D`) and the merged negative
 `ErrorInputs/` form (the historical `error_missing_eta`,
 `error_bad_nbcomposantes`, `error_bad_bc`, and `error_incompatible_flux` datasets);
@@ -188,8 +188,7 @@ so no `.med` file is required and the cases can be run from a clean checkout.
 | `gauss_law.data` (2D) | Non-solenoidal \f$b=(\cos(2\pi x),0)\f$ with `correction_divergence` enabled | Verification | interior divergence probes below \f$10^{-8}\f$ on coarse/standard/fine meshes and two MPI ranks | `D D^T` projection, MPI ghost handling, global boundary-flux check |
 | `gauss_law.data` (3D dataset in `MagneticStandalone/GaussLaw/`) | Full-vector \f$b=(x(1-x),0,0)\f$ with compatible net flux; polyhedral mesh | Verification | interior divergence probes below \f$10^{-8}\f$ on the 17/33/65-node (16/32/64-cell) ladder (sequential) | 3D projection, full-vector components, polyhedral mesh path |
 | `hartmann_1d.data` | induced field of the Hartmann profile (\f$\mathrm{Ha}=5\f$), insulating walls, \f$b=(b_x,B_0)\f$ (`nb_composantes 2`) | Validation – separate effects | mean-free \f$b_x(y) = -\tfrac{B_0}{\eta}\big[\int_{-h}^{y}u - \tfrac12\int_{-h}^{h}u\big]\f$ | multi-component transport, M1 source driving \f$b_x\f$ through the applied \f$b_y\f$, insulating walls, odd symmetry, \f$b_y\equiv B_0\f$ |
-| `shercliff_2d.data` | induced field of the parabolic no-slip channel profile, insulating walls, \f$b=(b_x,B_0)\f$ (`nb_composantes 2`) | Validation – separate effects | \f$b_x(y) = \tfrac{B_0 U_0}{\eta}\big(\tfrac{y^3}{3h^2}-y\big)\f$ and \f$J_z(y) = \tfrac{B_0 U_0}{\eta\mu_0}\big(1-(y/h)^2\big)\f$ | M1 source with a no-slip shear profile, `courant_magnetique` post-treatment (interior parabola, zero at walls), \f$b_y\equiv B_0\f$ |
-| `shercliff_3d.data` | 3D twin (`MagneticStandalone3D/Shercliff3D/`): same 1D physics on a polyhedral mesh (`Polyedriser dom`), full vector \f$b=(b_x,B_0,0)\f$ (`nb_composantes 3`) | Validation – separate effects | same analytic profile, plus the exact extrusion invariants \f$b_z\equiv 0\f$, z-uniformity, and the vector \f$\mathbf{J}=(0,0,J_z(y))\f$ | full vector model in 3D, 3-component `courant_magnetique`, `Polyedriser` mesh path, probe snapping in 3D |
+| `shercliff.data` | shared 2D/3D template: parabolic no-slip channel, insulating walls; 2D uses \f$b=(b_x,B_0)\f$ and 3D uses the full vector \f$b=(b_x,B_0,0)\f$ with `Polyedriser dom` | Validation – separate effects | both dimensions check the analytic \f$b_x(y)\f$ and \f$J_z(y)\f$ profiles; 3D additionally asserts \f$b_z\equiv0\f$, z-uniformity and \f$\mathbf{J}=(0,0,J_z(y))\f$ | shared templated geometry; 2D and 3D mesh ladders; full-vector 3D `courant_magnetique` and extrusion invariants |
 | `error_inputs.data` (missing-eta 2D/3D variants) | no `diffusivite_magnetique` | Verification | must fail cleanly | required-keyword diagnostics |
 | `error_inputs.data` (bad-component 2D/3D variants) | `nb_composantes 7` | Verification | must fail cleanly | range validation |
 | `error_inputs.data` (bad-BC 2D/3D variants) | unknown CL keyword | Verification | must fail cleanly | keyword error reporting |
@@ -205,21 +204,22 @@ Design choices worth knowing:
 - **Paired standalone forms share one notebook** under `MagneticStandalone/`;
   their 2D and 3D datasets use the same physics assertions with dimension-
   specific substitutions. `MMS_3D/` holds the four historical 3D MMS cases
-  fused (2D counterpart `MMS_2D/`), and `Shercliff3D/` remains its own 3D-only
-  full-vector form. These dimension-specific forms keep the same physics and
-  assertions as their related cases; their datasets differ in
-  `dimension 3`, three-component vectors/probes and `Polyedriser dom` after
-  `Mailler`. Meshes keep the 2D resolution only in the direction that matters
-  (e.g. the diffusion mode direction) and stay coarse elsewhere, so the 3D runs
-  are affordable. `Shercliff3D` additionally asserts the exact invariants of
-  the extrusion (`b_z = 0`, z-uniformity, vector `courant_magnetique`) and is
-  the only 3D standalone form running the full vector model (`nb_composantes 3`).
+  fused (2D counterpart `MMS_2D/`). Shercliff's 2D and full-vector 3D cases now
+  share one `shercliff.data` template and notebook. `MMS_3D` remains a
+  dimension-specific form. Its 3D datasets use the appropriate 3D mesh,
+  dimension, and probe substitutions; the Shercliff template additionally
+  injects its full three-component vector and `Polyedriser dom`. Meshes keep the
+  active direction refined and transverse directions coarse
+  (e.g. the diffusion mode direction), so the 3D runs are affordable. The merged
+  Shercliff form additionally asserts the exact 3D
+  extrusion invariants (`b_z = 0`, z-uniformity, vector `courant_magnetique`);
+  it is the only 3D standalone form running the full vector model (`nb_composantes 3`).
 - **`nb_composantes`** — most standalone cases transport a single component
   (`nb_composantes 1`), the natural reduction of \f$\nabla\cdot b = 0\f$ for a
   purely transverse field. The multi-component (vector) unknown is exercised by
-  `hartmann_1d` and `shercliff_2d` (`nb_composantes 2`, so the M1 source can
-  drive the induced \f$b_x\f$ through the applied \f$b_y\f$), by `shercliff_3d`
-  (`nb_composantes 3`, required by the 3D `courant_magnetique` post-treatment)
+  `hartmann_1d` and the 2D Shercliff case (`nb_composantes 2`, so the M1 source can
+  drive the induced \f$b_x\f$ through the applied \f$b_y\f$), and by the 3D
+  Shercliff case (`nb_composantes 3`, required by the 3D `courant_magnetique` post-treatment)
   and by the `Postraitement_fields` forms; the valid range is
   \f$[1, \mathrm{dimension}]\f$ (`error_bad_nbcomposantes`
   pins the rejection of out-of-range values).

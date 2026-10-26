@@ -11,7 +11,7 @@ forms=(
   MagneticStandalone/Diffusion
   MagneticStandalone/Hartmann1D
   MagneticStandalone/Invariance
-  MagneticStandalone/Shercliff2D
+  MagneticStandalone/Shercliff
   MagneticStandalone/SourceStretching
   MagneticStandalone/SteadyState
   MagneticStandalone/VaryingVelocity

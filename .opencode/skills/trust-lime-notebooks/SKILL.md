@@ -59,12 +59,12 @@ Four rules, R1–R3 enforced mechanically by
   one `.data` template under `MagneticStandalone/<FormName>/`, with dimension-
   specific mesh, boundaries, vectors, and probes injected by template
   substitutions. This is the pattern for `Advection`, `Diffusion`,
-  `ErrorInputs`, `GaussLaw`, `Hartmann1D`, `Invariance`, `SourceStretching`,
-  `SteadyState`, and `VaryingVelocity`. Keep both dimension ladders and their
+  `ErrorInputs`, `GaussLaw`, `Hartmann1D`, `Invariance`, `Shercliff`,
+  `SourceStretching`, `SteadyState`, and `VaryingVelocity`. Keep both dimension ladders and their
   assertions independent in the merged notebook. 3D meshes require
   **`Polyedriser dom` right after `Mailler`** (PolyMAC_MPFA needs polyhedra).
-  Dimension-specific forms such as `MMS_3D` and `Shercliff3D` remain under
-  `MagneticStandalone3D/`. (The `Case` folder is the ASN 28 category grouping.)
+  The dimension-specific `MMS_3D` form remains under `MagneticStandalone3D/`.
+  (The `Case` folder is the ASN 28 category grouping.)
 - **R2 — sequential-only datasets (default).** A `.data` file **must not
   contain any TRUST parallelism machinery**: `Decouper`, `Partitionneur`,
   `Partition`, `Partition_tool`, `Scatter`, `Larg_joint`, `Nom_Zones`,

@@ -101,13 +101,12 @@ parallel_ok=(
   "$base/MagneticStandalone/MMS_2D/"
   "$base/MagneticStandalone/Hartmann1D/"
   "$base/MagneticStandalone/Invariance/"
-  "$base/MagneticStandalone/Shercliff2D/"
+  "$base/MagneticStandalone/Shercliff/"
   "$base/MagneticStandalone/SourceStretching/"
   "$base/MagneticStandalone/SteadyState/"
   "$base/MagneticStandalone/VaryingVelocity/"
   # --- MagneticStandalone3D (dimension-specific 3D forms) ---
   "$base/MagneticStandalone3D/MMS_3D/"
-  "$base/MagneticStandalone3D/Shercliff3D/"
   # --- MagneticCoupled ---
   "$base/MagneticCoupled/ForceLorentzBalance/"
   "$base/MagneticCoupled/HartmannTwoWay/"

@@ -18,13 +18,13 @@ share/Validation/Rapports_automatiques/
 │   ├── Diffusion/  Advection/
 │   ├── SteadyState/  VaryingVelocity/  SourceStretching/
 │   ├── Hartmann1D/                 # Hartmann induced field (1D physics)
+│   ├── Shercliff/                   # shared 2D/3D template, full-vector 3D checks
 │   ├── MMS_2D/                     # the four historical MMS cases fused
 │   ├── GaussLaw/                   # opt-in 2D discrete divergence projection
 │   ├── MagneticTurbulence/         # PolyMAC_P0 manufactured terms + zero-production decay
 │   └── ErrorInputs/                # malformed inputs incl. incompatible net flux
 ├── MagneticStandalone3D/           # dimension-specific standalone forms
 │   ├── MMS_3D/                     # four historical 3D MMS cases
-│   └── Shercliff3D/                # full-vector 3D channel case
 ├── MagneticCoupled/                # coupled low-Rm MHD (2D, incl. the merged
 │   └── <FormName>/…                #   one-way + two-way feedback form)
 ├── MagneticCoupled3D/              # 3D-only coupled forms (the MMS twin now
@@ -34,15 +34,15 @@ share/Validation/Rapports_automatiques/
 ```
 
 The paired forms `Advection`, `Diffusion`, `ErrorInputs`, `GaussLaw`,
-`Hartmann1D`, `Invariance`, `SourceStretching`, `SteadyState`, and
-`VaryingVelocity` now each have one notebook under `MagneticStandalone/` that
+`Hartmann1D`, `Invariance`, `SourceStretching`, `SteadyState`,
+`VaryingVelocity`, and `Shercliff` now each have one notebook under `MagneticStandalone/` that
 runs both dimensions from one shared data template. Each dimension keeps its
 own mesh ladder and build subtree. In `GaussLaw`, the 2D case exercises the MPI
 path while the 3D full-vector case remains sequential; its transverse mesh
 uses three cells to avoid a parity-sensitive null mode. The 3D mesh block
 includes **`Polyedriser dom`** after `Mailler` because PolyMAC_MPFA requires
-polyhedral cells in 3D. The remaining `MagneticStandalone3D/` forms are the
-dimension-specific `MMS_3D` and `Shercliff3D` cases.
+polyhedral cells in 3D. The remaining `MagneticStandalone3D/` form is the
+dimension-specific `MMS_3D` family.
 
 Four formatting rules are enforced by `.opencode/scripts/check-validation.sh`
 (`/check-validation`): the notebook lives at the form root only —
@@ -81,8 +81,8 @@ dataset into `build/<dataset name>/` where the results (`.son` probes, `.dt_ev`,
 
 Each form can be exported to PDF and the per-form PDFs concatenated into a
 single report at the repository root (`trust-lime_validation.pdf`,
-32 forms: the 2D and 3D standalone families (the 3D MMS cases fused as
-`MMS_3D`, the Shercliff twins `Shercliff2D`/`Shercliff3D`), the coupled-MHD
+31 forms: the 2D and 3D standalone families (the 3D MMS cases fused as
+`MMS_3D`, Shercliff merged as `MagneticStandalone/Shercliff`), the coupled-MHD
 forms (including the quantitative two-way `HartmannTwoWay`) and the
 post-treatment fields merged into `Champs2D`/`Champs3D` — every
 positive form carrying its mesh-convergence scan, and the malformed-input
@@ -92,10 +92,10 @@ forms merged into one `ErrorInputs` notebook per category), via
 lives in the `trust-lime-notebooks` skill ("PDF export & the repository
 report").
 
-Status snapshot (2026-10-26): the latest recorded full sweep generated 31 of
-the 32 reportable PDFs. `HartmannTwoWay` stopped during `run.reset()` because a
-generated scan directory was not empty; clean that generated scan output and
-rerun the form before regenerating the complete report. The targeted records
+Status snapshot (2026-10-26): the latest recorded pre-merge full sweep
+generated 31 of 32 PDFs (30 of 31 after the Shercliff merge). The merged
+2D/3D Shercliff notebook passed and reproduced all 20 pre-merge coarse probe
+files exactly. The full report is generated nightly. The targeted records
 for both Gauss-law dimensions and `ShercliffDuct3D` are passing. The formatting
 gate was rerun on 2026-10-26: 92 files scanned, zero violations.
 
