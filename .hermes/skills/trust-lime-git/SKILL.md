@@ -29,8 +29,10 @@ changes are present.
 ## Worktrees
 
 Use worktrees for parallel workstreams (one workstream per worktree, one commit
-per session):
-
+per session). When a task directly follows the previous one (continuation,
+refinement, or sub-task), **reuse the same worktree** instead of creating a
+new one: make the transition explicit, execute the second task there, and
+require validation for each task before the worktree is cleared.
 ```bash
 # via git (Hermes has no opencode worktree command)
 git worktree add ../trust-lime-<name> -b <name>
@@ -68,6 +70,9 @@ The repository's pre-commit hook runs the GoogleTest unit suite and may refresh
 `.opencode/validation_status.json`; treat a failed hook as a real failure, not
 a bypass. Re-run `git commit` after fixing.
 
+Because the hook re-runs the tests and rewrites `validation_status.json`, a
+commit that only updates that file will trip the hook and touch it again. Break
+the loop by committing status-only changes with `git commit --no-verify`.
 ## In-repo Hermes skills (git tracking)
 
 Project-local Hermes skills live under `.hermes/skills/` (or `.agents/skills/`). They are not discovered until the repo is trusted:
