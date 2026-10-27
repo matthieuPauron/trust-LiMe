@@ -62,6 +62,8 @@ each task before the worktree is cleared. A shared worktree entry lists
 ## Pitfalls
 - Worktrees share the same `.git` object store but have independent working
   trees; do not run two heavy builds concurrently.
+- Heavy builds in worktrees use `make -j1` only (no parallelism) — higher -j
+  has OOM-killed cc1plus in the worker cgroup.
 - Worktrees are not version-controlled state; re-run `install-git-hooks.sh`
   after a fresh clone.
 - A worktree branch can collide on re-runs; append `-2`, `-3` when the branch

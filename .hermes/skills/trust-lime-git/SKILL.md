@@ -40,6 +40,26 @@ git worktree list
 git worktree remove ../trust-lime-<name>
 ```
 
+### Integrating worktree work into `main` (preferred)
+
+Keep `main` linear and free of `nightly-YYYYMMDD-<slug>` merge commits: rebase
+the worktree branch onto the current `main` tip, resolve conflicts, then
+fast-forward `main` to the rebased tip:
+
+```bash
+cd <worktree>
+git fetch origin main 2>/dev/null || true
+git rebase main          # replay worktree commits on top of main
+# resolve conflicts, git add ..., git rebase --continue
+cd <main-repo>
+git merge --ff-only <branch>   # fast-forward only; never create a merge commit
+git worktree remove <worktree>
+git branch -D <branch>
+```
+
+Never `git merge` (no-ff) worktree branches into `main`; if a fast-forward is
+not possible, rebase again until it is.
+
 ## Branches
 
 - `main`/default branch holds the green baseline.
