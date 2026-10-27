@@ -38,7 +38,9 @@ report run is required.
 
 ## 3. Prescribed for the next weeks
 
-Priorities below are ordered by closure value and dependency.
+Priorities below are ordered by closure value and dependency, following the
+ASNR guide 28 validation ordering: software-level improvements first, then
+verification/validation, then full physical cases.
 
 1. **Run sanitizer coverage** — ASan/UBSan remains open, especially for the divergence-projection assembly and full-kernel interactions. *(software)*
 2. **VEF port of magnetic k-ε closure** — PolyMAC-only today; hydraulic k-ε handoff is VEF-only, so the closures cannot run on the same mesh; port `Champ_Fonc_Eta_Turbulent` and `Champ_Fonc_Somme` to VEF (3–5 days, deferred). *(software)*
