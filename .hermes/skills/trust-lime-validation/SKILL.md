@@ -58,7 +58,29 @@ metadata:
 - Mesh-convergence: use `run.addCaseFromTemplate` with `$nx`/`$ny` placeholders over coarse/standard/fine; read effective probe positions from the `.son` header (`probe_xy`) because `grav` snaps to cell centres and positions shift with refinement.
 - Assert **outlet velocity convergence** (std→fine diff below tolerance) rather than a fixed development ratio, which stays mesh-dependent.
 
-## Pitfalls
+## Gauss-law projection (`correction_divergence`)
+
+- Dirichlet support is implemented as a **constrained projection**: Dirichlet boundary faces are excluded from the Jacobian `J` (their trace is a constant) and their prescribed `b0` enters `D(b)` as a fixed term, so prescribed boundary values are never overwritten. See `docs/content/plans/gauss_law_dirichlet.md`.
+- `mettre_a_jour()` must call `build_bc_trace_tables(temps)` before `corriger_divergence()` so time-dependent Dirichlet CLs use current prescribed values; `assembler_correction()` caches `L` (type-only, no value refresh needed).
+- `gradient_b_elements()` detects Dirichlet CLs independently (`is_dirichlet_face`) and uses prescribed values for the reported divergence; keep it consistent with `bc_trace`.
+- Kernel unit test: mark boundary faces as `BC_DIRICHLET` with prescribed values; verify (a) divergence uses prescribed trace, (b) net flux uses prescribed value, (c) Jacobian is reduced, (d) correction is finite.
+- **Form-level (Dirichlet wall):** prescribed Dirichlet fluxes must be **compatible** (net boundary flux ≈ 0) or the run aborts with `Gauss law violated by boundary conditions`. Opposite walls need the same normal component (e.g. bottom and top both `b=(0,1)`), not opposite signs.
+- **Dirichlet CL syntax:** use `temperature_imposee_paroi` (thermal CL reused because `domaine_application() == \"Thermique\"`) with a `Champ_Front_Uniforme` carrying `nb_composantes` values, e.g. `bas temperature_imposee_paroi Champ_Front_Uniforme 2 0. 1.`. The CL is a `Dirichlet` subclass, so `build_bc_trace_tables` detects it automatically.
+- **`divergence_magnetique` post-treatment field requires `nb_composantes == dimension`** (full vector field); with fewer components `creer_champ` calls `Process::exit()`. Use `nb_composantes 2` in 2D / `3` in 3D when probing divergence.
+
+## Merging validation into an existing notebook
+
+- Prefer folding a new validation into an existing sibling notebook over creating another `<FormName>.ipynb`. Extra notebooks proliferate; a single notebook per physical topic keeps the reportable suite navigable.
+- Steps:
+  1. Move the new case's `.data` into the target form's `src/` (e.g. `GaussLaw/src/gauss_law_dirichlet.data`).
+  2. Append cells to the target `.ipynb` via JSON (never hand-edit markdown): a `run.reset()`, an `addCaseFromTemplate(...)` + `runCases()`, a probe-read/assert cell, and a `run.tablePerf()`. Build the cell list in Python and `json.dump` with `indent=1`.
+  3. Validate by running the appended section headless: create a temporary notebook containing only those cells plus the `TRUST_parameters`/`reset` setup, place it in the form dir, run `jupyter nbconvert --to notebook --execute` with `env_trust_LiMe.sh`, `env_for_python.sh`, and `venv_trust/bin/activate` sourced, then delete the temp notebook.
+  4. Remove the now-redundant standalone form directory (notebook + build + checkpoints) but keep its `src/*.data` (moved, not deleted).
+  5. Drop the stale entry from `.opencode/validation_status.json` (the form no longer exists).
+- Keep the assertion that captures the actual physics being validated; do not weaken it to make the merge pass.
+- `run.reset()` in the appended section is safe because prior sections have already asserted their results; it only clears case state for the new run.
+
+## Pitfalls"
 
 - In 3D, `Polyedriser dom` must come right after `Mailler` (PolyMAC needs polyhedra).
 - A 3D form needs all six boundary faces defined in BOTH the Navier-Stokes and magnetic blocks; missing front/back faces break meshing or the solve.
