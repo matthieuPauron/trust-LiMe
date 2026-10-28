@@ -64,6 +64,10 @@ metadata:
   - **Centerline is the maximum** of the outlet profile (Hartmann-like shape).
   - **Hartmann reference** (u_H) and the development ratio are *diagnostics*, not hard asserts: the reference depends on mass flow and the ratio stays mesh-dependent.
   - **Profile symmetry** is a diagnostic only — `grav` snaps probes to cell centres, so effective y positions are asymmetric on coarse meshes (diffs halve with refinement); do not assert exact symmetry on coarse levels.
+- **Full Hartmann profile shape comparison** (mass-flow-fitted, normalized by centerline) shows ~25–30% max error across the ladder; the profile is Hartmann-like (centerline maximum, boundary layers) but asymmetric from probe snapping and entry-flow effects. Treat as a diagnostic, not a pass/fail gate — the benchmark measures a developing flow, not a fully-developed one.
+- **Time convergence**: with `tmax = 5` the outlet centerline drifts < 1e-6 over the last 5 steps (viscous time ~0.25, so 20× over-converged; the magnetic field's initial condition is already uniform/steady). If a developing-flow case shows drift > 1e-3, raise `tmax` or check the pressure BC — time is rarely the culprit.
+- **Pressure-BC calibration caveat**: the outlet pressure constant (`742.099` = 10·cosh(5)) is calibrated for a specific mass flow. If the observed centerline exceeds the mass-flow-fitted Hartmann limit, the outlet pressure BC is over-driving the flow — recalibrate the constant to the imposed inlet mass flow (`M = U_inlet * height`) rather than changing the inlet.
+- **Convection scheme**: the default `amont` (upwind) adds numerical diffusion that widens the profile; `muscl` (available in `Op_Conv_EF`) sharpens it. Switching scheme changes the development ratio, so pin the scheme in the dataset and report it.
 
 ## Gauss-law projection (`correction_divergence`)
 
