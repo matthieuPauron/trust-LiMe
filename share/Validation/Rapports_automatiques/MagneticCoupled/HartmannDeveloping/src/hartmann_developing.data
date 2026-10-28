@@ -1,0 +1,116 @@
+# PARALLEL OK #
+dimension 2
+Pb_MHD pb
+Domaine dom
+
+# BEGIN MESH #
+Mailler dom
+{
+    Pave pave
+    {
+        Origine              0.  -0.5
+        Nombre_de_Noeuds     $nx $ny
+        Longueurs            5.   1.
+    }
+    {
+        Bord inlet   X = 0.    -0.5 <= Y <= 0.5
+        Bord outlet  X = 5.    -0.5 <= Y <= 0.5
+        Bord bas     Y = -0.5  0. <= X <= 5.
+        Bord haut    Y = 0.5   0. <= X <= 5.
+    }
+}
+# END MESH #
+
+Polymac_p0 dis
+
+Associate pb dom
+
+Schema_Euler_Implicite sch
+Read sch
+{
+    tinit 0.
+    tmax 5.
+    dt_max 0.1
+    facsec 1e6
+    facsec_max 1e6
+    solveur implicite { solveur petsc cli { } }
+}
+
+Associate pb sch
+Discretize pb dis
+
+Read pb
+{
+    nb_composantes 2
+    fluide_incompressible
+    {
+        mu      Champ_Uniforme 1 1.0
+        rho     Champ_Uniforme 1 1.0
+        lambda  Champ_Uniforme 1 1.0
+        Cp      Champ_Uniforme 1 1.0
+        beta_th Champ_Uniforme 1 0.0
+    }
+
+    Navier_Stokes_standard
+    {
+        solveur_pression Petsc Cholesky { }
+        diffusion  { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            inlet   frontiere_ouverte_vitesse_imposee
+            Champ_front_Uniforme 2 0.1 0.
+            outlet  frontiere_ouverte_pression_imposee
+            Champ_front_fonc_txyz 1 -0.5*(sinh(10*y)/742.099-y)*(sinh(10*y)/742.099-y)
+            bas     paroi_fixe
+            haut    paroi_fixe
+        }
+        initial_conditions
+        {
+            vitesse Champ_Uniforme 2 0.1 0.
+        }
+        sources
+        {
+            force_lorentz { }
+        }
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        diffusivite_magnetique Champ_Uniforme 1 0.01
+
+        diffusion  { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            inlet   Neumann_Paroi_adiabatique
+            outlet  Neumann_Paroi_adiabatique
+            bas     Neumann_Paroi_adiabatique
+            haut    Neumann_Paroi_adiabatique
+        }
+        initial_conditions { magnetic_field Champ_Uniforme 2 0. 1. }
+    }
+
+    Postraitement
+    {
+        Sondes
+        {
+            # centerline velocity along the duct (development) #
+            sonde_u0  grav vitesse Periode 1e-6 Points 1 0.5   0.
+            sonde_u1  grav vitesse Periode 1e-6 Points 1 1.5   0.
+            sonde_u2  grav vitesse Periode 1e-6 Points 1 2.5   0.
+            sonde_u3  grav vitesse Periode 1e-6 Points 1 3.5   0.
+            sonde_u4  grav vitesse Periode 1e-6 Points 1 4.5   0.
+            # outlet profile (should approach Hartmann) #
+            sonde_ub  grav vitesse Periode 1e-6 Points 1 4.5  0.
+            sonde_ym2 grav vitesse Periode 1e-6 Points 1 4.5 -0.4
+            sonde_ym1 grav vitesse Periode 1e-6 Points 1 4.5 -0.2
+            sonde_yp1 grav vitesse Periode 1e-6 Points 1 4.5  0.2
+            sonde_yp2 grav vitesse Periode 1e-6 Points 1 4.5  0.4
+        }
+    }
+}
+
+Solve pb
