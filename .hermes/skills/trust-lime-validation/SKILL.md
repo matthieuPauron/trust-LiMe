@@ -42,6 +42,7 @@ metadata:
 ## Validation status file
 
 - `.opencode/validation_status.json` is versioned evidence: commit it every time it changes (validation run or `record-validation-status.py`). Never leave it modified-but-unstaged.
+- Generated artifacts (`build/` dirs, `.son`/`.sons`/`.TU`/`.stop` files) under `share/Validation/Rapports_automatiques/` are gitignored and are deleted automatically by `run-validation-pdf.sh` after `trust-LiMe_validation.pdf` is produced. Do not commit them; do not hand-clean them mid-run.
 
 ## In-repo Hermes skills
 
