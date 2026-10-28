@@ -84,5 +84,14 @@ if [ -f "$repo/docs/Makefile" ]; then
   ( cd "$repo/docs" && make run_doxygen ) >> "$runlog" 2>&1 && log "dashboard updated" || { log "dashboard rebuild failed"; rc_total=1; }
 fi
 
+# --- clean up generated validation build artifacts ----------------------------
+# The PDF report has been produced; the per-form build/ trees (partitioned
+# zones, .son probes, compiled cases) are regenerated on every pass and must
+# not linger in the repository.
+log "--- cleaning generated build artifacts"
+find "$repo/share/Validation/Rapports_automatiques" -type d -name build -prune -exec rm -rf {} + 2>/dev/null || true
+find "$repo/share/Validation/Rapports_automatiques" -type f \( -name "*.son" -o -name "*.sons" -o -name "*.TU" -o -name "*.stop" \) -delete 2>/dev/null || true
+log "cleanup done"
+
 log "run-all rc=$rc_total  (log: $runlog)"
 exit $rc_total
