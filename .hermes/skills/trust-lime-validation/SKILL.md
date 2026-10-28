@@ -58,6 +58,12 @@ metadata:
 - Mass flow is conserved, so the Hartmann centreline (~1.23 × plug velocity at Ha=5) is **higher** than the plug velocity: the flow **accelerates**, it does not decelerate. A benchmark asserting "outlet < inlet" would be physically wrong.
 - Mesh-convergence: use `run.addCaseFromTemplate` with `$nx`/`$ny` placeholders over coarse/standard/fine; read effective probe positions from the `.son` header (`probe_xy`) because `grav` snaps to cell centres and positions shift with refinement.
 - Assert **outlet velocity convergence** (std→fine diff below tolerance) rather than a fixed development ratio, which stays mesh-dependent.
+- Tighter physical checks worth adding (see `MagneticCoupled/HartmannDeveloping`):
+  - **Monotonic development**: centerline velocity must not decrease downstream (`u0 <= u1 <= ... <= u4` within solver noise, ~1e-3).
+  - **Mass-flow conservation**: trapezoidally integrate the outlet profile (include wall zeros at y=±h/2) and compare to the imposed inlet mass flow (M = U_inlet * height); expect |err| < 5e-2.
+  - **Centerline is the maximum** of the outlet profile (Hartmann-like shape).
+  - **Hartmann reference** (u_H) and the development ratio are *diagnostics*, not hard asserts: the reference depends on mass flow and the ratio stays mesh-dependent.
+  - **Profile symmetry** is a diagnostic only — `grav` snaps probes to cell centres, so effective y positions are asymmetric on coarse meshes (diffs halve with refinement); do not assert exact symmetry on coarse levels.
 
 ## Gauss-law projection (`correction_divergence`)
 

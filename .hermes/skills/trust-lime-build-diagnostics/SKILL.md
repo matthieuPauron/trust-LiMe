@@ -55,7 +55,9 @@ This skill defines the preferred workflow for build loops and fast-path diagnost
 - **Host detection**: `check-heavy-build.sh` now classifies the host (workstation vs laptop by hostname/thread count); on a laptop-class (≤4-thread) host heavy builds are refused outright unless `TRUST_ALLOW_HEAVY_BUILD=1`. Do not bypass on the HDD laptop without explicit user confirmation.
 - **Unit tests**: `unit-tests.sh` auto-detects the `_opt`/`_semi_opt` kernel suffix from available archives + link.txt (override with `UNIT_TEST_SUFFIX` if both exist).
 - **Sanitizer builds** additionally: enable BOTH `cpp_flags` and `ld_flags` in `project.cfg` (half-configured otherwise), configure with `TRUST_SKIP_PREREQUISITE_TEST=1` if fftw/mgis smoke test fails on `__ubsan_handle_*`, build in the background with long timeout/notify (routinely >180 s), verify the `trust-lime_custom` binary exists, then revert `project.cfg` to fully commented state before any normal build.
-- **Run at night when possible**, prefer background builds with notification, never run two heavy builds concurrently, and use `make -j1`/`-j2` to cap RAM if needed.
+- **Run at night when possible**, prefer background builds with notification, never run two heavy builds concurrently, and **default to `make -j1` only (no parallelism at all) for any heavy/sanitizer build — never `-j2` or higher; time is abundant, RAM/threads are scarce, and parallel compiles have OOM-killed cc1plus in this cgroup. Raise parallelism only with explicit user approval and confirmed free RAM.
+- **Worktree runs** share the host RAM: require at least 8 GB free for any RAM-intensive action in a worktree (stricter than the 6 GB default guard), and never run two heavy builds concurrently across worktrees.
+- **Cgroup ceiling**: `free -g` reports host RAM, not the worker's cgroup limit. A build can OOM even when host free RAM looks ample (observed: cc1plus killed at 23:02 with >6GB free). Treat the cgroup ceiling as the binding constraint; use `-j1`/`-j2` and never two concurrent heavy builds.
 - The nightly backlog cron job carries the same guard in its prompt (defers RAM-heavy candidates during daytime/low-RAM and reports the deferral); cron runs cannot ask questions.
 
 ## Sanitizer builds (ASan/UBSan)
@@ -71,8 +73,20 @@ Use this mode to pin memory/UB bugs (e.g. the layout-dependent SIGFPE in `kernel
 Pitfalls:
 - Leaving `cpp_flags` on while `ld_flags` stays off produces a build that compiles but may fail to link/run the sanitizer runtime — `grep` both flags before building.
 - `TRUST_SKIP_PREREQUISITE_TEST=1` skips only the fftw/mgis smoke test; it does not skip the module build. Still confirm `trust-lime_custom` was actually produced.
-- A timed-out `make` leaves a partial build tree; check for the binary/mtime before declaring success or re-running.
+- A timed-out or killed `make` leaves a partial build tree; check for the binary/mtime and any running build process before declaring success or re-running.
+- A background build started by an interrupted cron run can outlive the worker; reconcile process state, worktree existence, and binary mtime before retrying or resetting state.
+- **Worktree builds rewrite absolute paths** in prebuilt dependency metadata (e.g. fftw CMake config/pkgconfig) to the worktree path and can regenerate wisdom/.so files; revert these (`git checkout -- local/fftw-3.3.8/`) before review so they don't masquerade as task changes.
+- **Unit tests vs sanitizer mismatch**: `unit-tests.sh` compiles with flags from `exec_semi_opt/compile_commands.json` (which may carry `-fsanitize`) but links against the kernel `link.txt` (which may not). Result: undefined `__asan_*`/`__ubsan_*` symbols at link. Cheapest fix: run with `UNIT_TEST_SUFFIX=_custom` so both the compile flags and the link archive come from the sanitizer-configured `exec_custom` build (matching instrumentation). Alternatives: revert `project.cfg` sanitizer flags (comment both `cpp_flags`/`ld_flags`) and reconfigure, or compile an arith-only kernel test standalone (header + gtest) without sanitizer flags.
+- **Pre-commit hook in a sanitizer-configured tree**: the hook calls `unit-tests.sh` with default suffix detection, which picks `_semi_opt` and can fail at link even when the code is fine. Validate first with `UNIT_TEST_SUFFIX=_custom ... unit-tests.sh --arith-only`; if it passes, commit with `git commit --no-verify` (do not leave the hook silently blocking). Never bypass without having run the matching test suite
 
+
+## Pre-commit hook
+
+The repo's pre-commit hook runs the unit suite and refreshes
+`validation_status.json`. Treat a failure as a real failure, not a bypass.
+Because the hook rewrites `validation_status.json`, a commit that only updates
+that file will trip the hook and touch it again; commit such status-only changes
+with `git commit --no-verify`.
 
 ## Verification
 
