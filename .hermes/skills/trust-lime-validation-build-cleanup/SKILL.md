@@ -9,7 +9,10 @@ description: >
 # Validation notebook build cleanup
 
 Use this skill only when explicitly asked to clean validation notebook build
-outputs. Never run cleanup automatically after executing a notebook.
+outputs. Never run cleanup automatically after executing a notebook, except
+that `run-validation-pdf.sh` removes `build/` dirs (and stale `.son`/`.TU`/`.stop`
+files) under `share/Validation/Rapports_automatiques/` after producing
+`trust-LiMe_validation.pdf` — that is the automated pass, not a manual run.
 
 ## Scope and safety
 
