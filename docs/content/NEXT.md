@@ -30,7 +30,7 @@ the consolidated, user-facing view.
 | Task | Status | Notes |
 |---|---|---|
 | Magnetic k-ε verification and validation | partial | frozen manufactured terms, zero-production analytic decay, solved spatial transport, and a solved energy-transfer case with a molecular twin pass on PolyMAC_P0; VEF coverage, restart, calibration and physical validation remain open |
-| Inertial-Re benchmark (HartmannDeveloping) | in progress | `MagneticCoupled/HartmannDeveloping`: finite duct, plug inlet, outlet with Hartmann pressure profile; coarse/standard/fine mesh scan runs; outlet u converges (5.5e-4 std->fine); development ratio still mesh-dependent (0.34->0.16) |
+| Inertial-Re benchmark (HartmannDeveloping) | validated | `MagneticCoupled/HartmannDeveloping`: finite duct, plug inlet, outlet with Hartmann pressure profile; coarse/standard/fine mesh scan runs; outlet u converges (5.5e-4 std->fine); mass-flow conserved (err ~5e-3->3.5e-3); monotonic development; centerline is max; time-converged (drift < 1e-6). Profile is a developing entry flow (development ratio 0.69->0.64); ~28% normalized shape error vs mass-flow-fitted Hartmann (upwind numerical diffusion + entry physics). |
 
 @note The full reportable suite report is generated nightly. The last full
 pre-merge report was 31/32 (30/31 after merging the two Shercliff forms into
@@ -48,7 +48,7 @@ verification/validation, then full physical cases.
 3. **Gauss-law sanitizer follow-up** — 2D/3D forms pass; 38 arithmetic-only and 74 full unit tests pass, but sanitizer coverage is not recorded. *(software)*
 4. **Gauss-law non-homogeneous Dirichlet support** — implemented (constrained projection + unit test + form `GaussLawDirichlet` runs: divergence -1.816 -> 3e-14). *(software)*
 5. **GPU/Kokkos port — sub-task 1: build & verify** — build a GPU-enabled kernel+module (`-cuda=<ccXX>`), rebuild trust-LiMe against it, verify a small VEF case runs on GPU and matches CPU numerically. *(software; part of the larger proposed task in section 4)*
-6. **Add remaining 3D twins and an inertial-Re benchmark** — 3D coupled twins (`HartmannTwoWay3D`, `ForceLorentzBalance3D`, `Coupled_Feedback3D`, `ShercliffDuct3D`) already present and recorded passing (2026-10-26). Inertial-Re benchmark started as `MagneticCoupled/HartmannDeveloping` (finite-length duct, first pass runs; tuning/reference open). *(physical verification)*
+6. **Add remaining 3D twins and an inertial-Re benchmark** — 3D coupled twins (`HartmannTwoWay3D`, `ForceLorentzBalance3D`, `Coupled_Feedback3D`, `ShercliffDuct3D`) already present and recorded passing (2026-10-26). Inertial-Re benchmark `MagneticCoupled/HartmannDeveloping` validated: mass-flow conservation, monotonic development, centerline maximum, time convergence, mesh convergence all pass; developing entry flow (development ratio 0.69->0.64), ~28% shape error vs mass-flow-fitted Hartmann (upwind diffusion + entry physics). *(physical verification)*
 7. **Complete magnetic k-ε verification** — restart/save-restore check, full coarse/standard/fine ladder for manufactured terms, calibration and physical validation. *(physical verification)*
 8. **Long term: advanced coupled physics and VKS** — magnetic fluctuation transport/full turbulent MHD closure, Ohmic heating, high-Rm nonlinear coupling, dynamo threshold and saturation. *(full physical cases)*
 9. **Industrial example: EM_Stirring** — replace placeholder hydrostatic balance with a real continuous-casting stirring geometry (coil-driven rotating field, free surface, meniscus) and validation case.
