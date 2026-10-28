@@ -22,35 +22,51 @@
       }
     }
   },
-  "updated": "2026-10-28T06:06:11.506533+00:00",
+  "updated": "2026-10-28T06:11:40.555517+00:00",
   "validation": {
     "MagneticCoupled/Coupled_Feedback": {
       "last_run": "2026-10-28T06:06:11.506523+00:00",
       "status": "pass"
     },
     "MagneticCoupled/ErrorInputs": {
-      "last_run": "2026-10-26T00:27:43.339826+00:00",
+      "last_run": "2026-10-28T06:06:19.555271+00:00",
       "status": "pass"
     },
     "MagneticCoupled/ForceLorentzBalance": {
-      "last_run": "2026-10-26T00:27:51.274808+00:00",
+      "last_run": "2026-10-28T06:06:27.350056+00:00",
+      "status": "pass"
+    },
+    "MagneticCoupled/HartmannDeveloping": {
+      "last_run": "2026-10-28T06:06:36.719969+00:00",
       "status": "pass"
     },
     "MagneticCoupled/HartmannTwoWay": {
-      "last_run": "2026-10-26T18:23:26+01:00",
+      "last_run": "2026-10-28T06:07:40.697288+00:00",
       "note": "targeted notebook rerun passed all 18 cases; full report not regenerated (nightly)",
       "status": "pass"
     },
     "MagneticCoupled/MMS_Coupled": {
-      "last_run": "2026-10-26T00:29:07.086410+00:00",
+      "last_run": "2026-10-28T06:07:51.420434+00:00",
       "status": "pass"
     },
     "MagneticCoupled/TemperatureDependentEta": {
-      "last_run": "2026-10-26T00:29:14.953226+00:00",
+      "last_run": "2026-10-28T06:07:59.161666+00:00",
+      "status": "pass"
+    },
+    "MagneticCoupled3D/Coupled_Feedback3D": {
+      "last_run": "2026-10-28T06:08:06.917175+00:00",
+      "status": "pass"
+    },
+    "MagneticCoupled3D/ForceLorentzBalance3D": {
+      "last_run": "2026-10-28T06:08:14.787262+00:00",
+      "status": "pass"
+    },
+    "MagneticCoupled3D/HartmannTwoWay3D": {
+      "last_run": "2026-10-28T06:08:30.008174+00:00",
       "status": "pass"
     },
     "MagneticCoupled3D/ShercliffDuct3D": {
-      "last_run": "2026-10-26T00:29:22.422289+00:00",
+      "last_run": "2026-10-28T06:08:37.343841+00:00",
       "status": "pass"
     },
     "MagneticCoupled3D/SmoothDiskMHD": {
@@ -84,10 +100,6 @@
     },
     "MagneticStandalone/GaussLaw": {
       "last_run": "2026-10-28T05:51:36.687485+00:00",
-      "status": "pass"
-    },
-    "MagneticStandalone/GaussLawDirichlet": {
-      "last_run": "2026-10-28T05:51:43.801017+00:00",
       "status": "pass"
     },
     "MagneticStandalone/Hartmann1D": {
@@ -136,11 +148,11 @@
       "status": "pass"
     },
     "Postraitement_fields/Champs2D": {
-      "last_run": "2026-10-26T00:29:52.223507+00:00",
+      "last_run": "2026-10-28T06:08:45.744497+00:00",
       "status": "pass"
     },
     "Postraitement_fields/Champs3D": {
-      "last_run": "2026-10-26T00:30:01.356232+00:00",
+      "last_run": "2026-10-28T06:08:54.709397+00:00",
       "status": "pass"
     }
   }
