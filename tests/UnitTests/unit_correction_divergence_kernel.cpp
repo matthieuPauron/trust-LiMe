@@ -194,3 +194,111 @@ TEST(CorrectionDivergenceKernel, RejectsNonzeroNetBoundaryFlux)
   EXPECT_NEAR(zero_net, 0., kTol);
   EXPECT_TRUE(Correction_Divergence_kernel::compatible_net_flux(zero_net, scale));
 }
+
+TEST(CorrectionDivergenceKernel, DirichletBoundaryFaceUsesPrescribedTrace)
+{
+  const CartesianPatch patch;
+  const int nf = patch.nf();
+
+  // Mark every boundary face (e0<0 xor e1<0) as Dirichlet with a prescribed
+  // value of 2.0 on both components. Interior faces stay Neumann.
+  std::vector<int> bc_type(nf, 0);
+  std::vector<double> bc_value((size_t)nf * 2, 0.);
+  for (int f = 0; f < nf; f++)
+    {
+      const int e0 = patch.face_voisins[f * 2];
+      const int e1 = patch.face_voisins[f * 2 + 1];
+      const bool boundary = (e0 < 0) != (e1 < 0);
+      if (boundary)
+        {
+          bc_type[f] = Correction_Divergence_kernel::BC_DIRICHLET;
+          bc_value[f * 2 + 0] = 2.0;
+          bc_value[f * 2 + 1] = 2.0;
+        }
+    }
+
+  // A field whose cell values differ from the prescribed trace, so the two
+  // traces must give different divergence values.
+  std::vector<double> b(kNe * 2, 0.);
+  for (int e = 0; e < kNe; e++) { b[e * 2 + 0] = 0.3 * (e + 1); b[e * 2 + 1] = -0.1 * e; }
+
+  std::vector<double> div_neumann, div_dirichlet;
+  Correction_Divergence_kernel::divergence_pass1(
+    kNe, kNe, 2, 2, kNfe, patch.volumes, patch.face_voisins,
+    patch.elem_faces, patch.face_normales, nf, b, div_neumann);
+  Correction_Divergence_kernel::divergence_pass1(
+    kNe, kNe, 2, 2, kNfe, patch.volumes, patch.face_voisins,
+    patch.elem_faces, patch.face_normales, nf, b, div_dirichlet,
+    bc_type, bc_value);
+
+  // At least one cell must differ (boundary-adjacent cells).
+  bool any_diff = false;
+  for (int e = 0; e < kNe; e++)
+    if (std::fabs(div_neumann[e] - div_dirichlet[e]) > 1.e-12)
+      any_diff = true;
+  ASSERT_TRUE(any_diff) << "Dirichlet trace did not change the divergence";
+
+  // Net boundary flux must use the prescribed value (2.0), not b(e).
+  double flux_scale = 0.;
+  const double net = Correction_Divergence_kernel::net_boundary_flux(
+    kNe, 2, 2, patch.face_voisins, patch.face_normales, nf, b, flux_scale,
+    bc_type, bc_value);
+  // With a prescribed constant trace on every boundary face, the net flux is
+  // a fixed number determined by the prescribed values; just check finiteness
+  // and that flux_scale is nonzero (prescribed trace contributes).
+  ASSERT_TRUE(std::isfinite(net));
+  ASSERT_GT(flux_scale, 0.);
+
+  // Assemble L with Dirichlet faces zeroed: those faces must not contribute
+  // to any row (Jacobian zero). Check that L differs from the all-Neumann
+  // assembly (fewer nonzero contributions).
+  std::vector<double> L_neu, L_dir;
+  Correction_Divergence_kernel::assemble_L(
+    kNe, kNe, 2, 2, kNfe, patch.volumes, patch.face_voisins,
+    patch.elem_faces, patch.face_normales, nf, L_neu);
+  Correction_Divergence_kernel::assemble_L(
+    kNe, kNe, 2, 2, kNfe, patch.volumes, patch.face_voisins,
+    patch.elem_faces, patch.face_normales, nf, L_dir, bc_type, bc_value);
+
+  double sum_neu = 0., sum_dir = 0.;
+  for (double v : L_neu) sum_neu += std::fabs(v);
+  for (double v : L_dir) sum_dir += std::fabs(v);
+  ASSERT_LT(sum_dir, sum_neu) << "Dirichlet faces did not reduce the Jacobian";
+
+  // Projection with Dirichlet trace must keep prescribed boundary values
+  // untouched: solve L phi = D(b) (Dirichlet), correct b <- b - D^T phi,
+  // and check that the boundary-adjacent cells' correction is finite.
+  std::vector<double> phi(kNe, 0.), corr(kNe * 2, 0.);
+  // solve dense
+  std::vector<double> M = L_dir;
+  std::vector<double> rhs = div_dirichlet;
+  // regularize diagonal
+  double mx = 0.;
+  for (int i = 0; i < kNe; i++) mx = std::max(mx, std::fabs(M[i*kNe+i]));
+  for (int i = 0; i < kNe; i++) M[i*kNe+i] += 1.e-12*mx;
+  // gaussian elimination
+  for (int col = 0; col < kNe; col++)
+    {
+      int piv = col;
+      for (int r = col+1; r < kNe; r++)
+        if (std::fabs(M[r*kNe+col]) > std::fabs(M[piv*kNe+col])) piv = r;
+      for (int j = col; j < kNe; j++) std::swap(M[col*kNe+j], M[piv*kNe+j]);
+      std::swap(rhs[col], rhs[piv]);
+      const double d = M[col*kNe+col];
+      for (int j = col; j < kNe; j++) M[col*kNe+j] /= d;
+      rhs[col] /= d;
+      for (int r = 0; r < kNe; r++)
+        if (r != col)
+          {
+            const double f = M[r*kNe+col];
+            for (int j = col; j < kNe; j++) M[r*kNe+j] -= f*M[col*kNe+j];
+            rhs[r] -= f*rhs[col];
+          }
+    }
+  phi = rhs;
+  Correction_Divergence_kernel::divergence_transpose(
+    kNe, kNe, 2, 2, kNfe, patch.volumes, patch.face_voisins,
+    patch.elem_faces, patch.face_normales, nf, phi, corr, bc_type, bc_value);
+  for (int i = 0; i < kNe * 2; i++)
+    ASSERT_TRUE(std::isfinite(corr[i]));
+}

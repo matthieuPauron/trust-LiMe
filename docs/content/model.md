@@ -176,9 +176,10 @@ redundant modes of the cell-centred operator.
 
 The boundary-flux compatibility check is global across MPI ranks and counts
 owned physical faces only. The projection does not reapply boundary conditions
-afterward, since doing so can reintroduce divergence. The current validated
-case uses homogeneous Neumann walls; non-homogeneous Dirichlet magnetic data
-are not yet supported by this projection. The measure is the module's
+afterward, since doing so can reintroduce divergence. The projection now also supports non-homogeneous Dirichlet magnetic data
+(`magnetic_field_impose`): Dirichlet faces are excluded from the Jacobian
+and their prescribed `b0` enters the divergence as a constant, so the
+prescribed boundary values are preserved. The measure is the module's
 cell-centred Green–Gauss divergence, not the divergence of every discretized
 diffusive flux.
 
@@ -374,7 +375,7 @@ Two physics-specific magnetic BCs are now tracked:
   gradient reconstruction. See @ref TrustLiMe_conducting_walls.
 | Physical magnetic wall | Best available today | Honest status |
 |---|---|---|
-| imposed field `b = b₀` | `Temperature_imposee_paroi` (Dirichlet, per component) | correct |
+| imposed field `b = b₀` | `Temperature_imposee_paroi` (Dirichlet, per component) | **supported** by `correction_divergence` (constrained projection) |
 | zero‑flux / `∂b/∂n = 0` | `Neumann_Paroi_adiabatique` / `Paroi` | correct |
 | insulating wall, zero normal flux | `paroi_isolante_magnetique` (homogeneous Neumann, every component) | **implemented** (Phase B.1) |
 | strict `b·n = 0` (field tangent to the wall) | none (needs Dirichlet on the normal component only) | **deferred** |

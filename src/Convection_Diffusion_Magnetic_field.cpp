@@ -1068,6 +1068,7 @@ void Convection_Diffusion_Magnetic_field::mettre_a_jour(double temps)
   correction_count_++;
   if (correction_count_ % frequence_correction() != 0)
     return;
+  build_bc_trace_tables(temps);
   DoubleTab& b = inconnue().valeurs();
   corriger_divergence(b);
   b.echange_espace_virtuel();

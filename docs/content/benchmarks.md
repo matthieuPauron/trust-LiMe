@@ -116,9 +116,11 @@ merged per category) are excluded by design.
 - **Magnetic k-ε verification:** solved spatial transport, energy-transfer and
   restart tests, VEF coverage, mesh-convergence assertions, calibration and
   physical validation remain open.
-- **Additional 3D twins:** `HartmannTwoWay`, `ForceLorentzBalance`, and
-  `Coupled_Feedback` do not yet have 3D counterparts. `ShercliffDuct3D` already
-  exists and is recorded passing.
+- **3D coupled twins:** `HartmannTwoWay3D`, `ForceLorentzBalance3D`,
+  `Coupled_Feedback3D` and `ShercliffDuct3D` now exist under
+  `MagneticCoupled3D/` (added 2026-10-26) and are recorded passing. The
+  remaining coupled-MHD coverage gap is the inertial-Re (non-fully-developed)
+  benchmark, which has no 3D twin by design.
 - **Advanced physics:** full magnetic-fluctuation transport, MHD turbulence
   closure, Ohmic heating, and high-Rm dynamo/VKS remain future work. A
   vector-potential/Nedelec formulation is also a separate deferred path.

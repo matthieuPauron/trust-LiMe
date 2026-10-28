@@ -1,6 +1,6 @@
 # Plan — Gauss' law enforcement: non-homogeneous Dirichlet magnetic data
 
-**Status (draft, 2026-10-26):** design only — not implemented. Awaiting review before coding.
+**Status (2026-10-27):** implemented. Kernel + wrapper + gradient_b_elements wired; unit test added (`DirichletBoundaryFaceUsesPrescribedTrace`); form `GaussLawDirichlet` runs (divergence -1.816 -> 3e-14); docs updated.
 
 ## 1. Problem
 

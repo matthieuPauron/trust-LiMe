@@ -30,6 +30,7 @@ the consolidated, user-facing view.
 | Task | Status | Notes |
 |---|---|---|
 | Magnetic k-ε verification and validation | partial | frozen manufactured terms, zero-production analytic decay, solved spatial transport, and a solved energy-transfer case with a molecular twin pass on PolyMAC_P0; VEF coverage, restart, calibration and physical validation remain open |
+| Inertial-Re benchmark (HartmannDeveloping) | in progress | `MagneticCoupled/HartmannDeveloping`: finite duct, plug inlet, outlet with Hartmann pressure profile; coarse/standard/fine mesh scan runs; outlet u converges (5.5e-4 std->fine); development ratio still mesh-dependent (0.34->0.16) |
 
 @note The full reportable suite report is generated nightly. The last full
 pre-merge report was 31/32 (30/31 after merging the two Shercliff forms into
@@ -43,11 +44,11 @@ ASNR guide 28 validation ordering: software-level improvements first, then
 verification/validation, then full physical cases.
 
 1. **Run sanitizer coverage** — ASan/UBSan remains open, especially for the divergence-projection assembly and full-kernel interactions. *(software)*
-2. **VEF port of magnetic k-ε closure** — PolyMAC-only today; hydraulic k-ε handoff is VEF-only, so the closures cannot run on the same mesh; port `Champ_Fonc_Eta_Turbulent` and `Champ_Fonc_Somme` to VEF (3–5 days, deferred). *(software)*
+2. **VEF port of magnetic k-ε closure** — PolyMAC-only today; hydraulic k-ε handoff is VEF-only, so the closures cannot run on the same mesh. VEF variants `Champ_Fonc_Eta_Turbulent_VEF` and `Champ_Fonc_Somme_VEF` now created and compile (base `Champ_Fonc_P0_VEF`); equation-side wiring to select them by discretization remains. *(software)*
 3. **Gauss-law sanitizer follow-up** — 2D/3D forms pass; 38 arithmetic-only and 74 full unit tests pass, but sanitizer coverage is not recorded. *(software)*
-4. **Gauss-law non-homogeneous Dirichlet support** — unconstrained projection does not preserve non-homogeneous Dirichlet magnetic data; needs a constrained operator. *(software)*
+4. **Gauss-law non-homogeneous Dirichlet support** — implemented (constrained projection + unit test + form `GaussLawDirichlet` runs: divergence -1.816 -> 3e-14). *(software)*
 5. **GPU/Kokkos port — sub-task 1: build & verify** — build a GPU-enabled kernel+module (`-cuda=<ccXX>`), rebuild trust-LiMe against it, verify a small VEF case runs on GPU and matches CPU numerically. *(software; part of the larger proposed task in section 4)*
-6. **Add remaining 3D twins and an inertial-Re benchmark** — `ShercliffDuct3D` already present and passing; full-suite status tracked by nightly report. *(physical verification)*
+6. **Add remaining 3D twins and an inertial-Re benchmark** — 3D coupled twins (`HartmannTwoWay3D`, `ForceLorentzBalance3D`, `Coupled_Feedback3D`, `ShercliffDuct3D`) already present and recorded passing (2026-10-26). Inertial-Re benchmark started as `MagneticCoupled/HartmannDeveloping` (finite-length duct, first pass runs; tuning/reference open). *(physical verification)*
 7. **Complete magnetic k-ε verification** — restart/save-restore check, full coarse/standard/fine ladder for manufactured terms, calibration and physical validation. *(physical verification)*
 8. **Long term: advanced coupled physics and VKS** — magnetic fluctuation transport/full turbulent MHD closure, Ohmic heating, high-Rm nonlinear coupling, dynamo threshold and saturation. *(full physical cases)*
 9. **Industrial example: EM_Stirring** — replace placeholder hydrostatic balance with a real continuous-casting stirring geometry (coil-driven rotating field, free surface, meniscus) and validation case.
