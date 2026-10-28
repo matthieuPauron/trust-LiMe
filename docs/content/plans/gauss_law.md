@@ -91,8 +91,10 @@ A per-step magnetic Hodge projection owned by
    the per-step projection. Re-imposing them after projection changed the
    field and reintroduced divergence, so the projection does not call
    `imposer_cond_lim()` afterward. The current validation uses homogeneous
-   Neumann walls. Preserving non-homogeneous Dirichlet magnetic data remains
-   unsupported and needs a constrained operator.
+   Neumann walls. Preserving non-homogeneous Dirichlet magnetic data is now
+   supported by a constrained projection (Dirichlet faces are excluded from
+   the Jacobian and their prescribed trace enters only as a constant in D(b));
+   see `docs/content/plans/gauss_law_dirichlet.md`.
 
 3. **Net-flux contract.** The implementation checks global boundary-flux
    compatibility before projection. It counts owned physical faces only and
@@ -129,8 +131,11 @@ A per-step magnetic Hodge projection owned by
   vector-potential (CT) reformulation of the unknown, which is a
   discretization rewrite, out of scope. The M3 doc row would be satisfied by
   this projection variant, and the docs should say so plainly.
-- Non-homogeneous Dirichlet magnetic data are not preserved by this
-  unconstrained projection and are not yet supported.
+- Non-homogeneous Dirichlet magnetic data are now preserved by the constrained
+  projection: Dirichlet boundary faces are excluded from the Jacobian `J`
+  (their trace is a constant) and their prescribed `b0` enters `D(b)` as a
+  fixed term, so the prescribed boundary values are never overwritten. See
+  `docs/content/plans/gauss_law_dirichlet.md`.
 
 ## 5. Validation & testing (staged per the ASN 28 gate)
 

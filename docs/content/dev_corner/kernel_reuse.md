@@ -511,10 +511,11 @@ kernel function mhd_tension_magnetique asserts nb_b == dim.
 - Before projection, the code checks global boundary-flux compatibility,
   summing owned physical faces across MPI ranks. Incompatible net flux exits
   with `Gauss law violated by boundary conditions`.
-- Supported boundary data are homogeneous Neumann. Non-homogeneous Dirichlet
-  values are not preserved by this unconstrained projection. The projection
-  enforces the module's Pass-1 measure, not every flux-divergence definition
-  associated with other discretizations.
+- Supported boundary data: homogeneous Neumann (insulating) and, now,
+  non-homogeneous Dirichlet (`magnetic_field_impose`). For Dirichlet faces the
+  prescribed `b0` is used as the boundary trace and those faces are excluded
+  from the Jacobian, so the prescribed values are preserved bit-for-bit. Mixed
+  conducting walls remain deferred (see `gauss_law_dirichlet.md` section 8).
 - Validation: 2D two-rank coarse/standard/fine and 3D sequential
   coarse/standard/fine scans, plus the incompatible-flux `ErrorInputs` case.
   The 3D case uses the shared active-x refinement ladder and three cells in
@@ -788,7 +789,8 @@ The opt-in `correction_divergence` projection is verified in 2D (two-rank
 coarse/standard/fine scan) and 3D (sequential scan); incompatible net boundary
 flux is rejected. It projects the cell-centred field for the module's reported
 Green--Gauss divergence. It assumes compatible flux and homogeneous Neumann
-magnetic walls; non-homogeneous Dirichlet data are not preserved. A
+magnetic walls; non-homogeneous Dirichlet data are now preserved by the
+  constrained projection. A
 vector-potential/Nedelec formulation remains a separate deferred approach, not
 a prerequisite for the implemented projection.
 

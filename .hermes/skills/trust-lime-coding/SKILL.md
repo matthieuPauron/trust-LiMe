@@ -122,6 +122,26 @@ works (`make docs` consumes these):
   (Build your Baltik; BALTIK convection–diffusion tutorial)
 - https://cea-trust-platform.readthedocs.io/en/v1.9.8/Dev_CodingGuidelines.html
 
+## Porting a PolyMAC `Champ_Fonc` to VEF
+
+When a `Champ_Fonc_*` derives from `Champ_Fonc_Elem_PolyMAC_CDO` and needs to
+run on a VEF mesh, add a parallel `*_VEF` class rather than generalising the
+original:
+
+1. Derive from `Champ_Fonc_P0_VEF` (include `<Champ_Fonc_P0_VEF.h>`); keep the
+   same `configurer`/`calculer`/`mettre_a_jour` logic. In `configurer`, call
+   `associer_domaine_dis_base(eqn.domaine_dis())` and size values with
+   `fixer_nb_valeurs_nodales(le_dom_VF.valeur().nb_elem())`.
+2. In `mettre_a_jour`, forward to `Champ_Fonc_P0_VEF::mettre_a_jour(tps)` (not
+   the PolyMAC base). In `calculer`, use only `valeurs()`, operand `valeurs()`,
+   and `Objet_U::dimension` — nothing PolyMAC-specific.
+3. Register with `Implemente_instanciable(..., "Champ_Fonc_*_VEF", Champ_Fonc_P0_VEF)`.
+4. The new `.cpp`/`.h` are auto-discovered by the baltik `file(GLOB ...)` in
+   `build/src/CMakeLists.txt`; re-run `cmake .` in `build/src/exec_semi_opt` (or
+   `make module_semi_optim`) to compile. Verify first with `syntax-check.sh`.
+5. Equation-side wiring (instantiating the VEF variant when the discretisation
+   is VEF) is a separate step; the classes alone do not switch behaviour.
+
 ## Project-local references
 
 - `references/trust-project-access.md` — efficient access to the TRUST project: syntax‑check loop, module‑only builds, targeted unit‑test suffixes, and symbol lookup without full‑tree indexing.

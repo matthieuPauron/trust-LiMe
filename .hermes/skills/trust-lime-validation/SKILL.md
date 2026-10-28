@@ -49,11 +49,23 @@ metadata:
 - Gitignore exception required: add `!.hermes/skills/trust*` alongside the existing `.opencode/skills/trust*` rule, otherwise `trust*` ignores them.
 - Trust the repo once with `hermes skills trust` so the skills load in sessions started inside it.
 
+## Developing / inertial flow benchmarks
+
+- A finite-duct case with a **plug (uniform) inlet** and an **open outlet carrying the Hartmann pressure profile** exercises `u·∇u ≠ 0` — the regime the fully-developed `HartmannTwoWay` case cannot (there `u·∇u = 0`).
+- Inlet: `frontiere_ouverte_vitesse_imposee` with a uniform profile; outlet: `frontiere_ouverte_pression_imposee` with the Hartmann magnetic-pressure profile (`-0.5*(sinh(10*y)/742.099-y)^2`). Leave the inlet pressure floating — do not impose it.
+- The steady state develops from plug toward Hartmann. The Hartmann reference centreline is `u_H = G h^2/(μ Ha^2)(1 - 1/cosh Ha)` with `G` from the mass flow `M = 2h U_plug`: `G = M μ Ha^2/(2 h^3 (1 - tanh(Ha)/Ha))`. Compare outlet probes to this reference.
+- Mass flow is conserved, so the Hartmann centreline (~1.23 × plug velocity at Ha=5) is **higher** than the plug velocity: the flow **accelerates**, it does not decelerate. A benchmark asserting "outlet < inlet" would be physically wrong.
+- Mesh-convergence: use `run.addCaseFromTemplate` with `$nx`/`$ny` placeholders over coarse/standard/fine; read effective probe positions from the `.son` header (`probe_xy`) because `grav` snaps to cell centres and positions shift with refinement.
+- Assert **outlet velocity convergence** (std→fine diff below tolerance) rather than a fixed development ratio, which stays mesh-dependent.
+
 ## Pitfalls
 
 - In 3D, `Polyedriser dom` must come right after `Mailler` (PolyMAC needs polyhedra).
 - A 3D form needs all six boundary faces defined in BOTH the Navier-Stokes and magnetic blocks; missing front/back faces break meshing or the solve.
 - `check-validation.sh` defaults to git-tracked files; use `--all` to scan new untracked forms. Re-run it after editing `parallel_ok[]`.
+- TRUST `.data` comments must be **closed on the same line** (`# ... #`): an opening `#` with no matching close makes the parser treat the following words as keywords (error: `Error while reading 'X,'`). This includes header/comment blocks — safest is to keep comments minimal or fully closed.
+- Boundary-condition fields go on the **next line**, not inline: `inlet frontiere_ouverte_vitesse_imposee` then `Champ_front_Uniforme 2 1. 0.` on the following line. Case matters (`Champ_front_Uniforme`, not `Champ_front_uniforme`).
+- A new form's notebook must be **valid JSON** (`.ipynb`). Build it with `json.dump` rather than hand-writing markdown; run it headless with `jupyter nbconvert --to notebook --execute` after sourcing `env_trust_LiMe.sh`, `env_for_python.sh`, and `venv_trust/bin/activate`.
 - Heavy builds (sanitizer/full-kernel) follow the RAM guard in `AGENTS.md` and `.opencode/scripts/check-heavy-build.sh`.
 - The nightly backlog job runs each task in its own worktree under `trust-LiMe-worktrees/`; changes are NOT in the main tree. Validate by inspecting the worktree paths in `nightly-backlog-state.json` (`worktrees`), then remove the worktree after merge.
 - When a task directly follows the previous one, the job reuses the same worktree (entry lists `tasks: [title1, title2, ...]`). Validate each task before the worktree is cleared; do not treat the worktree as validated until all tasks in it are validated.
