@@ -38,6 +38,13 @@ flags from `compile_commands.json` and the link line from baltik's recorded
 `link.txt`. See `tests/UnitTests/README.txt` and `docs/content/dev_corner/kernel_reuse.md`
 §7ter. Run these before notebook validation — seconds vs minutes.
 
+- **Header-only helpers** (e.g. `src/Normal_component_index.h`) can be tested
+  without the TRUST link dependency by compiling the test standalone against
+  gtest (`g++ -std=c++20 -I src -I $TRUST/include ...`), which avoids the
+  sanitizer-flag link mismatch when `exec_semi_opt/compile_commands.json`
+  carries `-fsanitize`. Register the test in `unit-tests.sh` for the normal
+  (TRUST-linked) run, but verify it standalone first.
+
 ## Build orchestration
 
 - Prefer `module_*` targets (module only, fast). Full targets (`optim`,

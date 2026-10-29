@@ -137,10 +137,31 @@ original:
    and `Objet_U::dimension` — nothing PolyMAC-specific.
 3. Register with `Implemente_instanciable(..., "Champ_Fonc_*_VEF", Champ_Fonc_P0_VEF)`.
 4. The new `.cpp`/`.h` are auto-discovered by the baltik `file(GLOB ...)` in
-   `build/src/CMakeLists.txt`; re-run `cmake .` in `build/src/exec_semi_opt` (or
-   `make module_semi_optim`) to compile. Verify first with `syntax-check.sh`.
+   `build/src/CMakeLists.txt`, **but only if they are already present in `build/src/`**.
+   `build/src/` is a separate copy of `src/` (not a symlink): files added to
+   `src/` after the last configure are NOT auto-copied, so `make module_semi_optim`
+   fails with `fatal error: ...h: No such file or directory`. Fix by copying the
+   new files into `build/src/` (or re-running `./configure`), then build.
+   Verify first with `syntax-check.sh`.
 5. Equation-side wiring (instantiating the VEF variant when the discretisation
    is VEF) is a separate step; the classes alone do not switch behaviour.
+   Select by `sub_type(Domaine_VEF, eqn.domaine_dis())` (include `<Domaine_VEF.h>`):
+   ```cpp
+   if (sub_type(Domaine_VEF, eqn.domaine_dis()))
+     { eddy.typer("Champ_Fonc_*_VEF"); ref_cast(Champ_Fonc_*_VEF, eddy.valeur())...; }
+   else
+     { eddy.typer("Champ_Fonc_*"); ref_cast(Champ_Fonc_*, eddy.valeur())...; }
+   ```
+   Keep the PolyMAC path as the `else` so CPU/PolyMAC behaviour is unchanged.
+6. `make module_semi_optim` re-runs cmake and links `_TRUSTModule_semi_opt.so`
+   into `build/src/exec_semi_opt/`; the top-level `trust-lime_semi_opt` binary
+   timestamp may stay old — check the `.so` mtime, not the binary.
+7. **Pb_Induction on VEF is unsupported.** No TRUST validation case uses
+   `VEFPreP1B` + `Pb_Induction`; attempting it segfaults at `Solve pb`
+   (Kokkos deallocation during `Nom::readOn`). VEF magnetic cases must use
+   `Pb_MHD` / `Pb_MHD_Turbulent` / `Pb_MHD_Thermal` (see
+   `TurbulentDiffusion`, `TemperatureDependentEta`, `VKSTurbulent`). A VEF
+   port therefore needs a `Pb_MHD*`-based case, not a `Pb_Induction` one.
 
 ## Project-local references
 

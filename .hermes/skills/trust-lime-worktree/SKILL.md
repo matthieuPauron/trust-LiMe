@@ -64,6 +64,11 @@ each task before the worktree is cleared. A shared worktree entry lists
   trees; do not run two heavy builds concurrently.
 - Heavy builds in worktrees use `make -j1` only (no parallelism) — higher -j
   has OOM-killed cc1plus in the worker cgroup.
+- **Sanitizer jobs (crystal clear): full RAM (uncapped) + `make -j1`.** A
+  sanitizer build in a worktree must not be subject to the Hermes worker's ~4 GiB
+  cgroup cap (OOM-kills cc1plus, observed 2026-10-28); run it in an uncapped
+  context (interactive session, `memory.max = max`) or with the cap raised, and
+  never above `-j1`.
 - Worktrees are not version-controlled state; re-run `install-git-hooks.sh`
   after a fresh clone.
 - A worktree branch can collide on re-runs; append `-2`, `-3` when the branch

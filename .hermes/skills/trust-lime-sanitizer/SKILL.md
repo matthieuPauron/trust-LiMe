@@ -47,6 +47,13 @@ description: >
 - Never run two heavy builds concurrently.
 - Revert `project.cfg` after the session (both flags).
 
+## Parallelism and RAM (CRYSTAL CLEAR POLICY)
+
+Sanitizer jobs (ASan/UBSan, `make module_custom`) are **allowed to use as much RAM as they want** and **must run with the least possible parallelism**:
+
+- Parallelism: `make -j1` only — never `-j2` or higher. Time is abundant; RAM/threads are scarce, and parallel compiles have OOM-killed `cc1plus` in this cgroup (observed 2026-10-26 23:02 and 2026-10-28 19:19).
+- RAM: a sanitizer build must NOT be subject to the Hermes worker cgroup's 4 GiB `MemoryMax` cap. The cron worker scope imposes that cap and will OOM-kill `cc1plus` even when host RAM is free (observed 2026-10-28 19:19: host had ~8 GB free, worker scope killed `cc1plus` at 425 MB VM). Therefore sanitizer jobs must run in an **uncapped context** (interactive session, where `memory.max = max`) or with the worker cap explicitly raised/unlimited. Never run a sanitizer build under a capped worker scope expecting it to survive.
+
 ## Heavy-build guard
 
 ```bash
@@ -64,3 +71,11 @@ after explicit user confirmation. Daytime (08:00-20:00) and low free RAM
 - `make module_custom` is RAM-intensive; can exhaust RAM and crash the machine.
 - Nightly cron runs cannot ask questions; all bypasses must be documented in
   the job prompt or a skill.
+- **Worker cgroup cap:** the Hermes cron worker runs in a systemd scope with a
+  ~4 GiB `MemoryMax`. A sanitizer build under that scope will be OOM-killed
+  even with free host RAM. Sanitizer jobs must run uncapped (interactive
+  session or raised cap) and with `make -j1`.
+- **Unreachable by Hermes:** RAM-intensive tasks (sanitizer builds) cannot run
+  under the cron worker. The backlog marks them deferred 'unreachable by
+  Hermes (user runs manually)' and skips them; the user runs them manually in
+  an uncapped context.

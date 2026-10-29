@@ -75,14 +75,42 @@ not possible, rebase again until it is.
 3. `make module_semi_optim` if C++ changed.
 4. `git diff` review for `-Wconversion` hazards and stray debug code.
 
+## Commit hygiene (readability)
+
+The git history must stay readable. Follow these rules for every commit:
+
+1. **Squash status refreshes.** `validation: refresh status` commits are noise —
+   they only rewrite `validation_status.json`. Never create a standalone refresh
+   commit. Fold the status update into the commit that produced the validation
+   result, or accumulate several and commit once per session with
+   `git commit --amend` / interactive rebase. When cleaning history, mark the
+   refresh commits as `fixup` (squash into predecessor, discard message).
+2. **Conventional subjects.** Use `type(scope): summary` with a lowercase type:
+   `feat`, `fix`, `docs`, `test`, `build`, `chore`, `refactor`, `merge`,
+   `validation`. Prefer the repo's existing types (`validation:`, `skill:`,
+   `backlog:`, `nightly backlog:`) over inventing new ones. Avoid capitalized
+   subjects (`Add …`, `WIP: …`) and vague ones (`update`, `refresh`).
+3. **One logical change per commit.** Do not mix code wiring + status refresh +
+   `NEXT.md` reorder in one commit. Split: code commit, then docs/status commit.
+   Never bundle unrelated hunks with `git add -A`.
+4. **`validation_status.json` is not a routine commit.** It is versioned evidence:
+   commit it only on a validated milestone, alongside the evidence (notebook/data)
+   that justifies the change. Hook-only rewrites of the `unit_tests` block or
+   `updated` timestamp are noise — revert with `git checkout -- .opencode/validation_status.json`.
+   Only commit it when a real validation run, `record-validation-status.py`
+   (non-unit), or a form result changed it.
+5. **Clean up before pushing.** Run `git rebase -i` to squash consecutive
+   `validation: refresh status` commits, drop empties, and reword vague subjects.
+   Never rewrite history that has already been pushed/shared without confirmation.
+
 ## Validation status file
 
 `.opencode/validation_status.json` is the machine-readable validation status and
-must be committed **every time it changes** (it is versioned evidence, not a
-throwaway artifact). Whenever a validation run or `record-validation-status.py`
-updates it, stage and commit it together with the change that produced it (or
-in an immediately following `validation:` commit). Never leave it modified but
-unstaged at the end of a session.
+is versioned evidence, not a throwaway artifact. Commit it only on a validated
+milestone, together with the change that produced it (or in an immediately
+following `validation:` commit). Never leave it modified but unstaged at the end
+of a session, but do not create standalone `validation: refresh status` commits
+for it (see Commit hygiene above).
 
 ## Pre-commit hook
 
@@ -115,6 +143,25 @@ When porting OpenCode skills (`.opencode/skills/`) to Hermes, copy them into
 "Hermes usage" note pointing at `terminal`/`read_file`/`patch`, and keep the
 OpenCode originals in place. Commit the two trees separately so each runtime's
 skill set evolves independently.
+
+## Heavy files (Git LFS)
+
+TRUST versions heavy validation meshes and binaries through **Git LFS**
+(`trust-code/.gitattributes` tracks `*.med`, `*.msh`, `*.gz`, `*.geom`,
+`*.cgns`, `*.sauv`, `*.tgz`, `*.zip`, `*.xyz`, images, …). trust-LiMe has no
+LFS config yet. A committed `.med`/`.msh` without LFS bloats the repo and
+history.
+
+- **Preferred for validation cases:** generate the mesh with the SALOME script
+  (e.g. `share/.../VKSLite/geometry/salome_vks_spherical_shell.py`) and commit
+  only the script — reproducible, zero repo bloat. This is what most TRUST
+  cases do.
+- **If the binary mesh must be versioned:** add a `.gitattributes` mirroring
+  TRUST's heavy-file patterns and run `git lfs track` + `git lfs install`
+  before committing. Git LFS is installed (3.4.1). Do not commit a raw `.med`
+  without LFS.
+- Never mix a large binary into a normal commit; check `git diff --stat` for
+  size before pushing.
 
 ## Reviewing
 
