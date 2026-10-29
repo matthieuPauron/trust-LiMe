@@ -104,7 +104,8 @@ else
                 tests/UnitTests/unit_magnetic_turbulence_kernel.cpp
                 tests/UnitTests/unit_turbulent_closure.cpp
                 tests/UnitTests/unit_champ_fonc.cpp
-                tests/UnitTests/unit_boundary_conditions.cpp)
+                tests/UnitTests/unit_boundary_conditions.cpp
+                tests/UnitTests/unit_normal_component_index.cpp)
   module_sources=(src/Convection_Diffusion_Magnetic_field.cpp
                   src/Convection_Diffusion_K_Magnetic.cpp
                   src/Convection_Diffusion_Epsilon_Magnetic.cpp
@@ -122,13 +123,19 @@ else
                   src/Paroi_conductrice_magnetique.cpp
                   src/Champ_Fonc_MHD.cpp
                   src/Champ_Fonc_Somme.cpp
-                  src/Champ_Fonc_Eta_Turbulent.cpp)
+                  src/Champ_Fonc_Eta_Turbulent.cpp
+                  src/Champ_Fonc_Somme_VEF.cpp
+                  src/Champ_Fonc_Eta_Turbulent_VEF.cpp)
   main_source=tests/UnitTests/main_gtest.cpp
 fi
 
 # Reuse the exact TRUST flags, with the GoogleTest include path appended.
 flags="$(cd "$repo_root" && EXTRA_CXXFLAGS="-I$gtest_root/include ${EXTRA_CXXFLAGS:-}" \
          SYNTAX_CHECK_PRINT_FLAGS=1 bash .opencode/scripts/syntax-check.sh src/Pb_MHD.cpp)"
+# Drop sanitizer flags: the unit-test link step reuses non-sanitizer kernel
+# archives (_opt/_semi_opt), so compiling with -fsanitize=... leaves
+# unresolved __asan__/__ubsan__ symbols at link time.
+flags="$(printf '%s\n' "$flags" | tr ' ' '\n' | grep -v '^-fsanitize' | tr '\n' ' ')"
 
 objects=()
 for src in "${module_sources[@]}" "${main_source}" "${test_sources[@]}"; do
