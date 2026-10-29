@@ -12,9 +12,12 @@
 #include <Champ_Fonc_MHD.h>
 #include <Champ_Fonc_Somme.h>
 #include <Champ_Fonc_Eta_Turbulent.h>
+#include <Champ_Fonc_Somme_VEF.h>
+#include <Champ_Fonc_Eta_Turbulent_VEF.h>
 #include <Modele_turbulence_magnetique.h>
 #include <Probleme_base.h>
 #include <Discret_Thyd.h>
+#include <Domaine_VEF.h>
 #include <Param.h>
 #include <Process.h>
 #include <Champ_Inc_base.h>
@@ -397,11 +400,22 @@ void Convection_Diffusion_Magnetic_field::completer()
             {
               // Build the eddy field directly (operands are OBS_PTR -> Champ_base&).
               OWN_PTR(Champ_Fonc_base) eddy;
-              eddy.typer("Champ_Fonc_Eta_Turbulent");
-              Champ_Fonc_Eta_Turbulent& e = ref_cast(Champ_Fonc_Eta_Turbulent, eddy.valeur());
-              e.configurer(*this, k_ref.valeur(), kc, e_ref.valeur(), ec,
-                           C_mu_magnetique_, prandtl_turbulent_magnetique_,
-                           realizable_C_mu_magnetique_);
+              if (sub_type(Domaine_VEF, domaine_dis()))
+                {
+                  eddy.typer("Champ_Fonc_Eta_Turbulent_VEF");
+                  Champ_Fonc_Eta_Turbulent_VEF& e = ref_cast(Champ_Fonc_Eta_Turbulent_VEF, eddy.valeur());
+                  e.configurer(*this, k_ref.valeur(), kc, e_ref.valeur(), ec,
+                               C_mu_magnetique_, prandtl_turbulent_magnetique_,
+                               realizable_C_mu_magnetique_);
+                }
+              else
+                {
+                  eddy.typer("Champ_Fonc_Eta_Turbulent");
+                  Champ_Fonc_Eta_Turbulent& e = ref_cast(Champ_Fonc_Eta_Turbulent, eddy.valeur());
+                  e.configurer(*this, k_ref.valeur(), kc, e_ref.valeur(), ec,
+                               C_mu_magnetique_, prandtl_turbulent_magnetique_,
+                               realizable_C_mu_magnetique_);
+                }
               diffusivite_turbulente_magnetique_ = eddy;
               champs_compris_.ajoute_champ(diffusivite_turbulente_magnetique_);
               // Evaluate the field once and report its range: a spatially
@@ -432,12 +446,24 @@ void Convection_Diffusion_Magnetic_field::completer()
   if (k_magnetique_ && epsilon_magnetique_ && !diffusivite_turbulente_magnetique_)
     {
       OWN_PTR(Champ_Fonc_base) eddy;
-      eddy.typer("Champ_Fonc_Eta_Turbulent");
-      Champ_Fonc_Eta_Turbulent& e = ref_cast(Champ_Fonc_Eta_Turbulent, eddy.valeur());
-      e.configurer(*this, k_magnetique_.valeur(), k_magnetique_comp_,
-                   epsilon_magnetique_.valeur(), epsilon_magnetique_comp_,
-                   C_mu_magnetique_, prandtl_turbulent_magnetique_,
-                   realizable_C_mu_magnetique_);
+      if (sub_type(Domaine_VEF, domaine_dis()))
+        {
+          eddy.typer("Champ_Fonc_Eta_Turbulent_VEF");
+          Champ_Fonc_Eta_Turbulent_VEF& e = ref_cast(Champ_Fonc_Eta_Turbulent_VEF, eddy.valeur());
+          e.configurer(*this, k_magnetique_.valeur(), k_magnetique_comp_,
+                       epsilon_magnetique_.valeur(), epsilon_magnetique_comp_,
+                       C_mu_magnetique_, prandtl_turbulent_magnetique_,
+                       realizable_C_mu_magnetique_);
+        }
+      else
+        {
+          eddy.typer("Champ_Fonc_Eta_Turbulent");
+          Champ_Fonc_Eta_Turbulent& e = ref_cast(Champ_Fonc_Eta_Turbulent, eddy.valeur());
+          e.configurer(*this, k_magnetique_.valeur(), k_magnetique_comp_,
+                       epsilon_magnetique_.valeur(), epsilon_magnetique_comp_,
+                       C_mu_magnetique_, prandtl_turbulent_magnetique_,
+                       realizable_C_mu_magnetique_);
+        }
       diffusivite_turbulente_magnetique_ = eddy;
       champs_compris_.ajoute_champ(diffusivite_turbulente_magnetique_);
       Cerr << "Convection_Diffusion_Magnetic_field: built turbulent magnetic diffusivity "
@@ -455,10 +481,20 @@ void Convection_Diffusion_Magnetic_field::completer()
       if (!(eta_u && etat_u))
         {
           OWN_PTR(Champ_Fonc_base) somme;
-          somme.typer("Champ_Fonc_Somme");
-          Champ_Fonc_Somme& s = ref_cast(Champ_Fonc_Somme, somme.valeur());
-          s.configurer(*this, diffusivite_magnetique_.valeur(),
-                       diffusivite_turbulente_magnetique_.valeur());
+          if (sub_type(Domaine_VEF, domaine_dis()))
+            {
+              somme.typer("Champ_Fonc_Somme_VEF");
+              Champ_Fonc_Somme_VEF& s = ref_cast(Champ_Fonc_Somme_VEF, somme.valeur());
+              s.configurer(*this, diffusivite_magnetique_.valeur(),
+                           diffusivite_turbulente_magnetique_.valeur());
+            }
+          else
+            {
+              somme.typer("Champ_Fonc_Somme");
+              Champ_Fonc_Somme& s = ref_cast(Champ_Fonc_Somme, somme.valeur());
+              s.configurer(*this, diffusivite_magnetique_.valeur(),
+                           diffusivite_turbulente_magnetique_.valeur());
+            }
           diffusivite_effective_ = somme;
           // Register so the problem-level update keeps its values fresh.
           champs_compris_.ajoute_champ(diffusivite_effective_);
@@ -479,9 +515,18 @@ void Convection_Diffusion_Magnetic_field::completer()
         Process::exit("Convection_Diffusion_Magnetic_field: modele_turbulence_magnetique is mutually exclusive with explicit eta_t or k/epsilon fields.");
       modele_turbulence_magnetique_->completer(*this);
       OWN_PTR(Champ_Fonc_base) somme;
-      somme.typer("Champ_Fonc_Somme");
-      Champ_Fonc_Somme& s = ref_cast(Champ_Fonc_Somme, somme.valeur());
-      s.configurer(*this, diffusivite_magnetique_.valeur(), modele_turbulence_magnetique_->eta_t());
+      if (sub_type(Domaine_VEF, domaine_dis()))
+        {
+          somme.typer("Champ_Fonc_Somme_VEF");
+          Champ_Fonc_Somme_VEF& s = ref_cast(Champ_Fonc_Somme_VEF, somme.valeur());
+          s.configurer(*this, diffusivite_magnetique_.valeur(), modele_turbulence_magnetique_->eta_t());
+        }
+      else
+        {
+          somme.typer("Champ_Fonc_Somme");
+          Champ_Fonc_Somme& s = ref_cast(Champ_Fonc_Somme, somme.valeur());
+          s.configurer(*this, diffusivite_magnetique_.valeur(), modele_turbulence_magnetique_->eta_t());
+        }
       diffusivite_effective_ = somme;
       champs_compris_.ajoute_champ(diffusivite_effective_);
       champs_compris_.ajoute_champ(modele_turbulence_magnetique_->eta_t());

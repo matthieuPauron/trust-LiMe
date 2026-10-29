@@ -5,6 +5,9 @@
 #include <Convection_Diffusion_Epsilon_Magnetic.h>
 #include <Champ_Fonc_Eta_Turbulent.h>
 #include <Champ_Fonc_Somme.h>
+#include <Champ_Fonc_Eta_Turbulent_VEF.h>
+#include <Champ_Fonc_Somme_VEF.h>
+#include <Domaine_VEF.h>
 #include <Champ_Uniforme.h>
 #include <Champ_Don_base.h>
 #include <Champ_Inc_base.h>
@@ -90,23 +93,52 @@ void Modele_turbulence_magnetique::completer(const Convection_Diffusion_Magnetic
   const Champ_base& k = equation_k_->inconnue();
   const Champ_base& eps = equation_epsilon_->inconnue();
 
-  eta_t_.typer("Champ_Fonc_Eta_Turbulent");
-  ref_cast(Champ_Fonc_Eta_Turbulent, eta_t_.valeur()).configurer(
-    eqn, k, 0, eps, 0, C_mu_b_, Pm_t_b_, false, epsilon_min_, eta_t_max_);
+  const bool is_vef = sub_type(Domaine_VEF, eqn.domaine_dis());
+  if (is_vef)
+    {
+      eta_t_.typer("Champ_Fonc_Eta_Turbulent_VEF");
+      ref_cast(Champ_Fonc_Eta_Turbulent_VEF, eta_t_.valeur()).configurer(
+        eqn, k, 0, eps, 0, C_mu_b_, Pm_t_b_, false, epsilon_min_, eta_t_max_);
 
-  eta_t_k_.typer("Champ_Fonc_Eta_Turbulent");
-  ref_cast(Champ_Fonc_Eta_Turbulent, eta_t_k_.valeur()).configurer(
-    eqn, k, 0, eps, 0, C_mu_b_, Pm_t_b_ * sigma_kb_, false, epsilon_min_, eta_t_max_);
-  eta_t_epsilon_.typer("Champ_Fonc_Eta_Turbulent");
-  ref_cast(Champ_Fonc_Eta_Turbulent, eta_t_epsilon_.valeur()).configurer(
-    eqn, k, 0, eps, 0, C_mu_b_, Pm_t_b_ * sigma_epsilonb_, false, epsilon_min_, eta_t_max_);
+      eta_t_k_.typer("Champ_Fonc_Eta_Turbulent_VEF");
+      ref_cast(Champ_Fonc_Eta_Turbulent_VEF, eta_t_k_.valeur()).configurer(
+        eqn, k, 0, eps, 0, C_mu_b_, Pm_t_b_ * sigma_kb_, false, epsilon_min_, eta_t_max_);
+      eta_t_epsilon_.typer("Champ_Fonc_Eta_Turbulent_VEF");
+      ref_cast(Champ_Fonc_Eta_Turbulent_VEF, eta_t_epsilon_.valeur()).configurer(
+        eqn, k, 0, eps, 0, C_mu_b_, Pm_t_b_ * sigma_epsilonb_, false, epsilon_min_, eta_t_max_);
+    }
+  else
+    {
+      eta_t_.typer("Champ_Fonc_Eta_Turbulent");
+      ref_cast(Champ_Fonc_Eta_Turbulent, eta_t_.valeur()).configurer(
+        eqn, k, 0, eps, 0, C_mu_b_, Pm_t_b_, false, epsilon_min_, eta_t_max_);
 
-  diffusivite_k_.typer("Champ_Fonc_Somme");
-  ref_cast(Champ_Fonc_Somme, diffusivite_k_.valeur()).configurer(
-    eqn, eqn.diffusivite_pour_transport(), eta_t_k_.valeur());
-  diffusivite_epsilon_.typer("Champ_Fonc_Somme");
-  ref_cast(Champ_Fonc_Somme, diffusivite_epsilon_.valeur()).configurer(
-    eqn, eqn.diffusivite_pour_transport(), eta_t_epsilon_.valeur());
+      eta_t_k_.typer("Champ_Fonc_Eta_Turbulent");
+      ref_cast(Champ_Fonc_Eta_Turbulent, eta_t_k_.valeur()).configurer(
+        eqn, k, 0, eps, 0, C_mu_b_, Pm_t_b_ * sigma_kb_, false, epsilon_min_, eta_t_max_);
+      eta_t_epsilon_.typer("Champ_Fonc_Eta_Turbulent");
+      ref_cast(Champ_Fonc_Eta_Turbulent, eta_t_epsilon_.valeur()).configurer(
+        eqn, k, 0, eps, 0, C_mu_b_, Pm_t_b_ * sigma_epsilonb_, false, epsilon_min_, eta_t_max_);
+    }
+
+  if (is_vef)
+    {
+      diffusivite_k_.typer("Champ_Fonc_Somme_VEF");
+      ref_cast(Champ_Fonc_Somme_VEF, diffusivite_k_.valeur()).configurer(
+        eqn, eqn.diffusivite_pour_transport(), eta_t_k_.valeur());
+      diffusivite_epsilon_.typer("Champ_Fonc_Somme_VEF");
+      ref_cast(Champ_Fonc_Somme_VEF, diffusivite_epsilon_.valeur()).configurer(
+        eqn, eqn.diffusivite_pour_transport(), eta_t_epsilon_.valeur());
+    }
+  else
+    {
+      diffusivite_k_.typer("Champ_Fonc_Somme");
+      ref_cast(Champ_Fonc_Somme, diffusivite_k_.valeur()).configurer(
+        eqn, eqn.diffusivite_pour_transport(), eta_t_k_.valeur());
+      diffusivite_epsilon_.typer("Champ_Fonc_Somme");
+      ref_cast(Champ_Fonc_Somme, diffusivite_epsilon_.valeur()).configurer(
+        eqn, eqn.diffusivite_pour_transport(), eta_t_epsilon_.valeur());
+    }
 
   ref_cast(Convection_Diffusion_K_Magnetic, equation_k_.valeur()).associer_modele(*this);
   ref_cast(Convection_Diffusion_Epsilon_Magnetic, equation_epsilon_.valeur()).associer_modele(*this);
