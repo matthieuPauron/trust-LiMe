@@ -82,6 +82,12 @@ metadata:
 - For VEF coverage of magnetic-turbulence closures, use `Pb_MHD`/`Pb_MHD_Turbulent` (TRUST already supports these on VEF — `TurbulentDiffusion` is the reference). Adapt the manufactured case to `Pb_MHD_Turbulent` to exercise `modele_turbulence_magnetique` + VEF variants without touching the kernel.
 - Kernel-level registration of `Pb_Induction` for VEF would be a substantial, risky undertaking outside module scope; prefer the `Pb_MHD_Turbulent` alternative.
 
+## GPU / Kokkos (hardware feasibility)
+
+- **This workstation's GPU is a consumer Radeon RX 7600/7700S (Navi 33, gfx1102/RDNA3)** and cannot be used for TRUST computations: TRUST's ROCm path supports only MI250X (gfx90a) and MI300A (gfx942), no `hipcc` compiler is installed, and `clinfo` reports 0 OpenCL platforms. The GPU is display-only.
+- **TRUST GPU acceleration is experimental** and only tested on HPC AMD nodes (MI250X/MI300A) or NVIDIA GPUs with CUDA. Do not attempt a GPU build on consumer hardware.
+- **Mark the GPU/Kokkos backlog task as not feasible** on this workstation; it requires an HPC node or NVIDIA GPU.
+
 ## Meshes and Git LFS
 
 - TRUST stores its meshes in the **same GitLab repository** (`cea-trust-platform/trust/trust-code`), tracked via **Git LFS** (`.gitattributes` filters `*.med`, `*.geom`, `*.msh`, `*.gz`, `*.cgns`, etc.). They are not in a separate repo.
