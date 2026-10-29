@@ -60,6 +60,14 @@ git branch -D <branch>
 Never `git merge` (no-ff) worktree branches into `main`; if a fast-forward is
 not possible, rebase again until it is.
 
+- **Nightly branches are often far behind `main`** (created from an older base,
+  carrying a single new file). Rebasing replays that one commit on top of `main`;
+  conflicts appear only in files changed on both sides (skills, `NEXT.md`,
+  `validation_status.json`). Resolve by keeping `main`'s version (`git checkout
+  --ours`) for every conflicted file **except** the branch's new file (e.g.
+  `.gitattributes`), which is added cleanly. Then `git add -A`, `git rebase
+  --continue`, and fast-forward `main`. Run the unit suite before committing.
+
 ## Branches
 
 - `main`/default branch holds the green baseline.
