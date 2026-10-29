@@ -22,51 +22,51 @@
       }
     }
   },
-  "updated": "2026-10-28T06:11:40.555517+00:00",
+  "updated": "2026-10-29T06:31:02.286880+00:00",
   "validation": {
     "MagneticCoupled/Coupled_Feedback": {
-      "last_run": "2026-10-28T06:06:11.506523+00:00",
+      "last_run": "2026-10-29T00:16:26.541664+00:00",
       "status": "pass"
     },
     "MagneticCoupled/ErrorInputs": {
-      "last_run": "2026-10-28T06:06:19.555271+00:00",
+      "last_run": "2026-10-29T00:16:34.840521+00:00",
       "status": "pass"
     },
     "MagneticCoupled/ForceLorentzBalance": {
-      "last_run": "2026-10-28T06:06:27.350056+00:00",
+      "last_run": "2026-10-29T00:16:42.835399+00:00",
       "status": "pass"
     },
     "MagneticCoupled/HartmannDeveloping": {
-      "last_run": "2026-10-28T06:45:25.232151+00:00",
+      "last_run": "2026-10-29T00:16:52.229920+00:00",
       "status": "pass"
     },
     "MagneticCoupled/HartmannTwoWay": {
-      "last_run": "2026-10-28T06:07:40.697288+00:00",
+      "last_run": "2026-10-29T00:17:57.270857+00:00",
       "note": "targeted notebook rerun passed all 18 cases; full report not regenerated (nightly)",
       "status": "pass"
     },
     "MagneticCoupled/MMS_Coupled": {
-      "last_run": "2026-10-28T06:07:51.420434+00:00",
+      "last_run": "2026-10-29T00:18:08.095311+00:00",
       "status": "pass"
     },
     "MagneticCoupled/TemperatureDependentEta": {
-      "last_run": "2026-10-28T06:07:59.161666+00:00",
+      "last_run": "2026-10-29T00:18:16.020195+00:00",
       "status": "pass"
     },
     "MagneticCoupled3D/Coupled_Feedback3D": {
-      "last_run": "2026-10-28T06:08:06.917175+00:00",
+      "last_run": "2026-10-29T00:18:24.100267+00:00",
       "status": "pass"
     },
     "MagneticCoupled3D/ForceLorentzBalance3D": {
-      "last_run": "2026-10-28T06:08:14.787262+00:00",
+      "last_run": "2026-10-29T00:18:31.947976+00:00",
       "status": "pass"
     },
     "MagneticCoupled3D/HartmannTwoWay3D": {
-      "last_run": "2026-10-28T06:08:30.008174+00:00",
+      "last_run": "2026-10-29T00:18:47.759179+00:00",
       "status": "pass"
     },
     "MagneticCoupled3D/ShercliffDuct3D": {
-      "last_run": "2026-10-28T06:08:37.343841+00:00",
+      "last_run": "2026-10-29T00:18:55.478249+00:00",
       "status": "pass"
     },
     "MagneticCoupled3D/SmoothDiskMHD": {
@@ -82,77 +82,77 @@
       "status": "pass"
     },
     "MagneticStandalone/Advection": {
-      "last_run": "2026-10-28T05:50:59.625469+00:00",
+      "last_run": "2026-10-29T00:01:01.327109+00:00",
       "status": "pass"
     },
     "MagneticStandalone/ConductingWall": {
-      "last_run": "2026-10-28T05:51:07.762814+00:00",
+      "last_run": "2026-10-29T00:01:09.122588+00:00",
       "status": "pass"
     },
     "MagneticStandalone/Diffusion": {
-      "last_run": "2026-10-28T05:51:18.576669+00:00",
+      "last_run": "2026-10-29T00:01:20.382191+00:00",
       "status": "pass"
     },
     "MagneticStandalone/ErrorInputs": {
-      "last_run": "2026-10-28T05:51:27.102267+00:00",
+      "last_run": "2026-10-29T00:01:29.391856+00:00",
       "note": "All seven 2D/3D diagnostics are asserted; TRUST returns 139 after printing its expected fatal diagnostic.",
       "status": "pass"
     },
     "MagneticStandalone/GaussLaw": {
-      "last_run": "2026-10-28T05:51:36.687485+00:00",
+      "last_run": "2026-10-29T00:01:39.492065+00:00",
       "status": "pass"
     },
     "MagneticStandalone/Hartmann1D": {
-      "last_run": "2026-10-28T05:52:25.978640+00:00",
+      "last_run": "2026-10-29T00:02:23.809680+00:00",
       "status": "pass"
     },
     "MagneticStandalone/Invariance": {
-      "last_run": "2026-10-28T05:52:36.672395+00:00",
+      "last_run": "2026-10-29T00:02:34.954572+00:00",
       "status": "pass"
     },
     "MagneticStandalone/MMS_2D": {
-      "last_run": "2026-10-28T05:52:46.478254+00:00",
+      "last_run": "2026-10-29T00:02:45.213478+00:00",
       "status": "pass"
     },
     "MagneticStandalone/MagneticTurbulence": {
-      "last_run": "2026-10-28T05:53:29.428194+00:00",
+      "last_run": "2026-10-29T00:03:29.480685+00:00",
       "status": "pass"
     },
     "MagneticStandalone/Shercliff": {
-      "last_run": "2026-10-28T05:54:40.052325+00:00",
+      "last_run": "2026-10-29T00:04:40.858764+00:00",
       "note": "Merged 2D/3D form; 20 coarse baseline probe files reproduced exactly and both mesh scans passed.",
       "status": "pass"
     },
     "MagneticStandalone/SourceStretching": {
-      "last_run": "2026-10-28T06:05:12.482648+00:00",
+      "last_run": "2026-10-29T00:15:27.186312+00:00",
       "status": "pass"
     },
     "MagneticStandalone/SteadyState": {
-      "last_run": "2026-10-28T06:05:21.966215+00:00",
+      "last_run": "2026-10-29T00:15:36.936983+00:00",
       "status": "pass"
     },
     "MagneticStandalone/TurbulenceDiffusion": {
-      "last_run": "2026-10-28T06:05:30.078599+00:00",
+      "last_run": "2026-10-29T00:15:45.265753+00:00",
       "status": "pass"
     },
     "MagneticStandalone/TurbulentDiffusion": {
-      "last_run": "2026-10-28T06:05:38.161810+00:00",
+      "last_run": "2026-10-29T00:15:53.482053+00:00",
       "status": "pass"
     },
     "MagneticStandalone/VaryingVelocity": {
-      "last_run": "2026-10-28T06:05:51.088219+00:00",
+      "last_run": "2026-10-29T00:16:06.144422+00:00",
       "status": "pass"
     },
     "MagneticStandalone3D/MMS_3D": {
-      "last_run": "2026-10-28T06:06:02.322066+00:00",
+      "last_run": "2026-10-29T00:16:17.449629+00:00",
       "status": "pass"
     },
     "Postraitement_fields/Champs2D": {
-      "last_run": "2026-10-28T06:08:45.744497+00:00",
+      "last_run": "2026-10-29T00:19:03.976779+00:00",
       "status": "pass"
     },
     "Postraitement_fields/Champs3D": {
-      "last_run": "2026-10-28T06:08:54.709397+00:00",
+      "last_run": "2026-10-29T00:19:13.042426+00:00",
       "status": "pass"
     }
   }
