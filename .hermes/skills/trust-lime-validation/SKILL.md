@@ -76,6 +76,15 @@ metadata:
 - **SALOME meshes require system dependencies**: the bundled SALOME (e.g. `SALOME-9.16.0-native-UB24.04`) segfaults in `_runSession` if runtime libs are missing (metis, openblas, numpy/scipy, etc.). Run `$SALOME/sat/sat config SALOME-9.16.0-native --check_system` to list missing packages and install them (needs sudo). Without SALOME, `gmsh` cannot substitute for spherical-shell geometry because this build lacks OpenCASCADE (no sphere booleans). Prefer the box-based inline `Mailler` cases (`vks_lite`, `vks_sodium`) when SALOME is unavailable.
 - **GitHub LFS free tier is 1 GB storage + 1 GB/month bandwidth; large VKS meshes may exceed it. Consider a GitLab LFS endpoint or self-hosted LFS server before pushing big meshes.**
 
+## Generating a cylindrical VKS mesh (Monchaux et al. geometry)
+
+The real VKS experiment is **cylindrical** (not spherical): inner cylinder r=0.206 m, h=0.524 m, impellers at z=±0.1855 m (radius 0.1545 m). trust-LiMe provides `salome_vks_cylindrical_9x.py` (SALOME 9.x, 3 resolutions: coarse/medium/fine) with groups `wall_cyl`, `wall_top`, `wall_bottom`.
+
+- **Do NOT partition the volume by impeller disks.** `geom.MakePartition([cyl], [disk_top, disk_bot])` creates mesh topology that fails TRUST discretization (SIGFPE during NettoieNoeuds, "search of identical nodes" then crash). The partitioned mesh has 5-node cells and invalid topology.
+- **Working approach:** mesh the unpartitioned cylinder with `AutomaticTetrahedralization()`, then create groups on the boundary faces identified by bounding box (wall_cyl = side, wall_top/bottom = end caps). Impeller disk surfaces (`impeller_top`/`impeller_bottom`) are **not** included — they require a different approach (see below).
+- **Impeller disks deferred:** adding conformal impeller disk surfaces requires partitioning, which produces invalid mesh. Alternative: model impellers as `paroi_defilante` on `wall_top`/`wall_bottom` end caps (proxy), or use SALOME GUI with the original 8.x script.
+- **TRUST Read_MED:** use `convertAllToPoly` (not `Polyedriser`), specify `mesh vks_cyl`. Verified working.
+
 ## Generating a spherical-shell mesh with SALOME 9.x
 
 The in-repo script `share/Validation/Rapports_automatiques/VKS_experiment/VKSLite/geometry/salome_vks_spherical_shell.py` targets SALOME 8.x APIs. Under SALOME 9.x (e.g. `SALOME-9.16.0-native-UB24.04`) adapt it:
@@ -84,9 +93,11 @@ The in-repo script `share/Validation/Rapports_automatiques/VKS_experiment/VKSLit
 - `geom = geomBuilder.New()`; `smesh_gen = smeshBuilder.New()` (not `meshBuilder.New()`).
 - `mesh_shell = smesh_gen.Mesh(shell)` (not `CreateMesh(shell, name)`).
 - Geometry: `geom.ShapeType["FACE"]` instead of `geom.FACE`.
-- Algorithms: `mesh_shell.Segment().MaxSize(...)`, `mesh_shell.Triangle()`, `mesh_shell.Tetrahedron().SetMaxSize(...)`; then `mesh_shell.Compute()`. (No `Length()` on segment; no `Tetrahedron(algo=...)`.)
+- Algorithms: `mesh_shell.Segment().MaxSize(...)` (or `NumberOfSegments`), `mesh_shell.Triangle().MaxElementArea(...)`, then **`mesh.AutomaticTetrahedralization()`** (do NOT use `mesh.Tetrahedron()` — NETGEN default can produce 5-node pyramid cells). Then `mesh.Compute()`.
+- Boundary-face classification: `geom.GetPosition` returns the center of mass (origin for closed spheres), so it cannot distinguish outer vs inner. Use `geom.BoundingBox(shape)` and compare the extent (`bb[1]`) to `r_outer`/`r_inner`.
+- **TRUST Read_MED for tetra MED meshes:** use `convertAllToPoly` instead of `Polyedriser`. Specify `mesh <name>` when the MED file has multiple entries.
 - Groups: `mesh_shell.GroupOnGeom(shape, name, SMESH.FACE)` still works.
-- Export: `mesh_shell.ExportMED(file, False, 32, True)` for MED 3.2.x. Group export via `meshPart=group` creates **separate mesh entries** (not groups inside the main mesh) in 9.x — TRUST's `Read_MED` will not find them. Post-process with `MEDFileUMesh` to merge them, or generate groups by geometry classification of boundary faces.
+- Export: `mesh_shell.ExportMED(file, False, 32, True)` for MED 3.2.x, then append each group with `mesh_shell.ExportMED(file, False, 32, False, meshPart=group)` so the groups appear in the main mesh entry (verified via `GetMeshGroupsNames`). Run headless: `SALOME_MODULES="GEOM:SMESH" xvfb-run -a $SALOME/salome shell script.py` (no display required).
 - Run headless: `SALOME_MODULES="GEOM:SMESH" xvfb-run -a $SALOME/salome shell script.py` (no display required).
 - Missing runtime libs (boost 1.83.0, libtbb) can be satisfied by symlinking from a compatible local boost build into the module's `lib/salome/` directory; check with `$SALOME/sat/sat config SALOME-9.16.0-native --check_system`.
 
