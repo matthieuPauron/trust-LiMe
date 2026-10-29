@@ -1,4 +1,4 @@
-import salome
+import salome, os
 salome.salome_init()
 import SMESH
 from salome.geom import geomBuilder
@@ -9,54 +9,57 @@ smesh_gen = smeshBuilder.New()
 
 r_inner = 0.100
 r_outer = 0.206
+mesh_size = float(os.environ.get("MESH_SIZE", "0.02"))
+out_name = os.environ.get("OUT_NAME", "vks_shell")
 
-# Geometry: spherical shell
+# Geometry: spherical shell (no partition)
 outer = geom.MakeSphereR(r_outer)
 inner = geom.MakeSphereR(r_inner)
 shell = geom.MakeCut(outer, inner)
 
-# Identify boundary faces by bounding box extent
+# Identify boundary faces by bounding box
 faces = geom.SubShapeAll(shell, geom.ShapeType["FACE"])
 print("nb faces:", len(faces))
-face_groups = {}
+groups_faces = {"wall_outer": [], "wall_inner": []}
 for f in faces:
     bb = geom.BoundingBox(f)
     xmax = bb[1]
     if abs(xmax - r_outer) < 0.05:
-        face_groups.setdefault("wall_outer", []).append(f)
+        groups_faces["wall_outer"].append(f)
     elif abs(xmax - r_inner) < 0.05:
-        face_groups.setdefault("wall_inner", []).append(f)
+        groups_faces["wall_inner"].append(f)
     else:
-        face_groups.setdefault("other", []).append(f)
-for name, fs in face_groups.items():
+        groups_faces.setdefault("other", []).append(f)
+for name, fs in groups_faces.items():
     print(f"  {name}: {len(fs)} faces")
 
 # Mesh
 mesh = smesh_gen.Mesh(shell, "vks_shell")
 algo1D = mesh.Segment()
-algo1D.NumberOfSegments(20)
+algo1D.NumberOfSegments(max(10, int(1.0/mesh_size)))
 algo2D = mesh.Triangle()
-algo2D.MaxElementArea(0.001)
-mesh.AutomaticTetrahedralization()
+algo2D.MaxElementArea(mesh_size*mesh_size)
+algo3D = mesh.Tetrahedron()
+algo3D.MaxElementVolume(mesh_size**3 / 6.0)
 
 if not mesh.Compute():
     raise Exception("Mesh computation failed")
 
-# Create groups on each boundary face
+# Create groups via compound
 groups = []
-for name, fs in face_groups.items():
-    if name == "other":
+for name, fs in groups_faces.items():
+    if name == "other" or not fs:
         continue
-    for f in fs:
-        g = mesh.GroupOnGeom(f, name, SMESH.FACE)
-        groups.append(g)
-        print(f"Created group {name}: size={g.Size()}")
+    comp = geom.MakeCompound(fs) if len(fs) > 1 else fs[0]
+    g = mesh.GroupOnGeom(comp, name, SMESH.FACE)
+    groups.append(g)
+    print(f"Created group {name}: size={g.Size()}")
 
-# Export main mesh + append groups
-mesh.ExportMED("vks_shell.med", False, 32, True)
+# Export
+out_file = out_name + ".med"
+mesh.ExportMED(out_file, False, 32, True)
 for g in groups:
-    mesh.ExportMED("vks_shell.med", False, 32, False, meshPart=g)
-print("Exported vks_shell.med")
-print("Groups:", [g.GetName() for g in groups])
+    mesh.ExportMED(out_file, False, 32, False, meshPart=g)
+print(f"Exported {out_file}")
 
 salome.close() if hasattr(salome, 'close') else None
