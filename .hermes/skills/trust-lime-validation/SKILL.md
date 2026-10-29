@@ -69,21 +69,41 @@ metadata:
 - **Pressure-BC calibration caveat**: the outlet pressure constant (`742.099` = 10·cosh(5)) is calibrated for a specific mass flow. If the observed centerline exceeds the mass-flow-fitted Hartmann limit, the outlet pressure BC is over-driving the flow — recalibrate the constant to the imposed inlet mass flow (`M = U_inlet * height`) rather than changing the inlet.
 - **Convection scheme**: the default `amont` (upwind) adds numerical diffusion that widens the profile; `muscl` (available in `Op_Conv_EF`) sharpens it. Switching scheme changes the development ratio, so pin the scheme in the dataset and report it.
 
+## Conducting-wall BC (`paroi_conductrice_magnetique`)
+
+- Only a scalar 2D smoke form exists (`MagneticStandalone/ConductingWall`); no 3D/vector/mixed (conducting+insulating) case, no `Normal_component_index` unit tests, and no post-processing with conducting walls.
+- The BC is a perfect conductor: tangential `b = 0` (Dirichlet), normal component Neumann. `gradient_b_elements` uses `Normal_component_index` to pick the normal component; the correction operator (`corriger_divergence`) currently treats conducting walls as all-Neumann — keep these consistent when adding Dirichlet support.
+- `Normal_component_index` is header-only (`src/Normal_component_index.h`) and directly unit-testable; add tests for scalar model (-1), 2D/3D vector normals, tie-breaking (lowest index), and invalid inputs.
+- When validating, exercise mixed conducting/insulating walls and post-process `rotationnel_magnetique`/`courant_magnetique`/Lorentz force.
+
+## TRUST kernel limitations (relevant when porting closures)
+
+- `Pb_Induction` is **not supported on VEF** in the TRUST kernel: `Resoudre::interpreter` -> `objet("pb")` fails during `Solve pb` and the resulting `Process::exit` triggers a Kokkos teardown segfault (secondary). No VEF+Pb_Induction cases exist in the trust-code validation suite (only PolyMAC). Do not attempt a VEF port of an induction-only problem via `Pb_Induction`.
+- For VEF coverage of magnetic-turbulence closures, use `Pb_MHD`/`Pb_MHD_Turbulent` (TRUST already supports these on VEF — `TurbulentDiffusion` is the reference). Adapt the manufactured case to `Pb_MHD_Turbulent` to exercise `modele_turbulence_magnetique` + VEF variants without touching the kernel.
+- Kernel-level registration of `Pb_Induction` for VEF would be a substantial, risky undertaking outside module scope; prefer the `Pb_MHD_Turbulent` alternative.
+
 ## Meshes and Git LFS
 
 - TRUST stores its meshes in the **same GitLab repository** (`cea-trust-platform/trust/trust-code`), tracked via **Git LFS** (`.gitattributes` filters `*.med`, `*.geom`, `*.msh`, `*.gz`, `*.cgns`, etc.). They are not in a separate repo.
 - trust-LiMe has **no committed mesh files** yet (cases generate meshes inline or via SALOME scripts). The repo's `.gitattributes` (mirroring trust-code's) enables LFS for future heavy VKS meshes; `git lfs` is installed and the filter is configured.
 - **SALOME meshes require system dependencies**: the bundled SALOME (e.g. `SALOME-9.16.0-native-UB24.04`) segfaults in `_runSession` if runtime libs are missing (metis, openblas, numpy/scipy, etc.). Run `$SALOME/sat/sat config SALOME-9.16.0-native --check_system` to list missing packages and install them (needs sudo). Without SALOME, `gmsh` cannot substitute for spherical-shell geometry because this build lacks OpenCASCADE (no sphere booleans). Prefer the box-based inline `Mailler` cases (`vks_lite`, `vks_sodium`) when SALOME is unavailable.
+- **TRUST Read_MED for tetra MED meshes:** use `convertAllToPoly` instead of `Polyedriser` (Polyedriser cannot convert tetrahedra: "We do not yet know how to Polyedriser Tetraedres"). Specify `mesh <name>` when the MED file has multiple entries (groups appended as separate meshes). Without these, TRUST fails to read the mesh or reports "no boundary detected".
 - **GitHub LFS free tier is 1 GB storage + 1 GB/month bandwidth; large VKS meshes may exceed it. Consider a GitLab LFS endpoint or self-hosted LFS server before pushing big meshes.**
 
 ## Generating a cylindrical VKS mesh (Monchaux et al. geometry)
 
-The real VKS experiment is **cylindrical** (not spherical): inner cylinder r=0.206 m, h=0.524 m, impellers at z=±0.1855 m (radius 0.1545 m). trust-LiMe provides `salome_vks_cylindrical_9x.py` (SALOME 9.x, 3 resolutions: coarse/medium/fine) with groups `wall_cyl`, `wall_top`, `wall_bottom`.
+The real VKS experiment is **cylindrical** (not spherical): inner cylinder
+r=0.206 m, h=0.524 m, impellers at z=±0.1855 m (radius 0.1545 m). The
+in-repo script `salome_vks_cylindrical_9x.py` (SALOME 9.x, 3 resolutions:
+coarse/medium/fine) produces groups `wall_cyl`, `wall_top`, `wall_bottom`.
 
-- **Do NOT partition the volume by impeller disks.** `geom.MakePartition([cyl], [disk_top, disk_bot])` creates mesh topology that fails TRUST discretization (SIGFPE during NettoieNoeuds, "search of identical nodes" then crash). The partitioned mesh has 5-node cells and invalid topology.
-- **Working approach:** mesh the unpartitioned cylinder with `AutomaticTetrahedralization()`, then create groups on the boundary faces identified by bounding box (wall_cyl = side, wall_top/bottom = end caps). Impeller disk surfaces (`impeller_top`/`impeller_bottom`) are **not** included — they require a different approach (see below).
-- **Impeller disks deferred:** adding conformal impeller disk surfaces requires partitioning, which produces invalid mesh. Alternative: model impellers as `paroi_defilante` on `wall_top`/`wall_bottom` end caps (proxy), or use SALOME GUI with the original 8.x script.
-- **TRUST Read_MED:** use `convertAllToPoly` (not `Polyedriser`), specify `mesh vks_cyl`. Verified working.
+- **Do NOT partition the volume by impeller disks.** `geom.MakePartition([cyl], [disk_top, disk_bot])` creates mesh topology that fails TRUST discretization (SIGFPE during `NettoieNoeuds`). The partitioned mesh has 5-node cells and invalid topology regardless of mesh size or algorithm (Tetrahedron vs AutomaticTetrahedralization, PolyMAC vs VEF).
+- **Working approach:** mesh the unpartitioned cylinder with `AutomaticTetrahedralization()`, then create groups on boundary faces identified by bounding box (wall_cyl = side face, wall_top/bottom = end caps). Impeller disk surfaces (`impeller_top`/`impeller_bottom`) are **not** included.
+- **`GroupOnGeom` on original shapes returns 0** after boolean ops (MakeCut/MakePartition consumes them). Identify faces by `geom.BoundingBox(shape)` and create groups on individual faces, then `geom.MakeCompound` to merge before `GroupOnGeom` (avoids duplicate group names like `GR_1_wall_outer`).
+- **Group export:** `mesh.ExportMED(file, False, 32, True)` (main) then `mesh.ExportMED(file, False, 32, False, meshPart=group)` for each group — merges groups into the main mesh entry (verified via `GetMeshGroupsNames`).
+- **TRUST Read_MED:** use `convertAllToPoly` (not `Polyedriser`), specify `mesh vks_cyl`. Verified working with all three resolutions.
+- **Impeller disks deferred:** partitioning creates invalid mesh. Alternative: model impellers as `paroi_defilante` on `wall_top`/`wall_bottom` end caps (proxy). Full impeller disk surfaces need a different approach (SALOME GUI with 8.x script, or post-processing).
+- **Geometry orientation:** cylinder axis is Z (vertical, Z-up), centered at origin (z from -0.262 to +0.262). Matches `vks_lite.data` convention (flow along Z).
 
 ## Generating a spherical-shell mesh with SALOME 9.x
 
@@ -93,13 +113,18 @@ The in-repo script `share/Validation/Rapports_automatiques/VKS_experiment/VKSLit
 - `geom = geomBuilder.New()`; `smesh_gen = smeshBuilder.New()` (not `meshBuilder.New()`).
 - `mesh_shell = smesh_gen.Mesh(shell)` (not `CreateMesh(shell, name)`).
 - Geometry: `geom.ShapeType["FACE"]` instead of `geom.FACE`.
-- Algorithms: `mesh_shell.Segment().MaxSize(...)` (or `NumberOfSegments`), `mesh_shell.Triangle().MaxElementArea(...)`, then **`mesh.AutomaticTetrahedralization()`** (do NOT use `mesh.Tetrahedron()` — NETGEN default can produce 5-node pyramid cells). Then `mesh.Compute()`.
-- Boundary-face classification: `geom.GetPosition` returns the center of mass (origin for closed spheres), so it cannot distinguish outer vs inner. Use `geom.BoundingBox(shape)` and compare the extent (`bb[1]`) to `r_outer`/`r_inner`.
-- **TRUST Read_MED for tetra MED meshes:** use `convertAllToPoly` instead of `Polyedriser`. Specify `mesh <name>` when the MED file has multiple entries.
+- Algorithms: `mesh_shell.Segment().MaxSize(...)` (or `NumberOfSegments`), `mesh_shell.Triangle().MaxElementArea(...)`, then **`mesh.AutomaticTetrahedralization()`** (do NOT use `mesh.Tetrahedron()` — the NETGEN default can produce 5-node pyramid cells; `AutomaticTetrahedralization` produces clean tetra). Then `mesh.Compute()`.
+- Boundary-face classification: `geom.GetPosition` returns the **center of mass** (origin for closed spherical surfaces), so it cannot distinguish outer vs inner sphere. Use `geom.BoundingBox(shape)` and compare the extent (`bb[1]` = max x) to `r_outer`/`r_inner`.
 - Groups: `mesh_shell.GroupOnGeom(shape, name, SMESH.FACE)` still works.
 - Export: `mesh_shell.ExportMED(file, False, 32, True)` for MED 3.2.x, then append each group with `mesh_shell.ExportMED(file, False, 32, False, meshPart=group)` so the groups appear in the main mesh entry (verified via `GetMeshGroupsNames`). Run headless: `SALOME_MODULES="GEOM:SMESH" xvfb-run -a $SALOME/salome shell script.py` (no display required).
-- Run headless: `SALOME_MODULES="GEOM:SMESH" xvfb-run -a $SALOME/salome shell script.py` (no display required).
 - Missing runtime libs (boost 1.83.0, libtbb) can be satisfied by symlinking from a compatible local boost build into the module's `lib/salome/` directory; check with `$SALOME/sat/sat config SALOME-9.16.0-native --check_system`.
+
+**Pitfalls (observed when adapting the 8.x script to 9.x):**
+
+- **Mesh topology is not guaranteed to be clean tetra with the default algorithm.** `mesh.Tetrahedron()` (NETGEN default) can produce cells with 5 nodes (pyramids) rather than 4 (tetra), and boundary faces with 4 nodes (quads). Use `mesh.AutomaticTetrahedralization()` instead, which produces clean tetra (verified: `MEDCouplingUMesh` reports 4 nodes/cell). Verify with `MEDCouplingUMesh` (node count per cell) before trusting the mesh.
+- **Group export in 9.x does merge into the main mesh.** Calling `mesh.ExportMED(file, False, 32, True)` (main mesh) followed by `mesh.ExportMED(file, False, 32, False, meshPart=group)` for each group **does** add the group as a named group inside the main mesh entry (verified via `GetMeshGroupsNames`). The earlier "separate mesh entries" pitfall was a misread: the append creates both a separate entry AND a group in the main mesh; TRUST reads the groups from the main entry. Keep the append calls; do not omit them.
+- **`getLevelM1Mesh()` faces are not the boundary faces** of a non-tetra mesh; classifying faces by centroid on level-1 (as in a quick post-process) silently misses the outer boundary. Identify boundary faces from the volume-cell connectivity instead (faces appearing in exactly one cell).
+- **SALOME 9.x adaptation is now TRUST-validated.** The in-repo script `salome_vks_spherical_shell_9x.py` targets 9.x and has been verified: TRUST `Read_MED` reads the mesh and resolves named boundary groups (wall_outer, wall_inner). Use `convertAllToPoly` (not `Polyedriser`) and specify `mesh <name>` in the `.data` file. The box-based inline `Mailler` cases (`vks_lite`, `vks_sodium`) remain a reliable fallback when SALOME is unavailable.
 
 ## Gauss-law projection (`correction_divergence`)
 
@@ -108,7 +133,7 @@ The in-repo script `share/Validation/Rapports_automatiques/VKS_experiment/VKSLit
 - `gradient_b_elements()` detects Dirichlet CLs independently (`is_dirichlet_face`) and uses prescribed values for the reported divergence; keep it consistent with `bc_trace`.
 - Kernel unit test: mark boundary faces as `BC_DIRICHLET` with prescribed values; verify (a) divergence uses prescribed trace, (b) net flux uses prescribed value, (c) Jacobian is reduced, (d) correction is finite.
 - **Form-level (Dirichlet wall):** prescribed Dirichlet fluxes must be **compatible** (net boundary flux ≈ 0) or the run aborts with `Gauss law violated by boundary conditions`. Opposite walls need the same normal component (e.g. bottom and top both `b=(0,1)`), not opposite signs.
-- **Dirichlet CL syntax:** use `temperature_imposee_paroi` (thermal CL reused because `domaine_application() == \"Thermique\"`) with a `Champ_Front_Uniforme` carrying `nb_composantes` values, e.g. `bas temperature_imposee_paroi Champ_Front_Uniforme 2 0. 1.`. The CL is a `Dirichlet` subclass, so `build_bc_trace_tables` detects it automatically.
+- **Dirichlet CL syntax:** use `temperature_imposee_paroi` (thermal CL reused because `domaine_application() == "Thermique"`) with a `Champ_Front_Uniforme` carrying `nb_composantes` values, e.g. `bas temperature_imposee_paroi Champ_Front_Uniforme 2 0. 1.`. The CL is a `Dirichlet` subclass, so `build_bc_trace_tables` detects it automatically.
 - **`divergence_magnetique` post-treatment field requires `nb_composantes == dimension`** (full vector field); with fewer components `creer_champ` calls `Process::exit()`. Use `nb_composantes 2` in 2D / `3` in 3D when probing divergence.
 
 ## Merging validation into an existing notebook
@@ -123,8 +148,20 @@ The in-repo script `share/Validation/Rapports_automatiques/VKS_experiment/VKSLit
 - Keep the assertion that captures the actual physics being validated; do not weaken it to make the merge pass.
 - `run.reset()` in the appended section is safe because prior sections have already asserted their results; it only clears case state for the new run.
 
-## Pitfalls"
+## Mesh generation with SALOME 9.x
 
+When a validation form needs an unstructured mesh (e.g. spherical/cylindrical VKS geometry) and SALOME is available:
+
+- **Run headless**: `SALOME_MODULES="GEOM:SMESH" xvfb-run -a $SALOME/salome shell script.py`. No display needed.
+- **TRUST Read_MED for tetra meshes**: use `convertAllToPoly` (not `Polyedriser` — Polyedriser cannot convert tetra: "We do not yet know how to Polyedriser Tetraedres"). Specify `mesh <name>` when the MED file has multiple entries (groups appended as separate meshes).
+- **SALOME 9.x API differences from 8.x**: `smeshBuilder.New()` (not `meshBuilder.New()`), `mesh = smesh_gen.Mesh(shape)` (not `CreateMesh`), `geom.ShapeType["FACE"]` (not `geom.FACE`), `mesh.AutomaticTetrahedralization()` (not `mesh.Tetrahedron()` — the NETGEN default can produce 5-node pyramid cells; AutomaticTetrahedralization produces clean tetra). Verify cell node count with MEDCoupling before trusting the mesh.
+- **Boundary-face identification after boolean ops**: `GroupOnGeom` on the original input shapes returns 0 (they are consumed by MakeCut/MakePartition). Identify faces by `geom.BoundingBox(shape)` and create groups on individual faces, then `geom.MakeCompound` to merge before `GroupOnGeom` (avoids duplicate names like `GR_1_wall_outer`).
+- **Group export**: `mesh.ExportMED(file, False, 32, True)` (main) then `mesh.ExportMED(file, False, 32, False, meshPart=group)` for each group — merges groups into the main mesh entry (verified via `GetMeshGroupsNames`).
+- **Partition creates invalid mesh**: `geom.MakePartition([vol], [surf1, surf2])` creates internal faces that fail TRUST discretization (SIGFPE during NettoieNoeuds). Do not partition; mesh the unpartitioned volume and identify boundary faces by bounding box.
+- **Geometry orientation**: keep the cylinder axis along Z (vertical, Z-up) to match `vks_lite.data` convention.
+- **Missing runtime libs**: SALOME segfaults if system deps are missing. Run `$SALOME/sat/sat config SALOME-9.16.0-native --check_system` to list them. Missing boost (1.83.0) / libtbb can be satisfied by symlinking from a compatible local build into the module's `lib/salome/` directory.
+
+## Pitfalls
 - In 3D, `Polyedriser dom` must come right after `Mailler` (PolyMAC needs polyhedra).
 - A 3D form needs all six boundary faces defined in BOTH the Navier-Stokes and magnetic blocks; missing front/back faces break meshing or the solve.
 - `check-validation.sh` defaults to git-tracked files; use `--all` to scan new untracked forms. Re-run it after editing `parallel_ok[]`.
