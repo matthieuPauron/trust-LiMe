@@ -69,6 +69,27 @@ metadata:
 - **Pressure-BC calibration caveat**: the outlet pressure constant (`742.099` = 10·cosh(5)) is calibrated for a specific mass flow. If the observed centerline exceeds the mass-flow-fitted Hartmann limit, the outlet pressure BC is over-driving the flow — recalibrate the constant to the imposed inlet mass flow (`M = U_inlet * height`) rather than changing the inlet.
 - **Convection scheme**: the default `amont` (upwind) adds numerical diffusion that widens the profile; `muscl` (available in `Op_Conv_EF`) sharpens it. Switching scheme changes the development ratio, so pin the scheme in the dataset and report it.
 
+## Meshes and Git LFS
+
+- TRUST stores its meshes in the **same GitLab repository** (`cea-trust-platform/trust/trust-code`), tracked via **Git LFS** (`.gitattributes` filters `*.med`, `*.geom`, `*.msh`, `*.gz`, `*.cgns`, etc.). They are not in a separate repo.
+- trust-LiMe has **no committed mesh files** yet (cases generate meshes inline or via SALOME scripts). The repo's `.gitattributes` (mirroring trust-code's) enables LFS for future heavy VKS meshes; `git lfs` is installed and the filter is configured.
+- **SALOME meshes require system dependencies**: the bundled SALOME (e.g. `SALOME-9.16.0-native-UB24.04`) segfaults in `_runSession` if runtime libs are missing (metis, openblas, numpy/scipy, etc.). Run `$SALOME/sat/sat config SALOME-9.16.0-native --check_system` to list missing packages and install them (needs sudo). Without SALOME, `gmsh` cannot substitute for spherical-shell geometry because this build lacks OpenCASCADE (no sphere booleans). Prefer the box-based inline `Mailler` cases (`vks_lite`, `vks_sodium`) when SALOME is unavailable.
+- **GitHub LFS free tier is 1 GB storage + 1 GB/month bandwidth; large VKS meshes may exceed it. Consider a GitLab LFS endpoint or self-hosted LFS server before pushing big meshes.**
+
+## Generating a spherical-shell mesh with SALOME 9.x
+
+The in-repo script `share/Validation/Rapports_automatiques/VKS_experiment/VKSLite/geometry/salome_vks_spherical_shell.py` targets SALOME 8.x APIs. Under SALOME 9.x (e.g. `SALOME-9.16.0-native-UB24.04`) adapt it:
+
+- Drop the top-level `import GEOM` / `import MESH` / `import SMESH` (unavailable); keep `from salome.geom import geomBuilder` and `from salome.smesh import smeshBuilder`. `import SMESH` (for `SMESH.FACE`) is available inside the session.
+- `geom = geomBuilder.New()`; `smesh_gen = smeshBuilder.New()` (not `meshBuilder.New()`).
+- `mesh_shell = smesh_gen.Mesh(shell)` (not `CreateMesh(shell, name)`).
+- Geometry: `geom.ShapeType["FACE"]` instead of `geom.FACE`.
+- Algorithms: `mesh_shell.Segment().MaxSize(...)`, `mesh_shell.Triangle()`, `mesh_shell.Tetrahedron().SetMaxSize(...)`; then `mesh_shell.Compute()`. (No `Length()` on segment; no `Tetrahedron(algo=...)`.)
+- Groups: `mesh_shell.GroupOnGeom(shape, name, SMESH.FACE)` still works.
+- Export: `mesh_shell.ExportMED(file, False, 32, True)` for MED 3.2.x. Group export via `meshPart=group` creates **separate mesh entries** (not groups inside the main mesh) in 9.x — TRUST's `Read_MED` will not find them. Post-process with `MEDFileUMesh` to merge them, or generate groups by geometry classification of boundary faces.
+- Run headless: `SALOME_MODULES="GEOM:SMESH" xvfb-run -a $SALOME/salome shell script.py` (no display required).
+- Missing runtime libs (boost 1.83.0, libtbb) can be satisfied by symlinking from a compatible local boost build into the module's `lib/salome/` directory; check with `$SALOME/sat/sat config SALOME-9.16.0-native --check_system`.
+
 ## Gauss-law projection (`correction_divergence`)
 
 - Dirichlet support is implemented as a **constrained projection**: Dirichlet boundary faces are excluded from the Jacobian `J` (their trace is a constant) and their prescribed `b0` enters `D(b)` as a fixed term, so prescribed boundary values are never overwritten. See `docs/content/plans/gauss_law_dirichlet.md`.
