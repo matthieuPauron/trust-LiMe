@@ -1,0 +1,77 @@
+# VKS-cylindrical: 3D coupled MHD in a cylinder, laminar proxy (Rm ~ 1). #
+# Two end caps act as rotating impellers (paroi_defilante); the cylindrical #
+# wall is insulating (Neumann) and fixed. #
+# Run on 2 ranks with partitioning: make_PAR.data vks_cylindrical.data 2 #
+dimension 3
+Pb_MHD pb
+Domaine dom
+
+# BEGIN MESH #
+Read_MED {
+    domain dom
+    file vks_cyl_coarse.med
+    mesh vks_cyl
+    convertAllToPoly
+}
+# END MESH #
+
+# BEGIN PARTITION
+Partition dom
+{
+    Partition_tool metis { nb_parts 2 }
+    Larg_joint 2
+    zones_name DOM
+}
+End
+END PARTITION #
+# BEGIN SCATTER
+Scatter DOM.Zones dom
+END SCATTER #
+
+Polymac_p0 dis
+
+Associate pb dom
+
+Schema_Euler_Implicite sch
+Read sch
+{
+    tinit 0.
+    tmax 0.1
+    dt_max 0.05
+    facsec 1e6
+    facsec_max 1e6
+    solveur implicite { solveur petsc cli { } }
+}
+
+Associate pb sch
+Discretize pb dis
+
+Read pb
+{
+    fluide_incompressible
+    {
+        mu      Champ_Uniforme 1 6.9e-4
+        rho     Champ_Uniforme 1 929
+        lambda  Champ_Uniforme 1 85
+        Cp      Champ_Uniforme 1 1380
+        beta_th Champ_Uniforme 1 0.0
+    }
+
+    Convection_Diffusion_Magnetic_field
+    {
+        diffusivite_magnetique Champ_Uniforme 1 0.078
+
+        diffusion  { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            wall_top     Neumann_Paroi_adiabatique
+            wall_bottom  Neumann_Paroi_adiabatique
+            wall_cyl     Neumann_Paroi_adiabatique
+        }
+        initial_conditions { magnetic_field Champ_Uniforme 1 1e-4 }
+    }
+}
+
+
