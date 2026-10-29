@@ -377,8 +377,8 @@ during the solve; use `Champ_Fonc_Fonction`/`Tabule` referencing `pb temperature
 | High-Rm regime (Rm ~ 100-1000) | ❌ Not validated | ❌ (critical for VKS) |
 | Turbulence models (k-ε, LES) | ⚠️ Hydraulic k-ε can feed η_t; full turbulent MHD/LES not implemented | ❌ (critical for VKS) |
 | Spherical geometry | ❌ Not tested | ❌ (needed) |
-| Impeller rotation BCs | ✅ Available (`Paroi_defilante`); exercised in `SmoothDiskMHD` (smooth disks, no blades) | ✅ (smooth disks; blade-resolving deferred) |
-| Smooth rotating disks (modelized propellers) | ✅ `SmoothDiskMHD` validation case (3D, 2-rank, laminar, Rm~1, runs to completion) | ✅ (smoke; high-Rm not validated) |
+| Impeller rotation BCs | ✅ Available (`Paroi_defilante`); exercised in `SmoothDiskMHD` (smooth disks, no blades) | ✅ (smooth disks only; blade-resolving out of scope) |
+| Smooth rotating disks (modelized propellers) | ✅ `SmoothDiskMHD` validation case (3D, 2-rank, laminar, Rm~1, runs to completion) | ✅ (smooth disks only; blade-resolving out of scope) |
 | Temperature-dependent properties | ⚠️ Fluid side (mu, lambda) supported by TRUST (Boussinesq path); eta = 1/(mu0*sigma) supported in trust-LiMe after the mettre_a_jour fix (Champ_Fonc_Fonction/Tabule vs. pb temperature) | ⚠️ (nice to have; fluid side via TRUST, eta via trust-LiMe) |
 | Conducting wall BC (`paroi_conductrice_magnetique`) | ✅ Implemented; sequential scalar/vector validation passes | ⚠️ (impeller surfaces still need case-specific validation) |
 | div-b enforcement | ⚠️ Opt-in cell-centred projection; 2D/3D scans and incompatible-flux rejection pass; full regression/sanitizer follow-up remains | ⚠️ (important at high Rm) |
@@ -401,7 +401,7 @@ during the solve; use `Champ_Fonc_Fonction`/`Tabule` referencing `pb temperature
 ### 5.2 Important gaps (should fix)
 4. **Spherical mesh generation**: TRUST supports polyhedral meshes via
    `Polyedriser`. Need a mesh of the spherical shell with impeller surfaces.
-5. **Impeller rotation BCs**: `Paroi_defilante` available and exercised in `SmoothDiskMHD` (smooth disks). Body force (`force_rotative`) not available in this TRUST version.
+5. **Impeller rotation BCs**: `Paroi_defilante` available and exercised in `SmoothDiskMHD` (smooth disks). Blade-resolving impellers are **out of scope** for VKS in trust-LiMe: the propellers are modelled as smooth rotating disks (paroi_defilante) only. Body force (`force_rotative`) not available in this TRUST version.
 6. **div-b enforcement:** an opt-in projection cleans the module's reported
    divergence, but 3D validation remains and high-Rm robustness is unknown.
 7. **Conducting wall BC**: impeller surfaces may be conducting (steel).

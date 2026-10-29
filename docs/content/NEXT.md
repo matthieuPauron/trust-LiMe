@@ -24,12 +24,14 @@ the consolidated, user-facing view.
 | `HartmannTwoWay` targeted rerun | all 18 cases passed (2026-10-26) |
 | Solved spatial-transport verification for magnetic k-ε | `MagneticTurbulence/` solved spatial-transport case (nonuniform k_b/ε_b, positivity/finite/convergence) |
 | Extend magnetic k-ε coverage (partial) | energy-transfer case + molecular twin in `MagneticTurbulence/` (23 cases pass); restart, ladder, VEF remain open |
+| Gauss-law non-homogeneous Dirichlet support | implemented: constrained projection + unit test `DirichletBoundaryFaceUsesPrescribedTrace` + form `GaussLawDirichlet` runs (divergence -1.816 -> 3e-14); code in `Convection_Diffusion_Magnetic_field` (`bc_trace_type_`) |
+| 3D coupled twins + inertial-Re benchmark | 3D twins (`HartmannTwoWay3D`, `ForceLorentzBalance3D`, `Coupled_Feedback3D`, `ShercliffDuct3D`) recorded passing (2026-10-26); `MagneticCoupled/HartmannDeveloping` validated (mass-flow, monotonicity, centerline max, time/mesh convergence) |
 
 ## 2. In progress
 
 | Task | Status | Notes |
 |---|---|---|
-| Magnetic k-ε verification and validation | partial | frozen manufactured terms, zero-production analytic decay, solved spatial transport, and a solved energy-transfer case with a molecular twin pass on PolyMAC_P0; VEF coverage, restart, calibration and physical validation remain open |
+| Magnetic k-ε verification and validation | partial (VEF port in progress: code wired, build passing) | frozen manufactured terms, zero-production analytic decay, solved spatial transport, and a solved energy-transfer case with a molecular twin pass on PolyMAC_P0; VEF coverage, restart, calibration and physical validation remain open |
 | Inertial-Re benchmark (HartmannDeveloping) | validated | `MagneticCoupled/HartmannDeveloping`: finite duct, plug inlet, outlet with Hartmann pressure profile; coarse/standard/fine mesh scan runs; outlet u converges (5.5e-4 std->fine); mass-flow conserved (err ~5e-3->3.5e-3); monotonic development; centerline is max; time-converged (drift < 1e-6). Profile is a developing entry flow (development ratio 0.69->0.64); ~28% normalized shape error vs mass-flow-fitted Hartmann (upwind numerical diffusion + entry physics). |
 
 @note The full reportable suite report is generated nightly. The last full
@@ -43,21 +45,20 @@ Priorities below are ordered by closure value and dependency, following the
 ASNR guide 28 validation ordering: software-level improvements first, then
 verification/validation, then full physical cases.
 
-1. **Run sanitizer coverage** — ASan/UBSan remains open, especially for the divergence-projection assembly and full-kernel interactions. *(software)*
-2. **VEF port of magnetic k-ε closure** — PolyMAC-only today; hydraulic k-ε handoff is VEF-only, so the closures cannot run on the same mesh. VEF variants `Champ_Fonc_Eta_Turbulent_VEF` and `Champ_Fonc_Somme_VEF` now created and compile (base `Champ_Fonc_P0_VEF`); equation-side wiring to select them by discretization remains. *(software)*
+1. **VEF port of magnetic k-ε closure** — PolyMAC-only today; hydraulic k-ε handoff is VEF-only, so the closures cannot run on the same mesh. VEF variants `Champ_Fonc_Eta_Turbulent_VEF` and `Champ_Fonc_Somme_VEF` now created and compile (base `Champ_Fonc_P0_VEF`); equation-side wiring to select them by discretization remains. *(software)*
+2. **Complete magnetic k-ε verification** — restart/save-restore check, full coarse/standard/fine ladder for manufactured terms, calibration and physical validation. *(physical verification)*
 3. **Gauss-law sanitizer follow-up** — 2D/3D forms pass; 38 arithmetic-only and 74 full unit tests pass, but sanitizer coverage is not recorded. *(software)*
-4. **Gauss-law non-homogeneous Dirichlet support** — implemented (constrained projection + unit test + form `GaussLawDirichlet` runs: divergence -1.816 -> 3e-14). *(software)*
+4. **Long term: advanced coupled physics and VKS** — magnetic fluctuation transport/full turbulent MHD closure, Ohmic heating, high-Rm nonlinear coupling, dynamo threshold and saturation. *(full physical cases)*
 5. **GPU/Kokkos port — sub-task 1: build & verify** — build a GPU-enabled kernel+module (`-cuda=<ccXX>`), rebuild trust-LiMe against it, verify a small VEF case runs on GPU and matches CPU numerically. *(software; part of the larger proposed task in section 4)*
-6. **Add remaining 3D twins and an inertial-Re benchmark** — 3D coupled twins (`HartmannTwoWay3D`, `ForceLorentzBalance3D`, `Coupled_Feedback3D`, `ShercliffDuct3D`) already present and recorded passing (2026-10-26). Inertial-Re benchmark `MagneticCoupled/HartmannDeveloping` validated: mass-flow conservation, monotonic development, centerline maximum, time convergence, mesh convergence all pass; developing entry flow (development ratio 0.69->0.64), ~28% shape error vs mass-flow-fitted Hartmann (upwind diffusion + entry physics). *(physical verification)*
-7. **Complete magnetic k-ε verification** — restart/save-restore check, full coarse/standard/fine ladder for manufactured terms, calibration and physical validation. *(physical verification)*
-8. **Long term: advanced coupled physics and VKS** — magnetic fluctuation transport/full turbulent MHD closure, Ohmic heating, high-Rm nonlinear coupling, dynamo threshold and saturation. *(full physical cases)*
-9. **Industrial example: EM_Stirring** — replace placeholder hydrostatic balance with a real continuous-casting stirring geometry (coil-driven rotating field, free surface, meniscus) and validation case.
-10. **Industrial example: Crystal_Growth** — magnetic damping of melt convection in a Czochralski crucible (real geometry, temperature field, damping factor vs Ha).
-11. **Industrial example: Fusion_Blanket** — LiPb MHD in a breeding-blanket channel with fringing field and pressure drop (Shercliff/Hunt benchmark).
-12. **Industrial example: EM_Pump** — Lorentz-driven annular/linear pump with real flow rate vs current characteristic.
-13. **Industrial example: Al_Electrolysis** — Hall-Héroult cell MHD: interfacial waves, anode-cathode distance, metal pad roll.
-14. **Industrial example: LM_Battery** — layered liquid-metal battery: Tayler instability / interface stability under current.
-15. **Industrial example: SFR_Duct** — sodium duct MHD pressure drop with conducting walls (Hunt/Shercliff benchmark).
+6. **Run sanitizer coverage** — ASan/UBSan remains open, especially for the divergence-projection assembly and full-kernel interactions. *(software; unreachable by Hermes — RAM-intensive, user runs manually)*
+7. **Industrial example: EM_Stirring** — replace placeholder hydrostatic balance with a real continuous-casting stirring geometry (coil-driven rotating field, free surface, meniscus) and validation case.
+8. **Industrial example: Crystal_Growth** — magnetic damping of melt convection in a Czochralski crucible (real geometry, temperature field, damping factor vs Ha).
+9. **Industrial example: Fusion_Blanket** — LiPb MHD in a breeding-blanket channel with fringing field and pressure drop (Shercliff/Hunt benchmark).
+10. **Industrial example: EM_Pump** — Lorentz-driven annular/linear pump with real flow rate vs current characteristic.
+11. **Industrial example: Al_Electrolysis** — Hall-Héroult cell MHD: interfacial waves, anode-cathode distance, metal pad roll.
+12. **Industrial example: LM_Battery** — layered liquid-metal battery: Tayler instability / interface stability under current.
+13. **Industrial example: SFR_Duct** — sodium duct MHD pressure drop with conducting walls (Hunt/Shercliff benchmark).
+14. **Adopt Git LFS for heavy validation meshes** — track `*.med`, `*.msh`, `*.gz`, `*.geom`, `*.cgns`, `*.sauv` via Git LFS (mirroring `trust-code/.gitattributes`) so large VKS meshes can be versioned without bloating the repo; alternative is to generate them via SALOME scripts and commit only the script. *(infra)*
 
 ## 4. Proposed by agent (awaiting validation)
 
