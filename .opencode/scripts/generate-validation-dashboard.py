@@ -64,6 +64,22 @@ def scan_validation(repo):
         catdir = os.path.join(root, cat)
         if not os.path.isdir(catdir):
             continue
+        # A top-level folder may itself be a form (notebook directly inside).
+        if os.path.isfile(os.path.join(catdir, cat + ".ipynb")):
+            formdir = catdir
+            nb = os.path.join(formdir, cat + ".ipynb")
+            srcdir = os.path.join(formdir, "src")
+            datasets = []
+            if os.path.isdir(srcdir):
+                datasets = sorted(os.path.basename(p) for p in glob.glob(os.path.join(srcdir, "*.data")))
+            out.append({
+                "category": cat,
+                "form": cat,
+                "key": f"{cat}/{cat}",
+                "datasets": datasets,
+                "rel": os.path.relpath(formdir, repo),
+            })
+            continue
         for form in sorted(os.listdir(catdir)):
             formdir = os.path.join(catdir, form)
             nb = os.path.join(formdir, form + ".ipynb")
