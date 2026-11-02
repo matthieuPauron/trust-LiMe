@@ -20,7 +20,8 @@ Mailler dom
     }
 }
 
-Polymac_p0 dis
+$mesh_post
+$discretization dis
 Schema_Euler_Implicite sch
 Read sch
 {
@@ -110,83 +111,6 @@ Read pb
         }
     }
 
-    Post_processing
-    {
-        Definition_champs
-        {
-            conv_k Interpolation
-            {
-                localisation elem
-                source operateur_eqn
-                {
-                    numero_op 1
-                    sources { refChamp { pb_champ pb k_b } }
-                }
-            }
-            diff_k Interpolation
-            {
-                localisation elem
-                source operateur_eqn
-                {
-                    numero_op 0
-                    sources { refChamp { pb_champ pb k_b } }
-                }
-            }
-            source_k Interpolation
-            {
-                localisation elem
-                source operateur_eqn
-                {
-                    numero_source 0
-                    sources { refChamp { pb_champ pb k_b } }
-                }
-            }
-            conv_epsilon Interpolation
-            {
-                localisation elem
-                source operateur_eqn
-                {
-                    numero_op 1
-                    sources { refChamp { pb_champ pb epsilon_b } }
-                }
-            }
-            diff_epsilon Interpolation
-            {
-                localisation elem
-                source operateur_eqn
-                {
-                    numero_op 0
-                    sources { refChamp { pb_champ pb epsilon_b } }
-                }
-            }
-            source_epsilon Interpolation
-            {
-                localisation elem
-                source operateur_eqn
-                {
-                    numero_source 0
-                    sources { refChamp { pb_champ pb epsilon_b } }
-                }
-            }
-        }
-        Sondes
-        {
-            CONV_K grav conv_k periode 1 segmentpoints 8 0.2578125 0.1171875 0.2578125 0.2421875 0.2578125 0.3671875 0.2578125 0.4921875 0.2578125 0.6171875 0.2578125 0.7421875 0.2578125 0.8671875 0.2578125 0.9296875
-            DIFF_K grav diff_k periode 1 segmentpoints 8 0.2578125 0.1171875 0.2578125 0.2421875 0.2578125 0.3671875 0.2578125 0.4921875 0.2578125 0.6171875 0.2578125 0.7421875 0.2578125 0.8671875 0.2578125 0.9296875
-            SOURCE_K grav source_k periode 1 segmentpoints 8 0.2578125 0.1171875 0.2578125 0.2421875 0.2578125 0.3671875 0.2578125 0.4921875 0.2578125 0.6171875 0.2578125 0.7421875 0.2578125 0.8671875 0.2578125 0.9296875
-            CONV_EPSILON grav conv_epsilon periode 1 segmentpoints 8 0.2578125 0.1171875 0.2578125 0.2421875 0.2578125 0.3671875 0.2578125 0.4921875 0.2578125 0.6171875 0.2578125 0.7421875 0.2578125 0.8671875 0.2578125 0.9296875
-            DIFF_EPSILON grav diff_epsilon periode 1 segmentpoints 8 0.2578125 0.1171875 0.2578125 0.2421875 0.2578125 0.3671875 0.2578125 0.4921875 0.2578125 0.6171875 0.2578125 0.7421875 0.2578125 0.8671875 0.2578125 0.9296875
-            SOURCE_EPSILON grav source_epsilon periode 1 segmentpoints 8 0.2578125 0.1171875 0.2578125 0.2421875 0.2578125 0.3671875 0.2578125 0.4921875 0.2578125 0.6171875 0.2578125 0.7421875 0.2578125 0.8671875 0.2578125 0.9296875
-        }
-        format lata champs binaire dt_post 1e6
-        {
-            conv_k
-            diff_k
-            source_k
-            conv_epsilon
-            diff_epsilon
-            source_epsilon
-        }
-    }
+    $post_processing
 }
 Solve pb
