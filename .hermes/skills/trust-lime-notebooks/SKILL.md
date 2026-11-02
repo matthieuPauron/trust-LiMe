@@ -63,7 +63,21 @@ Four rules, R1–R3 enforced mechanically by
   `SourceStretching`, `SteadyState`, and `VaryingVelocity`. Keep both dimension ladders and their
   assertions independent in the merged notebook. 3D meshes require
   **`Polyedriser dom` right after `Mailler`** (PolyMAC_MPFA needs polyhedra).
-  The dimension-specific `MMS_3D` form remains under `MagneticStandalone3D/`.
+
+- **VEF scheme switching via template substitution.** A single `.data` template
+  can target both PolyMAC and VEF by using placeholders for the
+  scheme-dependent blocks:
+  - `$discretization` -> `Polymac_p0` or `VEFPreP1B`
+  - `$mesh_post` -> empty (PolyMAC 2D pave), `Polyedriser dom` (PolyMAC 3D),
+    or `Trianguler dom\nVerifierCoin dom { }` (VEF 2D only; VEF 3D hexa
+    needs no conversion)
+  - `$post_processing` -> the full `Post_processing { ... }` block for PolyMAC,
+    empty for VEF (the `operateur_eqn`/`source operateur_eqn` post-processing
+    block segfaults at `Solve pb` on VEF)
+  The notebook passes the appropriate dict per scheme. Read the post-processing
+  block from a helper file or embed as a triple-quoted string.
+  See `MagneticTurbulence.ipynb` for the working example.
+  The 3D MMS cases are now merged into `MagneticStandalone/MMS/`.
   (The `Case` folder is the ASN 28 category grouping.)
 - **R2 — sequential-only datasets (default).** A `.data` file **must not
   contain any TRUST parallelism machinery**: `Decouper`, `Partitionneur`,
@@ -357,8 +371,8 @@ jupyter nbconvert --to notebook --execute --output-dir /tmp/opencode/lime_pdf/no
 jupyter nbconvert --to pdf --output-dir /tmp/opencode/lime_pdf/pdf <executed>.ipynb
 
 # concatenate into one report at the repo root (the runner visits the four
-# categories in order — MagneticStandalone, MagneticStandalone3D,
-# MagneticCoupled, Postraitement_fields — and names each per-form PDF
+# categories in order — MagneticStandalone, MagneticCoupled,
+# Postraitement_fields — and names each per-form PDF
 # <Category>_<FormName>.pdf)
 pdfunite /tmp/opencode/lime_pdf/pdf/*.pdf "$repo/trust-lime_validation.pdf"
 ```

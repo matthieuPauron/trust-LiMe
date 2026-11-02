@@ -21,11 +21,32 @@ metadata:
 
 ## Creating a 3D twin (coupled forms)
 
-1. Create `share/Validation/Rapports_automatiques/MagneticCoupled3D/<Name>3D/` with `src/<name>_3d.data` and `<Name>3D.ipynb`.
+1. Place the 3D dataset in the **same** form's `src/` as `<name>_3d.data` (do not create a separate `MagneticCoupled3D/` folder — merge into `MagneticCoupled/` instead, per "Merging validation into an existing notebook").
 2. Start from the 2D dataset; change `dimension 2` -> `3`, add the third axis to `Pave`/borders, add `Polyedriser dom` after `Mailler` (PolyMAC needs polyhedra in 3D), set `nb_composantes 3`, and add the missing boundary faces (devant/derriere).
 3. Keep the analytic solution z-independent where possible; probes at `z = 0.5` (mid-plane) reuse the 2D probe positions.
 4. Add the form to `parallel_ok[]` in `.opencode/scripts/check-validation.sh` if it uses partition machinery, then run `check-validation.sh --all`.
 5. Copy a simple 3D notebook (e.g. `ShercliffDuct3D`) and adapt probes; run it headless with the TRUST env sourced and `$exec` pointing at the trust-LiMe module.
+
+**User preference:** merge 3D forms into the existing 2D form's folder and notebook rather than creating separate `*3D` folders. Concatenate the 3D notebook cells into the 2D notebook with a markdown header (see "Merging validation into an existing notebook").
+
+## Restart persistence testing
+
+- Pattern: a **pre-run** solves 0..t_half and saves a `.sauv` (TRUST saves `pb.sauv` automatically at end of run); the **restart case** resumes via `reprise binaire $sauv` with `tinit = t_half`, `tmax = t_final`; compare against a **continuous reference** 0..t_final. Use `run.addCaseFromTemplate(..., pre_run=pre_run)` with a `pre_run(d, n)` that copies the pre-run dataset, substitutes templates, and calls `case.run()`.
+- The `.sauv` filename follows the pre-run case name: `<pre_case_name>_pb.sauv`. The restart case's `$sauv` placeholder must point to `./pre_run/<pre_case_name>_pb.sauv` (not the restart case name).
+- TRUST restart is **not bit-exact** for k/ε fields: a ~1e-3 relative error appears in the first post-restart step and does not accumulate (observed: k_b 4.8e-4, ε_b 1.3e-4 at t_final after a 0→0.25→0.5 split). Uniform fields (B=1) are exact. Set assertions to 1e-2, not 1e-6, and document the residual.
+- All unknowns related to the magnetic equations (`k_b`, `epsilon_b`, `magnetic_field`) are saved/restored; the magnetic field (uniform) matches to machine precision.
+
+## Creating a 3D twin (standalone forms)
+
+For a standalone form (not coupled), in addition to the coupled-form recipe:
+
+1. Place the 3D dataset in the **same** form's `src/` as `<name>_3d.data` (do not create a separate `MagneticStandalone3D/` folder for a single notebook — merge into the existing notebook instead, per "Merging validation into an existing notebook").
+2. Full-vector magnetic field: `nb_composantes 3` with `magnetic_field Champ_Fonc_xyz dom 3 <bx> <by> <bz>` (not scalar 1). Velocity becomes 3 components.
+3. 3D divergence-free velocity and 3D curl production (`P_b = η_t |∇×b_A|²` with all three components).
+4. Neumann BCs on all **six** faces (gauche/droite/bas/haut/devant/derriere) for every equation.
+5. For **VEF** in 3D, no mesh conversion is needed (VEF handles hexahedra directly); `Trianguler` is 2D-only. For **PolyMAC** in 3D, `Polyedriser dom` is required right after `Mailler`.
+6. Probes use 3 coordinates (`Points 1 x y z`); read effective coordinates from the `.son` header.
+7. Keep the analytic solution simple (z-independent where possible) so the 3D case is a sanity check on the operators, not a full re-derivation of 2D analytics.
 
 ## Reading TRUST probes (`.son`)
 
@@ -39,10 +60,38 @@ metadata:
 - `# BEGIN PARTITION` and `# BEGIN SCATTER` must stay **open** (no trailing `#`) so the block is commented out in nominal mode and only activated by `make_PAR.data`/`trust -partition`.
 - Never bulk-close these markers with a global sed: it activates partitioning and can skip the solve.
 
+## VEF template substitution (PolyMAC + VEF in one dataset)
+
+To run the same form on both discretizations from one notebook, use `string.Template`
+placeholders in the `.data` file and pass them via `run.addCaseFromTemplate(..., dic=...)`:
+
+- `$discretization` -> `Polymac_p0` or `VEFPreP1B` (replaces `Polymac_p0 dis`).
+- `$mesh_post` -> empty for PolyMAC 2D pave, or `Trianguler dom\nVerifierCoin dom { }` for VEF.
+- `$post_processing` -> the full `Post_processing { ... }` block for PolyMAC, or empty for VEF.
+
+**Why empty for VEF**: the `operateur_eqn` / `source operateur_eqn` post-processing block
+segfaults on VEF (`Error check for missing "}"` / segfault at `Solve pb`). Disable
+post-processing entirely for the VEF variant and skip the CONV/DIFF/SOURCE
+assertions for that scheme.
+
+- The poly case keeps the full `Post_processing` block (extract it to a helper file or
+  embed as a triple-quoted string in the notebook; keep brace balance exact — the
+  block must not include the closing `}` of `Read pb`).
+- Pass the block via `dic={"post_processing": block_text}` for poly and `""` for vef.
+
 ## Validation status file
+
 
 - `.opencode/validation_status.json` is versioned evidence: commit it every time it changes (validation run or `record-validation-status.py`). Never leave it modified-but-unstaged.
 - Generated artifacts (`build/` dirs, `.son`/`.sons`/`.TU`/`.stop` files) under `share/Validation/Rapports_automatiques/` are gitignored and are deleted automatically by `run-validation-pdf.sh` after `trust-LiMe_validation.pdf` is produced. Do not commit them; do not hand-clean them mid-run.
+
+## Citation of external sources
+
+- **Cite external sources.** Any work derived from an outside paper, project, or
+  third-party code must be duly cited (author, year, title,
+  equation/figure/table) in the notebook, the data file header, and the
+  relevant documentation page. This is of paramount importance; prefer
+  primary sources.
 
 ## In-repo Hermes skills
 
@@ -81,6 +130,8 @@ metadata:
 - `Pb_Induction` is **not supported on VEF** in the TRUST kernel: `Resoudre::interpreter` -> `objet("pb")` fails during `Solve pb` and the resulting `Process::exit` triggers a Kokkos teardown segfault (secondary). No VEF+Pb_Induction cases exist in the trust-code validation suite (only PolyMAC). Do not attempt a VEF port of an induction-only problem via `Pb_Induction`.
 - For VEF coverage of magnetic-turbulence closures, use `Pb_MHD`/`Pb_MHD_Turbulent` (TRUST already supports these on VEF — `TurbulentDiffusion` is the reference). Adapt the manufactured case to `Pb_MHD_Turbulent` to exercise `modele_turbulence_magnetique` + VEF variants without touching the kernel.
 - Kernel-level registration of `Pb_Induction` for VEF would be a substantial, risky undertaking outside module scope; prefer the `Pb_MHD_Turbulent` alternative.
+- **`Pb_MHD` + frozen NS does NOT work as a `Pb_Induction` substitute on VEF**: marking `Navier_Stokes_standard` as `equation_non_resolue` still leaves a pressure unknown whose Poisson matrix is singular (constant pressure null space) with zero/prescribed velocity -> `KSP_DIVERGED_NANORINF` / segfault at `Solve pb`. `Pb_Induction` exists precisely to avoid the pressure system. Do not use this workaround.
+- **VEF port status of `MagneticTurbulence`**: the code-side port is complete (VEF variants of `Champ_Fonc_Eta_Turbulent`/`Champ_Fonc_Somme` exist and `Modele_turbulence_magnetique`/`Convection_Diffusion_Magnetic_field` dispatch via `sub_type(Domaine_VEF)`). The **frozen manufactured case** now runs on VEF inside the *same* notebook via template substitution (`$discretization`/`$mesh_post`/`$post_processing` placeholders; `coarse_poly` + `coarse_vef`, all cases pass). The **solved cases** (decay/transport/energy) remain PolyMAC-only: `Pb_Induction` is not supported on VEF for solving, and the `Pb_MHD`+frozen-NS workaround diverges (`KSP_DIVERGED_NANORINF` from the pressure null space with zero velocity). Do not attempt the workaround; keep solved cases PolyMAC-only.
 
 ## GPU / Kokkos (hardware feasibility)
 
@@ -141,6 +192,32 @@ The in-repo script `share/Validation/Rapports_automatiques/VKS_experiment/VKSLit
 - **Form-level (Dirichlet wall):** prescribed Dirichlet fluxes must be **compatible** (net boundary flux ≈ 0) or the run aborts with `Gauss law violated by boundary conditions`. Opposite walls need the same normal component (e.g. bottom and top both `b=(0,1)`), not opposite signs.
 - **Dirichlet CL syntax:** use `temperature_imposee_paroi` (thermal CL reused because `domaine_application() == "Thermique"`) with a `Champ_Front_Uniforme` carrying `nb_composantes` values, e.g. `bas temperature_imposee_paroi Champ_Front_Uniforme 2 0. 1.`. The CL is a `Dirichlet` subclass, so `build_bc_trace_tables` detects it automatically.
 - **`divergence_magnetique` post-treatment field requires `nb_composantes == dimension`** (full vector field); with fewer components `creer_champ` calls `Process::exit()`. Use `nb_composantes 2` in 2D / `3` in 3D when probing divergence.
+- **PolyMAC supports only 1-component magnetic fields in 3D.** `Convection_Diffusion_Magnetic_field` on a PolyMAC mesh (`Polymac_p0`) rejects `nb_composantes 3` (\"only one transported component is supported by the current PolyMAC diffusion operator\"). For 3D vector MHD (3 components), use VEF discretization (hexahedral mesh) or accept a scalar proxy. The `nb_composantes` keyword must be omitted (defaults to 1) for PolyMAC; setting it to 3 aborts the run. Full 3-component magnetic field requires VEF + `VEFPreP1B`/`PolyMAC` with `nb_composantes 3` (but PolyMAC's diffusion operator is scalar-only).
+
+## MED-based forms (unstructured meshes)
+
+When a form uses a `.med` mesh (e.g. VKS cylindrical), the trustutils flow
+copies `src/*` (including the `.med`) into `build/`, but `make_PAR.data` runs
+the decomposition in `build/<level>/` (e.g. `build/coarse/`). The mesh file
+is therefore not on the decomposition run's search path.
+
+- **Use a relative path that resolves from `build/<level>/`**: `file ../vks_cyl_coarse.med`
+  (points at `build/vks_cyl_coarse.med`). The single-rank `src/` run then needs the
+  `.med` next to the `.data`; keep a `vks_cyl_coarse.med` copy in `src/` or run
+  only through the notebook for MED-based forms.
+- **Boundary groups may not propagate to the scattered (PAR) mesh**: a 2-rank run
+  can fail with `We have not found a boundary with name <group>` even though the
+  single-rank run and `GetMeshGroupsNames` show the group. Fall back to a
+  single-rank run (`nbProcs=1`) for MED-based forms, or verify the PAR run
+  separately before relying on it.
+- **`force_lorentz` coupling diverges on VEF tetra meshes with `paroi_defilante`
+  impeller BCs** (`KSP_DIVERGED_NANORINF` / segfault), even with a zero magnetic
+  seed; it is stable with `paroi_fixe` walls or with the seed set to zero. Treat
+  `force_lorentz` + `paroi_defilante` as unsupported on these meshes until the
+  spurious-current issue is fixed; keep the coupling disabled (commented) and
+  document the blocker, or use `paroi_fixe` walls for coupled runs.
+- **Do not delete generated artifacts** (`build/`, logs, `.med`-derived outputs)
+  for VKS/MED forms — the user inspects them manually.
 
 ## Merging validation into an existing notebook
 
@@ -164,7 +241,8 @@ When a validation form needs an unstructured mesh (e.g. spherical/cylindrical VK
 - **Boundary-face identification after boolean ops**: `GroupOnGeom` on the original input shapes returns 0 (they are consumed by MakeCut/MakePartition). Identify faces by `geom.BoundingBox(shape)` and create groups on individual faces, then `geom.MakeCompound` to merge before `GroupOnGeom` (avoids duplicate names like `GR_1_wall_outer`).
 - **Group export**: `mesh.ExportMED(file, False, 32, True)` (main) then `mesh.ExportMED(file, False, 32, False, meshPart=group)` for each group — merges groups into the main mesh entry (verified via `GetMeshGroupsNames`).
 - **Partition creates invalid mesh**: `geom.MakePartition([vol], [surf1, surf2])` creates internal faces that fail TRUST discretization (SIGFPE during NettoieNoeuds). Do not partition; mesh the unpartitioned volume and identify boundary faces by bounding box.
-- **Geometry orientation**: keep the cylinder axis along Z (vertical, Z-up) to match `vks_lite.data` convention.
+- **Partition creates invalid mesh for TRUST.** `geom.MakePartition([vol], [surf1, surf2])` creates internal faces that fail TRUST discretization (SIGFPE during `NettoieNoeuds`). The partitioned mesh has 5-node cells and invalid topology regardless of mesh size or algorithm. Do not partition; mesh the unpartitioned volume and identify boundary faces by bounding box. Impeller disk surfaces require a different approach (SALOME GUI with 8.x, or post-processing).
+- **Geometry orientation:** keep the cylinder axis along Z (vertical, Z-up) to match `vks_lite.data` convention.
 - **Missing runtime libs**: SALOME segfaults if system deps are missing. Run `$SALOME/sat/sat config SALOME-9.16.0-native --check_system` to list them. Missing boost (1.83.0) / libtbb can be satisfied by symlinking from a compatible local build into the module's `lib/salome/` directory.
 
 ## Pitfalls
@@ -175,9 +253,13 @@ When a validation form needs an unstructured mesh (e.g. spherical/cylindrical VK
 - Boundary-condition fields go on the **next line**, not inline: `inlet frontiere_ouverte_vitesse_imposee` then `Champ_front_Uniforme 2 1. 0.` on the following line. Case matters (`Champ_front_Uniforme`, not `Champ_front_uniforme`).
 - A new form's notebook must be **valid JSON** (`.ipynb`). Build it with `json.dump` rather than hand-writing markdown; run it headless with `jupyter nbconvert --to notebook --execute` after sourcing `env_trust_LiMe.sh`, `env_for_python.sh`, and `venv_trust/bin/activate`.
 - Heavy builds (sanitizer/full-kernel) follow the RAM guard in `AGENTS.md` and `.opencode/scripts/check-heavy-build.sh`.
+- For VEF tetra meshes, `force_lorentz` + `paroi_defilante` impeller BCs diverge (KSP_DIVERGED_NANORINF); use `paroi_fixe` walls or disable the coupling, and keep `dt <= 0.02` for coupled runs.
+- On VEF meshes, the `operateur_eqn` / `source operateur_eqn` post-processing block (used by `MagneticTurbulence` for CONV/DIFF/SOURCE probes) segfaults at `Solve pb`. Disable post-processing entirely for VEF variants (pass an empty `$post_processing` placeholder) and skip the manufactured-term assertions for that scheme.
+- For VEF coupled (force_lorentz) runs, keep `dt_max <= 0.02`; larger steps (0.05) diverge even on fine meshes.
 - The nightly backlog job runs each task in its own worktree under `trust-LiMe-worktrees/`; changes are NOT in the main tree. Validate by inspecting the worktree paths in `nightly-backlog-state.json` (`worktrees`), then remove the worktree after merge.
 - When a task directly follows the previous one, the job reuses the same worktree (entry lists `tasks: [title1, title2, ...]`). Validate each task before the worktree is cleared; do not treat the worktree as validated until all tasks in it are validated.
 - A dataset using `$nx`/`$ny`/`$nz` placeholders is a template: the notebook must call `run.addCaseFromTemplate(..., dic={...})`. Calling `run.addCase(".", ...)` leaves the placeholders in the generated `DEC_`/`PAR_` files and fails with `Error converting a string to type int: $nx`.
+- **Restart is not bit-exact for extra equations.** `reprise binaire $sauv` restores the primary fields, but `k_b`/`epsilon_b` (and their internal state) lose ~1e-3 relative precision on the first post-restart step (a one-step transient that does not accumulate; uniform fields like `b` are exact). Do not assert bit-identity for restarted magnetic-turbulence cases; use a 1e-2 tolerance and document the observed error. Pin the sauv filename to the actual pre-run case name (`<pre_case>_pb.sauv`), not the restart case name.
 - In 3D, keep the analytic solution z-independent where possible and place probes at the mid-plane (`z = 0.0` or `0.5` matching the mesh); always read effective coordinates from the `.son` header rather than nominal ones.
 - `SonFile(path)` (single argument) is not supported; use `SonFile(path, None)` then `getEntries()`/`getValues()`.
 
