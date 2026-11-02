@@ -1,6 +1,6 @@
 # VKS-cylindrical: 3D coupled MHD in a cylinder, laminar proxy (Rm ~ 1). #
-# Two end caps act as rotating impellers (paroi_defilante); the cylindrical #
-# wall is insulating (Neumann) and fixed. #
+# VEF discretization (tetrahedral MED mesh from salome_vks_cylindrical_9x.py). #
+# Insulating walls (proxy); real VKS impellers use paroi_defilante. #
 # Run on 2 ranks with partitioning: make_PAR.data vks_cylindrical.data 2 #
 dimension 3
 Pb_MHD pb
@@ -11,7 +11,6 @@ Read_MED {
     domain dom
     file vks_cyl_coarse.med
     mesh vks_cyl
-    convertAllToPoly
 }
 # END MESH #
 
@@ -28,7 +27,7 @@ END PARTITION #
 Scatter DOM.Zones dom
 END SCATTER #
 
-Polymac_p0 dis
+VEFPreP1B dis
 
 Associate pb dom
 
@@ -48,6 +47,7 @@ Discretize pb dis
 
 Read pb
 {
+    nb_composantes 3
     fluide_incompressible
     {
         mu      Champ_Uniforme 1 6.9e-4
@@ -55,6 +55,21 @@ Read pb
         lambda  Champ_Uniforme 1 85
         Cp      Champ_Uniforme 1 1380
         beta_th Champ_Uniforme 1 0.0
+    }
+
+    Navier_Stokes_standard
+    {
+        solveur_pression Petsc Cholesky { }
+        diffusion  { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            wall_top     paroi_fixe
+            wall_bottom  paroi_fixe
+            wall_cyl     paroi_fixe
+        }
+        initial_conditions { vitesse Champ_Uniforme 3 0. 0. 0. }
     }
 
     Convection_Diffusion_Magnetic_field
@@ -66,12 +81,10 @@ Read pb
 
         boundary_conditions
         {
-            wall_top     Neumann_Paroi_adiabatique
-            wall_bottom  Neumann_Paroi_adiabatique
-            wall_cyl     Neumann_Paroi_adiabatique
+            wall_top     paroi_isolante_magnetique
+            wall_bottom  paroi_isolante_magnetique
+            wall_cyl     paroi_isolante_magnetique
         }
-        initial_conditions { magnetic_field Champ_Uniforme 1 1e-4 }
+        initial_conditions { magnetic_field Champ_Uniforme 3 1e-4 1e-4 1e-4 }
     }
 }
-
-

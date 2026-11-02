@@ -61,7 +61,6 @@ Discretize pb dis
 
 Read pb
 {
-    nb_composantes 3
     fluide_incompressible
     {
         # Sodium-like properties substituted from share/VKS_experiment_data/sodium_properties.json #

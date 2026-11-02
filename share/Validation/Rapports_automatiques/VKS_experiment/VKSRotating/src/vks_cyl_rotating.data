@@ -1,0 +1,95 @@
+# VKS-cylindrical rotating: 3D coupled MHD in a cylinder with two #
+# counter-rotating impeller disks (paroi_defilante), laminar, no turbulence. #
+# Insulating magnetic walls. Starting from rest + small magnetic seed. #
+# Run on 2 ranks with partitioning: make_PAR.data vks_cyl_rotating.data 2 #
+dimension 3
+Pb_MHD pb
+Domaine dom
+
+# BEGIN MESH #
+Read_MED {
+    domain dom
+    file ../vks_cyl_coarse.med
+    mesh vks_cyl
+}
+# END MESH #
+
+# BEGIN PARTITION
+Partition dom
+{
+    Partition_tool metis { nb_parts 2 }
+    Larg_joint 2
+    zones_name DOM
+}
+End
+END PARTITION #
+# BEGIN SCATTER
+Scatter DOM.Zones dom
+END SCATTER #
+
+VEFPreP1B dis
+
+Associate pb dom
+
+Schema_Euler_Implicite sch
+Read sch
+{
+    tinit 0.
+    tmax 2.0
+    dt_max 0.02
+    facsec 1e6
+    facsec_max 1e6
+    solveur implicite { solveur petsc cli { } }
+}
+
+Associate pb sch
+Discretize pb dis
+
+Read pb
+{
+    nb_composantes 3
+    fluide_incompressible
+    {
+        mu      Champ_Uniforme 1 6.9e-4
+        rho     Champ_Uniforme 1 929
+        lambda  Champ_Uniforme 1 85
+        Cp      Champ_Uniforme 1 1380
+        beta_th Champ_Uniforme 1 0.0
+    }
+
+    Navier_Stokes_standard
+    {
+        solveur_pression Petsc Cholesky { }
+        diffusion  { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            wall_top     paroi_defilante Champ_Front_Fonc_xyz 3 -0.1*y 0.1*x 0.
+            wall_bottom  paroi_defilante Champ_Front_Fonc_xyz 3 0.1*y -0.1*x 0.
+            wall_cyl     paroi_fixe
+        }
+        initial_conditions { vitesse Champ_Uniforme 3 0. 0. 0. }
+    }
+
+    # NOTE: force_lorentz coupling disabled — diverges (KSP_DIVERGED_NANORINF) with paroi_defilante. #
+    # Magnetic field is transported passively; coupling needs paroi_fixe walls + dt<=0.02. #
+    Convection_Diffusion_Magnetic_field
+    {
+        diffusivite_magnetique Champ_Uniforme 1 0.078
+
+        diffusion  { }
+        convection { amont }
+
+        boundary_conditions
+        {
+            wall_top     paroi_isolante_magnetique
+            wall_bottom  paroi_isolante_magnetique
+            wall_cyl     paroi_isolante_magnetique
+        }
+        initial_conditions { magnetic_field Champ_Uniforme 3 1e-4 1e-4 1e-4 }
+    }
+
+}
+
+Solve pb
