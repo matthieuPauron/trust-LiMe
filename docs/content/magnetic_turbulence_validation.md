@@ -127,7 +127,7 @@ In a closed domain:
 ### 6. Physical validation
 - Extend the current verification form with mesh-convergence scales and
   assertions before treating it as a physical validation form.
-- Add a 3D twin under `MagneticStandalone3D`.
+- 3D twin merged into `MagneticStandalone/MMS/MMS.ipynb`.
 - Use a high-\f$\mathrm{Rm}\f$ or VKS-like case only after calibration, and document
   it as a physical benchmark rather than a smoke test.
 
@@ -265,7 +265,7 @@ magnetic \f$k_b\f$-\f$\varepsilon_b\f$ transport model.
     calibration or citations. The equations and validation status are now
     documented; calibration against DNS or experiment remains open.
 
-11. **3D twin.** Add a 3D version under `MagneticStandalone3D/`.
+11. **3D twin.** Merged into `MagneticStandalone/MMS/MMS.ipynb`.
 
 12. **High-\f$\mathrm{Rm}\f$ / VKS.** Use a high-\f$\mathrm{Rm}\f$ or
     VKS-like case only after calibration, and document it as a physical

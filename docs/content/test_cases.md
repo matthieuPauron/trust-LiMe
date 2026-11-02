@@ -137,8 +137,8 @@ One validation form per test case (TRUST layout
 `Rapports_automatiques/<Category>/<FormName>/<FormName>.ipynb`): the folder
 holds `Invariance/`, `Diffusion/`, `Advection/`,
 `SteadyState/`, `VaryingVelocity/`, `SourceStretching/`, `Hartmann1D/`,
-`Shercliff/`, `MMS_2D/` (the four historical MMS 2D cases fused: `MMS_Diff2D`, `MMS_Trig2D`,
-`MMS_ExpTrig2D`, `MMS_Poly_2D`) and the merged negative
+`Shercliff/`, `MMS/` (the four historical MMS 2D cases fused: `MMS_Diff2D`, `MMS_Trig2D`,
+`MMS_ExpTrig2D`, `MMS_Poly_2D`, plus their 3D counterparts) and the merged negative
 `ErrorInputs/` form (the historical `error_missing_eta`,
 `error_bad_nbcomposantes`, `error_bad_bc`, and `error_incompatible_flux` datasets);
 each form folder contains its notebook + `src/<case>.data` (the single
@@ -171,7 +171,7 @@ grid for the exact Hartmann solution. Because this fully developed channel has
 \f$u\cdot\nabla u=0\f$, the grid does not validate inertial Re dependence; a
 non-fully-developed geometry is still needed for that. The coupled
 **Shercliff 3D duct** (Tassone et al. Fig. 6) is implemented as
-`MagneticCoupled3D/ShercliffDuct3D/` and its latest recorded run passes. The
+`MagneticCoupled/ShercliffDuct3D/` and its latest recorded run passes. The
 coupled mode itself is documented in @ref TrustLiMe_model "Problems, equations and boundary conditions".
 
 Every dataset is **self-contained**: the mesh is generated inline with `Mailler`/`Pave`,
@@ -203,10 +203,9 @@ Design choices worth knowing:
 
 - **Paired standalone forms share one notebook** under `MagneticStandalone/`;
   their 2D and 3D datasets use the same physics assertions with dimension-
-  specific substitutions. `MMS_3D/` holds the four historical 3D MMS cases
-  fused (2D counterpart `MMS_2D/`). Shercliff's 2D and full-vector 3D cases now
-  share one `shercliff.data` template and notebook. `MMS_3D` remains a
-  dimension-specific form. Its 3D datasets use the appropriate 3D mesh,
+  specific substitutions. The 3D MMS cases are now merged into `MMS/` (shared `src/`).
+  Shercliff's 2D and full-vector 3D cases share one `shercliff.data` template
+  and notebook. Its 3D datasets use the appropriate 3D mesh,
   dimension, and probe substitutions; the Shercliff template additionally
   injects its full three-component vector and `Polyedriser dom`. Meshes keep the
   active direction refined and transverse directions coarse
@@ -319,4 +318,4 @@ in `Pb_MHD` (laminar) and `Pb_MHD_Turbulent` (k-eps) and validated by
 the driven-Hartmann physics the historical `HartmannFlow` case aimed at is
 now covered — quantitatively and with both feedbacks live — by
 `MagneticCoupled/HartmannTwoWay/`.
-The Shercliff 3D duct benchmark is implemented as `MagneticCoupled3D/ShercliffDuct3D/`.
+The Shercliff 3D duct benchmark is implemented as `MagneticCoupled/ShercliffDuct3D/`.

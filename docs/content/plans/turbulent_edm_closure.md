@@ -130,7 +130,7 @@ Next steps:
 2. Mesh/time convergence ladder with assertions (coarse/standard/fine).
 3. VEF port of `Champ_Fonc_Eta_Turbulent` and `Champ_Fonc_Somme` for
    cross-discretization comparison with the hydraulic handoff path.
-4. 3D twin under `MagneticStandalone3D/`.
+4. 3D twin merged into `MagneticStandalone/MMS/MMS.ipynb`.
 5. Coupled regression: molecular-only vs prescribed `eta_t` vs hydraulic
    fallback vs independent model; show `eta_eff` and decay-rate change.
 6. Physical benchmark: Frick et al. toroidal sodium channel (η_t magnitude);

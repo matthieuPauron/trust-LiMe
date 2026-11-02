@@ -881,7 +881,7 @@ line-identical against the historical executed outputs.)*
 
 *(Status 2026-10-21: `MMS_Coupled3D` was folded into `MagneticCoupled/MMS_Coupled`
 as a second dataset — the form now runs its 2D case and its 3D twin from one
-notebook; see §19. The `MagneticCoupled3D` category stays, holding only the
+notebook; see §19. The `MagneticCoupled` category stays, holding only the
 in-progress `ShercliffDuct3D`.)*
 
 Seven forms added (`MMS_Coupled`, `MMS_CoupledRefined`, `Coupled_Feedback`,
@@ -1163,7 +1163,7 @@ upstream report regardless of what the full-kernel ASan build adds.
 
 ## 19. Folding a 2D form and its 3D twin into one notebook (2026-10-21)
 
-`MagneticCoupled3D/MMS_Coupled3D` was retired: its dataset
+`MagneticCoupled/MMS_Coupled3D` was retired: its dataset
 (`mms_coupled_3d.data`) moved into `MagneticCoupled/MMS_Coupled/src/` and the
 2D notebook grew a 3D section, so the `MMS_Coupled` form now runs **two
 datasets, two ladders**. Recipe and traps:
@@ -1603,7 +1603,7 @@ append new findings there.
 - The module solves the **standalone** magnetic induction equation
   (see `docs/content/model.md` and `docs/content/plans/magnetic_standalone.md`).
 - Validation cases: `share/Validation/Rapports_automatiques/MagneticStandalone/`
-  (2D) and `MagneticStandalone3D/` (the 3D twins, same form names) —
+  (2D + 3D twins merged into `MagneticStandalone/MMS/`) —
   self-contained `Mailler`/`Pave` meshes (3D uses `Polyedriser dom`),
   analytic + invariant checks. See `docs/content/test_cases.md`.
 - Kernel and module **are built** (`trust-lime`, `trust-lime_semi_opt`,

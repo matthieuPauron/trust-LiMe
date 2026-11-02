@@ -19,18 +19,14 @@ share/Validation/Rapports_automatiques/
 │   ├── SteadyState/  VaryingVelocity/  SourceStretching/
 │   ├── Hartmann1D/                 # Hartmann induced field (1D physics)
 │   ├── Shercliff/                   # shared 2D/3D template, full-vector 3D checks
-│   ├── MMS_2D/                     # the four historical MMS cases fused
+│   ├── MMS/                        # MMS 2D + 3D manufactured solutions (merged)
 │   ├── GaussLaw/                   # opt-in 2D discrete divergence projection
 │   ├── MagneticTurbulence/         # PolyMAC_P0 manufactured terms + zero-production decay
-│   └── ErrorInputs/                # malformed inputs incl. incompatible net flux
-├── MagneticStandalone3D/           # dimension-specific standalone forms
-│   ├── MMS_3D/                     # four historical 3D MMS cases
-├── MagneticCoupled/                # coupled low-Rm MHD (2D, incl. the merged
-│   └── <FormName>/…                #   one-way + two-way feedback form)
-├── MagneticCoupled3D/              # 3D-only coupled forms (the MMS twin now
-│   └── <FormName>/…                #   lives in MagneticCoupled/MMS_Coupled/)
-└── Postraitement_fields/           # merged by dimension (2026-10-21)
-    └── Champs2D/ Champs3D/         # (∇b / |b|² / u·b based — two datasets each)
+├── MagneticCoupled/                # coupled low-Rm MHD (2D + 3D forms merged)
+│   └── <FormName>/…                #   one-way + two-way feedback form
+└── Misc/
+    ├── ErrorInputs/               # malformed input diagnostics (standalone + coupled)
+    └── Postraitement/             # merged 2D + 3D (champs2d_* + champs3d_*)
 ```
 
 The paired forms `Advection`, `Diffusion`, `ErrorInputs`, `GaussLaw`,
@@ -41,8 +37,7 @@ own mesh ladder and build subtree. In `GaussLaw`, the 2D case exercises the MPI
 path while the 3D full-vector case remains sequential; its transverse mesh
 uses three cells to avoid a parity-sensitive null mode. The 3D mesh block
 includes **`Polyedriser dom`** after `Mailler` because PolyMAC_MPFA requires
-polyhedral cells in 3D. The remaining `MagneticStandalone3D/` form is the
-dimension-specific `MMS_3D` family.
+polyhedral cells in 3D. The 3D MMS cases are now merged into `MagneticStandalone/MMS/`.
 
 Four formatting rules are enforced by `.opencode/scripts/check-validation.sh`
 (`/check-validation`): the notebook lives at the form root only —
@@ -53,7 +48,7 @@ partition, and scatter marker regions and must opt into `partition()`/
 `nbProcs>1` together); the R4 rule is **one form per notebook** (see the
 `trust-lime-notebooks` skill) — a form runs
 its mesh-convergence scales (coarse/standard/fine) from the single template
-`src/<case>.data`, and the `MMS_2D`/`MMS_3D` forms run four datasets each.
+`src/<case>.data`, and the merged `MMS` form runs eight datasets (four 2D + four 3D).
 
 ---
 
@@ -81,8 +76,7 @@ dataset into `build/<dataset name>/` where the results (`.son` probes, `.dt_ev`,
 
 Each form can be exported to PDF and the per-form PDFs concatenated into a
 single report at the repository root (`trust-lime_validation.pdf`,
-31 forms: the 2D and 3D standalone families (the 3D MMS cases fused as
-`MMS_3D`, Shercliff merged as `MagneticStandalone/Shercliff`), the coupled-MHD
+31 forms: the 2D and 3D standalone families (the 3D MMS cases fused into `MMS`, Shercliff merged as `MagneticStandalone/Shercliff`), the coupled-MHD
 forms (including the quantitative two-way `HartmannTwoWay`) and the
 post-treatment fields merged into `Champs2D`/`Champs3D` — every
 positive form carrying its mesh-convergence scan, and the malformed-input
@@ -118,7 +112,7 @@ covers **one validation form** (see the `trust-lime-notebooks` skill; R4):
 several datasets of that form are allowed — its mesh-convergence scales
 (coarse = the baseline mesh, standard, fine) substituted from the single
 template `src/<case>.data`, and the merged MMS
-forms (`MMS_2D`, `MMS_3D`) run four datasets each. The category ships one
+form (`MMS`) runs eight datasets (four 2D + four 3D). The category ships one
 folder per form (`<Category>/<FormName>/<FormName>.ipynb`), covering exact
 invariants, mesh convergence, malformed-input diagnostics and isolated
 phenomena against analytical solutions; a future Verification/Validation
@@ -131,7 +125,7 @@ magnetic system, so the old placeholders no longer apply. The coupled low-Rm
 mode (`force_lorentz` + optional `Navier_Stokes_standard`) is documented in
 @ref TrustLiMe_model "Problems, equations and boundary conditions" §4bis and
 validated by `MagneticCoupled/ForceLorentzBalance/`. The Shercliff 3D duct
-benchmark is now implemented as `MagneticCoupled3D/ShercliffDuct3D/`
+benchmark is now implemented as `MagneticCoupled/ShercliffDuct3D/`
 (Tassone et al.).
 
 The **standalone half** of the Hartmann problem — the induced field produced by a

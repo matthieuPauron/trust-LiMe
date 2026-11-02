@@ -445,7 +445,7 @@ a qualitative side-by-side comparison until this port is done.
   so `turbulence_paroi negligeable` fails to type. Broader turbulent
   discretization coverage remains an upstream wall-law concern.
 - **VKS 3D turbulent case** (2026-10-23, updated 2026-10-24): form
-  `MagneticCoupled3D/VKSTurbulent/` — VEFPreP1B on a tetrahedral mesh
+  `MagneticCoupled/VKSTurbulent/` — VEFPreP1B on a tetrahedral mesh
   (`Tetraedriser` + `VerifierCoin`), `Pb_MHD_Turbulent` with `K_Epsilon`,
   `nb_composantes 3`, and two-way coupling through `vitesse_hydraulique` plus
   the VEF `force_lorentz` assembly. The notebook exercises the turbulent

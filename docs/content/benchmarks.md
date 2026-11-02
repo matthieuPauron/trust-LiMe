@@ -63,7 +63,7 @@ a physical validation benchmark and has no VEF twin.
 - **What it catches:** stretching source magnitude and sign; a wrong factor,
   transposed gradient index, or dropped term changes the exponential rate.
 
-### MMS (MMS_2D / MMS_3D)
+### MMS (merged 2D + 3D)
 
 - **Analytic reference:** manufactured solutions covering diffusion, trigonometric,
   exponential-trigonometric, and polynomial profiles.
@@ -118,7 +118,7 @@ merged per category) are excluded by design.
   physical validation remain open.
 - **3D coupled twins:** `HartmannTwoWay3D`, `ForceLorentzBalance3D`,
   `Coupled_Feedback3D` and `ShercliffDuct3D` now exist under
-  `MagneticCoupled3D/` (added 2026-10-26) and are recorded passing. The
+  `MagneticCoupled/` (added 2026-10-26) and are recorded passing. The
   remaining coupled-MHD coverage gap is the inertial-Re (non-fully-developed)
   benchmark, which has no 3D twin by design.
 - **Advanced physics:** full magnetic-fluctuation transport, MHD turbulence

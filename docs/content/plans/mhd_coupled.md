@@ -124,7 +124,9 @@ Hartmann profile matches analytic; low-Rm scaling confirmed.
 - [ ] **2.2** Update `.data` file syntax for full coupled cases:
        - `fluide_incompressible` + `Pb_Hydraulique` block + `Convection_Diffusion_Magnetic_field`
 - [ ] **2.3** Implement time-stepping that couples `derivee_en_temps_inco` for both equations
-- [ ] **2.4** Analytic verification: Shercliff 3D duct experiment (Tassone et al. Fig. 6)
+- [ ] **2.4** Analytic verification: Shercliff 3D duct experiment (Tassone et al. Fig. 6).
+  Requires implementing the Shercliff series (Shercliff 1953/1962) for conducting walls;
+  references added to `ShercliffDuct3D.ipynb`. Not yet asserted (finiteness + sign sanity only).
        — compare `u(y), b(y), Ha, Re` profiles
 - [ ] **2.5** Parameter scan: `Ha` vs `Re` regime mapping (low-Rm, interaction parameter `M`)
 

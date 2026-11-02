@@ -46,7 +46,7 @@ opt-in cell-centred div-b projection have been implemented in separate work.
 |---|---|
 | `src/Convection_Diffusion_Magnetic_field.{h,cpp}` | ✅ Fixed; derives from `Convection_Diffusion_Temperature_base`; compiles and links |
 | `src/Pb_MHD.{h,cpp}` | ✅ Fixed; `nombre_d_equations()` returns 1, `equation(int)` works; both pass `syntax-check.sh` |
-| `share/Validation/Rapports_automatiques/MagneticStandalone{,3D}/` | ✅ 10 `.data` test cases in 2D (invariance, diffusion coarse+refined, advection, steady-state, stretching, varying velocity, 3 negative `Error*`), each with a 3D twin in `MagneticStandalone3D/`; the former `vector_components` form was removed (scalar-only module) |
+| `share/Validation/Rapports_automatiques/MagneticStandalone/` | ✅ 10 `.data` test cases in 2D (invariance, diffusion coarse+refined, advection, steady-state, stretching, varying velocity, 3 negative `Error*`), each with a 3D twin merged into `MMS/`; the former `vector_components` form was removed (scalar-only module) |
 | `docs/content/model.md` | ✅ Physics: induction eq; M0/M1 status updated in model doc |
 | Build | ✅ `make module_semi_optim` links; smoke runs succeed on 1 proc |
 
